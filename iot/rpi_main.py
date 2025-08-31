@@ -1,37 +1,48 @@
+# --- general ---
+import os
 import time
+import datetime
+
+# --- networking ---
 import socket
-import numpy as np
-import librosa
-import sounddevice as sd
-import RPi.GPIO as GPIO
+import paho.mqtt.client as mqtt
+
+# --- audio processing ---
 import joblib
 
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers, models
+from tensorflow.keras.utils import to_categorical
+
+import librosa as lb
+import librosa.display as ld
+import sounddevice as sd
+from sklearn.model_selection import train_test_split
+
+# --- hardware control ---
+import RPi.GPIO as GPIO
+
+# GPIO setup ---------------------------------------
 # Load the pre-trained model
-model = joblib.load("model.joblib")
+# model = joblib.load("model.joblib")
 
+
+# functions -----------------------------------------
 def listen_and_classify():
-    # # Record audio
-    # duration = 5  # seconds
-    # fs = 16000  # sample rate
-    # print("[INFO] Listening...")
-    # audio = sd.rec(int(duration * fs), samplerate=fs, channels=1)
-    # sd.wait()  # Wait until recording is finished
-    # audio = audio.flatten()
+    # Record audio
 
-    # # Preprocess the audio
-    # mfccs = librosa.feature.mfcc(y=audio, sr=fs, n_mfcc=13)
-    # mfccs = np.mean(mfccs.T, axis=0)
+def extract_features():
+    # extract features from audio
 
-    # # Classify the audio
-    # prediction = model.predict([mfccs])
-    # print(f"[INFO] Prediction: {prediction}")
-    # if prediction == "target_sound":
-    #     trigger_action()
+def trigger_alarm():
+    # trigger alarm if emergency was detected
 
-
-def trigger_action():
-    print("[ACTION] Target sound detected! Triggering action...")
-    # Example action: Blink an LED connected to GPIO pin 18
 
 
 try:
