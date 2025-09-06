@@ -1,0 +1,68 @@
+import sqlite3
+import os
+from datetime import datetime
+
+class Database:
+    def __init__(self, db_name="safensound.db"):
+        self.db_name = db_name
+        self.conn = sqlite3.connect(self.db_name)
+        self.create_room()
+        self.create_history()
+    
+
+    #create tables
+    def create_room(self):
+        with self.conn:
+            self.conn.execute('''
+                CREATE TABLE IF NOT EXISTS room (
+                    room_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    room_name TEXT NOT NULL
+                    CHECK (room_id IN ('1', '2', '3'))
+                )
+            ''')
+
+    def create_history(self):
+        with self.conn:
+            self.conn.execute('''
+                CREATE TABLE IF NOT EXISTS history (
+                    history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    action TEXT,
+                    date DATE,
+                    time TIME,
+                    room_id INTEGER,
+                    FOREIGN KEY (room_id) REFERENCES room (room_id),
+                    CHECK (action IN ('Alarm Reset', 'Emergency Detected'))
+                )
+            ''')
+
+
+    #insert data
+    def insert_history(self, action, date, time, room_id):
+        date = datetime.now().strftime("%Y-%m-%d")
+
+        with self.conn:
+            self.conn.execute('''
+                INSERT INTO history (action, date, time, room_id)
+                VALUES (?, ?, ?, ?)
+            ''', (action, date, time, room_id))
+
+
+    #update data
+    def update_room(self, room_id, new_name):
+        with self.conn:
+            self.conn.execute('''
+                UPDATE room
+                SET room_name = ?
+                WHERE room_id = ?
+            ''', (new_name, room_id))
+
+
+    #fetch and display data
+    def fetch_history(self, room_id):
+        with self.conn:
+            cursor = self.conn.execute('SELECT * FROM history where room_id = ?', (room_id,))
+            return cursor.fetchall()
+
+
+    def close(self):
+        self.conn.close()

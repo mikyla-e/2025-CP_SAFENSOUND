@@ -7,7 +7,7 @@ import datetime
 # --- networking ---
 import socket
 import paho.mqtt.client as mqtt     
-import bluetooth
+# import bluetooth
 
 # --- audio processing ---
 import joblib
@@ -25,7 +25,11 @@ from tensorflow.keras.utils import to_categorical
 import librosa as lb
 import librosa.display as ld
 import sounddevice as sd
+import soundfile as sf
+
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
 
 # --- hardware control ---
 import RPi.GPIO as GPIO
@@ -45,26 +49,25 @@ import RPi.GPIO as GPIO
 # GPIO.setup([light_pin_1, light_pin_2, light_pin_3, buzzer_pin], GPIO.OUT)
 # GPIO.setup(reset_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# load model vvv
-# model = joblib.load("model.joblib")
-
 
 # functions -----------------------------------------
-ml_model_path = ""
 
+model = joblib.load("mfcc_rf_model.joblib")
+
+audio_data = None
 audio_wav = None
 audio_duration = 5 #seconds
 sample_rate = 16000
 
+emergency_count = 0
 
 def connection():
     
-
+    return
 
 
 def get_audio():
     # get audio from microphone
-    audio_wav = None
     date_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
     try:
@@ -73,44 +76,82 @@ def get_audio():
         sd.wait()
 
         audio_wav = f"recording_{date_time}.wav"
-        lb.output.write_wav(audio_wav, audio, sample_rate)
+        sf.write(audio_wav, audio, sample_rate)
         print(f"Audio recorded and saved as {audio_wav}")
 
     except Exception as e:
         print("Audio recording failed:", e)
+        return None, None
 
 
-    return audio_wav
+    return audio.flatten(), audio_wav
 
 
-def inference():
+# def extract_features():
+#     # extract features from audio
+#     return features
+def extract_mfcc(audio, sample_rate, n_mfcc=40, hop_length=512, max_len=160):
+    mfcc = lb.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=n_mfcc, hop_length=hop_length)
+    
+    if mfcc.shape[1] < max_len:
+        mfcc = np.pad(mfcc, ((0,0),(0, max_len - mfcc.shape[1])), mode='constant')
+    else:
+        mfcc = mfcc[:, :max_len]
+    
+    flat_mfcc = mfcc.flatten()
+    
+    return flat_mfcc
 
+
+def inference(audio):
     emergency_count = 0
     emergency_detected = False
 
-    # proceeding 2-4 audios after the first emergency audio detected must also be detected as emergency to trigger alarm (?)
-    if emergency_detected:
-        emergency_count += 1
-        trigger_alarm()
-    else:
-        emergency_count = 0
+    # extracting
+    audio_features = extract_mfcc(audio, sample_rate)
+    audio_reshaped = audio_features.reshape(1, -1)
 
-def extract_features():
-    # extract features from audio
-    features =
+    # predicting
+    prediction = model.predict_proba(audio_reshaped)
+    threshold = 0.3
+    prediction = (prediction[:, 1] >= threshold).astype(int)
 
+    #add alarm and emergency logic
+
+    print(f"Prediction for {audio_wav}: {'emergency' if prediction[0] == 1 else 'non-emergency'}")
     
-    return features
+    # alarming sound = 3 times before emergency is confirmed
+    # emergency sound = 2 times after emergency is confirmed
+
+
+    # if prediction[0] == 1:
+    #     emergency_detected = True
+    # else:
+    #     emergency_detected = False
+    
+    # if emergency_detected:
+    #     emergency_count += 1
+    #     trigger_alarm()
+    # else:
+    #     emergency_count = 0
+
+    return
 
 def trigger_alarm():
     # trigger alarm if emergency was detected
+    if emergency_count > 0:
+        print(f"Emergency detected {emergency_count} times.")
+
+    return
 
 
-    
-
+# main loop -----------------------------------------
 try:
     while True:
-        get_audio()
+        # audio_data, audio_wav = get_audio()
+        audio_data = "../ml/datasets/alarming.wav"
+        if audio_data is not None:
+            inference(audio_data)
         time.sleep(1)
 except KeyboardInterrupt:
     print("\n[INFO] Exiting gracefully...")
