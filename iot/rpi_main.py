@@ -31,8 +31,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, accuracy_score
 
-# --- hardware control ---
-import RPi.GPIO as GPIO
+# hardware control ---------------------------------
+# import RPi.GPIO as GPIO
 
 # GPIO setup ---------------------------------------
 # GPIO.setmode(GPIO.BOARD)
@@ -49,10 +49,10 @@ import RPi.GPIO as GPIO
 # GPIO.setup([light_pin_1, light_pin_2, light_pin_3, buzzer_pin], GPIO.OUT)
 # GPIO.setup(reset_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-
 # functions -----------------------------------------
 
-model = joblib.load("mfcc_rf_model.joblib")
+model = joblib.load("ml/mfcc/mfcc_rf_model.joblib")
+print("Model loaded successfully.")
 
 audio_data = None
 audio_wav = None
@@ -119,6 +119,13 @@ def inference(audio):
     #add alarm and emergency logic
 
     print(f"Prediction for {audio_wav}: {'emergency' if prediction[0] == 1 else 'non-emergency'}")
+
+    if prediction[0] == 2:
+        trigger_alarm()
+    elif prediction[0] == 1:
+        trigger_alarm()
+    else:
+        print("No emergency detected.")
     
     # alarming sound = 3 times before emergency is confirmed
     # emergency sound = 2 times after emergency is confirmed
@@ -139,20 +146,20 @@ def inference(audio):
 
 def trigger_alarm():
     # trigger alarm if emergency was detected
-    if emergency_count > 0:
-        print(f"Emergency detected {emergency_count} times.")
-
-    return
+    print(f"Trigger alarm!")
 
 
 # main loop -----------------------------------------
+
 try:
     while True:
         # audio_data, audio_wav = get_audio()
-        audio_data = "../ml/datasets/alarming.wav"
-        if audio_data is not None:
+        audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+        if audio_file_path is not None:
+            # Load the audio file
+            audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
             inference(audio_data)
-        time.sleep(1)
+        time.sleep(1)   
 except KeyboardInterrupt:
     print("\n[INFO] Exiting gracefully...")
-    GPIO.cleanup()
+    # GPIO.cleanup()
