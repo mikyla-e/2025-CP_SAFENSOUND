@@ -1,4 +1,5 @@
 # --- general ---
+import sys
 import os
 import time
 from time import sleep
@@ -51,6 +52,14 @@ from sklearn.metrics import classification_report, accuracy_score
 
 # functions -----------------------------------------
 
+# database
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from database.db_connection import Database
+
+db = Database()
+print("Database connected successfully.")
+
+# ml model
 model = joblib.load("ml/mfcc/mfcc_rf_model.joblib")
 print("Model loaded successfully.")
 
@@ -59,7 +68,10 @@ audio_wav = None
 audio_duration = 5 #seconds
 sample_rate = 16000
 
+alarming_count = 0
 emergency_count = 0
+nonemergency_count = 0
+emergency_detected = False
 
 def connection():
     
@@ -103,50 +115,79 @@ def extract_mfcc(audio, sample_rate, n_mfcc=40, hop_length=512, max_len=160):
     return flat_mfcc
 
 
-def inference(audio):
-    emergency_count = 0
-    emergency_detected = False
+def inference(audio, wav_name):
+    global emergency_count, alarming_count, nonemergency_count, emergency_detected
 
     # extracting
     audio_features = extract_mfcc(audio, sample_rate)
-    audio_reshaped = audio_features.reshape(1, -1)
 
     # predicting
-    prediction = model.predict_proba(audio_reshaped)
-    threshold = 0.3
-    prediction = (prediction[:, 1] >= threshold).astype(int)
+    prediction = model.predict(audio_features.reshape(1, -1))
+    # prediction = model.predict_proba(audio_reshaped)
+    # threshold = 0.3
+    # prediction = (prediction[:, 1] >= threshold).astype(int)
 
     #add alarm and emergency logic
 
-    print(f"Prediction for {audio_wav}: {'emergency' if prediction[0] == 1 else 'non-emergency'}")
+    predicted_class = prediction[0]
 
-    if prediction[0] == 2:
-        trigger_alarm()
-    elif prediction[0] == 1:
-        trigger_alarm()
-    else:
+    print(f"\nPrediction for {wav_name}: {'emergency' if predicted_class == 2 else 'alarming' if predicted_class == 1 else 'non-emergency'}")
+
+    if predicted_class == 1:
+        alarming_count += 1
+        print("ALARMING sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
+
+        if alarming_count >= 4:
+            emergency_detected = True
+            trigger_alarm()
+        
+        elif alarming_count == 2 and emergency_count >= 1:
+            emergency_detected = True
+            trigger_alarm()
+
+    elif predicted_class == 2:
+        emergency_count += 1
+        print("EMERGENCY sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
+        if emergency_count >= 2:
+            emergency_detected = True
+            trigger_alarm()
+
+        elif emergency_count == 1 and alarming_count >= 2:
+            emergency_detected = True
+            trigger_alarm()
+
+    elif predicted_class == 0:
         print("No emergency detected.")
+        nonemergency_count += 1
+        if nonemergency_count >= 6:
+            alarming_count = 0
+            emergency_count = 0
+            nonemergency_count = 0
+            print("System reset due to consecutive non-emergency sounds.")
+
     
-    # alarming sound = 3 times before emergency is confirmed
+    # alarming sound = 4 times before emergency is confirmed
     # emergency sound = 2 times after emergency is confirmed
-
-
-    # if prediction[0] == 1:
-    #     emergency_detected = True
-    # else:
-    #     emergency_detected = False
-    
-    # if emergency_detected:
-    #     emergency_count += 1
-    #     trigger_alarm()
-    # else:
-    #     emergency_count = 0
 
     return
 
 def trigger_alarm():
     # trigger alarm if emergency was detected
-    print(f"Trigger alarm!")
+    global emergency_detected, emergency_count, alarming_count, nonemergency_count
+    buzzer_trigger = 0
+    nonemergency_count = 0
+
+    while emergency_detected == True:
+        print(f"\nALARM TRIGGERED")
+        time.sleep(3)
+        buzzer_trigger += 1
+        if buzzer_trigger == 3:
+            emergency_detected = False
+            print(f"\nReset alarm.")
+    else:
+        emergency_count = 0
+        alarming_count = 0
+
 
 
 # main loop -----------------------------------------
@@ -154,12 +195,59 @@ def trigger_alarm():
 try:
     while True:
         # audio_data, audio_wav = get_audio()
-        audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-        if audio_file_path is not None:
+        example_wav = "ml/datasets/alarming/babycry-3.wav"
+
+        if example_wav is not None:
             # Load the audio file
-            audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-            inference(audio_data)
-        time.sleep(1)   
+            audio_data, sr = lb.load(example_wav, sr=sample_rate, mono=True)
+            inference(audio_data, example_wav)
+        
+        time.sleep(5) 
+            
+        example_wav = "ml/datasets/emergency/gunshot_02.wav"
+
+        if example_wav is not None:
+            # Load the audio file
+            audio_data, sr = lb.load(example_wav, sr=sample_rate, mono=True)
+            inference(audio_data, example_wav)
+
+        time.sleep(5) 
+
+        example_wav = "ml/datasets/alarming/babycry-3.wav"
+
+        if example_wav is not None:
+            # Load the audio file
+            audio_data, sr = lb.load(example_wav, sr=sample_rate, mono=True)
+            inference(audio_data, example_wav)
+
+        time.sleep(5)   
+
+        example_wav = "ml/datasets/alarming/babycry-3.wav"
+
+        if example_wav is not None:
+            # Load the audio file
+            audio_data, sr = lb.load(example_wav, sr=sample_rate, mono=True)
+            inference(audio_data, example_wav)
+
+        time.sleep(5) 
+
+        example_wav = "ml/datasets/alarming/babycry-3.wav"
+
+        if example_wav is not None:
+            # Load the audio file
+            audio_data, sr = lb.load(example_wav, sr=sample_rate, mono=True)
+            inference(audio_data, example_wav)
+
+        time.sleep(5)  
+        
+        example_wav = "ml/datasets/emergency/gunshot_02.wav"
+
+        if example_wav is not None:
+            # Load the audio file
+            audio_data, sr = lb.load(example_wav, sr=sample_rate, mono=True)
+            inference(audio_data, example_wav)
+
+        time.sleep(5) 
 except KeyboardInterrupt:
     print("\n[INFO] Exiting gracefully...")
     # GPIO.cleanup()
