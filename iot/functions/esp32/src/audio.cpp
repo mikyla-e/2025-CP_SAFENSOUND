@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WebSocketsClient.h>
+#include "audio.h"
 
 #define I2S_PORT I2S_NUM_0
 #define I2S_SCK 26
@@ -33,9 +34,7 @@ i2s_pin_config_t pin_config = {
     .data_in_num = I2S_SD
 };
 
-void setup(){
-    Serial.begin(115200);
-
+void setupAudio(){
     esp_err_t result = i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
     // if (result != ESP_OK) {
     //     Serial.printf("Error installing I2S driver: %d\n", result);
@@ -49,7 +48,7 @@ void setup(){
     // }
 }
 
-void loop(){
+void processAudioRecording(){
     int16_t audio[BUFFER_SIZE];
     size_t bytes_read;
 
@@ -61,11 +60,10 @@ void loop(){
         for (int i = 0; i < samples_read; i++) {
             sum += abs(audio[i]);
         }
+        
         int average_amplitude = sum / samples_read;
-
         Serial.printf("Audio level: %d\n", average_amplitude);
     }
 
     delay(100);
-
 }
