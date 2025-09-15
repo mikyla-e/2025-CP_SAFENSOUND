@@ -1,7 +1,5 @@
 #include "driver/i2s.h"
 #include <WiFi.h>
-#include <HTTPClient.h>
-#include <WebSocketsClient.h>
 #include "audio.h"
 
 #define I2S_PORT I2S_NUM_0
@@ -11,6 +9,8 @@
 
 #define SAMPLE_RATE 16000
 #define BUFFER_SIZE 160
+
+extern void prepareAudio(int16_t* audio, size_t sampleCount);
 
 i2s_config_t i2s_config = {
     .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
@@ -36,16 +36,16 @@ i2s_pin_config_t pin_config = {
 
 void setupAudio(){
     esp_err_t result = i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
-    // if (result != ESP_OK) {
-    //     Serial.printf("Error installing I2S driver: %d\n", result);
-    //     return;
-    // }
+    if (result != ESP_OK) {
+        Serial.printf("Error installing I2S driver: %d\n", result);
+        return;
+    }
 
     result = i2s_set_pin(I2S_PORT, &pin_config);
-    // if (result != ESP_OK) {
-    //     Serial.printf("Error setting I2S pin: %d\n", result);
-    //     return;
-    // }
+    if (result != ESP_OK) {
+        Serial.printf("Error setting I2S pin: %d\n", result);
+        return;
+    }
 }
 
 void processAudioRecording(){
@@ -63,6 +63,8 @@ void processAudioRecording(){
         
         int average_amplitude = sum / samples_read;
         Serial.printf("Audio level: %d\n", average_amplitude);
+
+        prepareAudio(audio, samples_read);
     }
 
     delay(100);
