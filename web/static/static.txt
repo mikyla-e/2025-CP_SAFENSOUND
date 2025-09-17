@@ -1,3 +1,0 @@
-add .js or .ccs files here for web page
-
-inisang file ko na html, css, and js
