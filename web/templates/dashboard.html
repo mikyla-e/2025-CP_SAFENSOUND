@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnS Dashboard</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+        :root{
+            --primary: white;
+            --second: #2D336B;
+        }
+
+        body {
+            margin: 0;
+            width: 100%;
+            min-height: 100vh;
+            display: grid;
+            grid-template-areas: 
+                "nav logs"
+                "main logs";
+            grid-template-columns: 1fr 396px;
+            grid-template-rows: auto 1fr;
+
+            font-family: "DM Sans", sans-serif;
+            background: linear-gradient(133deg, #F7F7F7 13.25%, #A9B5DF 205.83%);
+        }
+
+        nav, main, aside,
+        .rooms-div{
+            background-color: transparent;
+        }
+
+        nav{
+            grid-area: nav;
+            min-height: 50px;
+            height: 68px;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+
+            padding: 0 clamp(20px, 5vw, 65px);
+        }
+
+        /* "Dashboard" */
+        nav h1{
+            font-weight: 400;
+            font-size: clamp(1.5rem, 4vw, 2rem);
+        }
+
+        /* hour and date */
+        nav div{
+            display: flex;
+            flex-direction: row;
+            align-items: end;
+
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+        }
+
+        nav div p {
+            font-size: clamp(0.9rem, 2vw, 1rem);
+        }
+
+        /* ================================ */
+        main{
+            grid-area: main;
+
+            padding: 0 clamp(20px, 4vw, 45px);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+
+            overflow-x: auto;
+            /* overflow-y: visible; */
+        }
+
+        /* ROOMS */
+        /* div containing rooms */
+        main .rooms-div{
+            min-height: fit-content;
+            height: 35%;
+            max-height: 200px;
+            padding: 10px 40px;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+
+            overflow-y: visible;
+        }
+
+        /* all rooms */
+        main .rooms{
+            border-radius: 25.683px;
+            background-color: white;
+            box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
+            /* width: 100%; */
+            max-width: 50%;
+            width: 30%;
+            min-width: 25%;
+            height: 150px;
+            position: relative;
+
+            display: flex;
+            justify-content: center;
+            align-items: end;
+
+            padding: 25px;
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        /* Active rooms */
+        .active-room {
+            border: 2px solid var(--second) !important;
+            transform: scale(1.02);
+            transition: all 0.3s ease;
+        }
+
+        /* logo of room */
+        main .rooms i {
+            font-size: clamp(2rem, 5vw, 3rem);
+            color: white;
+            background-color: var(--second);
+
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+
+            border-radius: 50%;
+            padding: clamp(15px, 3vw, 20px) clamp(18px, 3.5vw, 25px);
+        }
+
+        /* alert blinking */
+        @keyframes alertBlink {
+            0% {
+                background-color: var(--second);
+            }
+            50% {
+                background-color: #dc3545;
+                transform: translateX(-50%) scale(1.1);
+            }
+            100% {
+                background-color: var(--second);
+            }
+        }
+
+        /* apply blinking to alert icons */
+        .alert-active i {
+            animation: alertBlink .5s infinite;
+        }
+
+        /* texts */
+        main .rooms .texts{
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+
+            text-align: center;
+
+            width: 95%;
+            box-sizing: border-box;
+        }
+
+        main .rooms .texts h2{
+            margin: 0;
+        }
+
+        main .rooms .texts p{
+            width: fit-content;
+            margin: auto;
+        }
+
+        /* room name */
+        main .rooms .texts h2{
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Dynamic font sizing for long room names */
+        main .rooms .texts h2.long-name {
+            font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+        }
+
+        main .rooms .texts h2.very-long-name {
+            font-size: clamp(0.7rem, 2vw, 1rem);
+        }
+
+        /* rename option */
+        main .rooms .texts p{
+            opacity: 0.3;
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            z-index: 1000;
+        }
+
+        main .rooms .texts p:hover,
+        aside header i:hover,
+        .popup-close:hover {
+            opacity: 0.6;
+            cursor: pointer;
+            transition: .5s;
+        }
+
+
+        /* STATISTICS */
+        /* div of statistics */
+        main .stats-div{
+            min-height: fit-content;
+            height: 57%;
+
+            display: grid;
+            grid-template-areas: 
+                "recent top"
+                "monthly top";
+            grid-template-columns: 1fr 500px;
+            grid-template-rows: auto 1fr;
+
+            gap: 25px 35px;
+        }
+
+        /* all stats */
+        main .stats-div .stats{
+            border-radius: 18px;
+            background-color: white;
+            box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
+            min-height: 120px;
+        }
+
+        /* most recent alarm */
+        main .stats-div .recent{
+            grid-area: recent;
+            min-height: fit-content;
+            height: 135px;
+        }
+
+        /* alarms detected monthly */
+        main .stats-div .monthly{
+            grid-area: monthly;
+        }
+
+        /* top alarm count */
+        main .stats-div .top{
+            grid-area: top;
+        }
+
+        /* ================================ */
+
+        aside{
+            grid-area: logs;
+            background-color: var(--primary);
+
+            padding: 0 clamp(15px, 3vw, 30px);
+
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            right: 0;
+        }
+
+        /* Mobile popup overlay */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+        }
+
+        .popup-aside {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 40%;
+            max-width: 60%;
+            height: 100%;
+            background-color: var(--primary);
+            z-index: 1001;
+            padding: 0 20px;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
+            transition: right 0.3s ease-in-out;
+        }
+
+        .popup-aside.show {
+            right: 0;
+        }
+
+        /* room num, edit button */
+        aside header,
+        .popup-aside header{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+
+            padding: 12px 0;
+            border-bottom: 2px solid rgba(224, 224, 224, 0.685);
+        }
+
+        /* room num */
+        aside header h2,
+        .popup-aside header h2{
+            margin: 0;
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+        }
+
+        /* edit button */
+        aside header i,
+        .popup-aside header i {
+            opacity: .3;
+        }
+
+        aside header i,
+        .popup-aside header .popup-close{
+            font-size: clamp(1.1rem, 2.5vw, 1.3rem);
+        }
+
+        .popup-aside header .fa-pen{
+            font-size: clamp(.8rem, 2vw, 1rem);
+
+        }
+
+        .popup-aside header div{
+            display: flex;
+            flex-direction:row ;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* TABLE */
+        /* div of table */
+        aside .table-div,
+        .popup-aside .table-div{
+            width: 100%;
+
+            text-align: left;
+            overflow-x: auto;
+
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 7px;
+        }
+
+        /* table */
+        aside .table-div table,
+        .popup-aside .table-div table {
+            min-width: auto;
+            width: 100%;
+
+            border-collapse: collapse;
+            background: white;
+            border-radius: 7px;
+            overflow: hidden;
+        }
+
+        /* "view history" */
+        aside .title,
+        .popup-aside .title{
+            text-align: left;
+            font-weight: 600;
+            opacity: .5;
+
+            margin-left: 10px;
+            margin-top: 25px;
+            margin-bottom: 5px;
+            font-size: clamp(0.9rem, 2vw, 1rem);
+        }
+
+        /* table header */
+        aside table th,
+        .popup-aside table th{
+            background-color: rgba(136, 143, 167, 0.42);
+            padding: 5px 10px;
+            font-size: clamp(0.8rem, 1.8vw, 0.9rem);
+        }
+
+        aside table td,
+        .popup-aside table td{
+            padding: 5px 10px;
+            font-size: clamp(0.75rem, 1.6vw, 0.85rem);
+        }
+
+        aside .table-div table tr:nth-child(odd),
+        .popup-aside .table-div table tr:nth-child(odd) {
+            background-color: rgba(136, 143, 167, 0.10);
+        }
+
+        /* ================================ */
+        /* RESPONSIVE BREAKPOINTS */
+        /* ================================ */
+
+        /* Large tablets and small desktops */
+        @media screen and (max-width: 1200px) {
+            body{
+                grid-template-columns: 1fr 350px;
+            }
+
+            main{
+                padding: 20px 30px;
+                gap: 25px;
+            }
+
+            main .rooms-div{
+                padding: 10px 10px;
+                max-height: 100px;
+            }
+
+            main .rooms i{
+                font-size: 2.5rem;
+            }
+
+            main .stats-div{
+                grid-template-columns: 1fr 250px;
+            }
+        }
+
+        /* Tablets */
+        @media screen and (max-width: 900px) {
+            body{
+                grid-template-columns: 1fr 300px;
+            }
+
+            main{
+                padding: 20px 30px;
+                gap: 20px;
+            }
+
+            main .rooms{
+                border-radius: 15px;
+                min-height: fit-content;
+                height: 120px;
+
+                min-width: fit-content;
+                width: 30%;
+                max-width: 30%;
+            }
+
+            main .rooms i{
+                font-size: clamp(1rem,2rem,2rem);
+            }
+
+            main .stats-div{
+                border-top: 2px solid rgba(184, 183, 183, 0.408);
+                padding-top: 10px;
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "top"
+                    "recent"
+                    "monthly";
+
+                grid-template-rows: 250px 1fr 1fr;
+            }
+
+            /* room name */
+            main .rooms .texts h2{
+                font-size: clamp(.5rem, 2vw, 1rem);
+            }
+
+            /* rename option */
+            main .rooms .texts p{
+                opacity: 0.3;
+                font-size: clamp(0.5rem, 1.5vw, 1rem);
+            }
+
+            /* "view history" */
+            aside .title{
+                font-size: clamp(0.7rem, 1.7vw, 1rem);
+            }
+
+            aside table th,
+            aside table td {
+                font-size: clamp(0.65rem, 1.3vw, 0.7rem);
+            }
+        }
+
+
+        /* small tablets and large phones */
+        @media screen and (max-width: 768px) {
+            aside{
+                display: none;
+            }
+
+            .popup-overlay {
+                display: block;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease, visibility 0.3s ease;
+            }
+
+            .popup-overlay.show {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            body{
+                grid-template-areas: 
+                "nav"
+                "main";
+
+                grid-template-columns: 1fr;
+            }
+
+            main{
+                padding: 20px clamp(3.5vw, 4vw, 5vw);
+            }
+
+            main .rooms{
+                padding: 25px 15px;
+                min-height: fit-content;
+            }
+
+            /* room name */
+            main .rooms .texts h2{
+                font-size: clamp(1rem, 3vw, 1.5rem);
+            }
+
+            /* rename option */
+            main .rooms .texts p{
+                opacity: 0.3;
+                font-size: clamp(0.5rem, 2vw, 1rem);
+            }
+
+            main .stats-div{
+                min-height: fit-content;
+                height: 57%;
+
+                display: grid;
+                grid-template-areas: 
+                    "recent top"
+                    "monthly top";
+                grid-template-columns: 1fr 50vw;
+                grid-template-rows: auto 1fr;
+
+                gap: clamp(15px, 20px, 30px);
+            }
+        }
+
+        /* mobile phones */
+        @media screen and (max-width: 375px) {
+            nav{
+                padding: 0 clamp(3.5vw, 4vw, 5vw);
+
+                min-height: fit-content;
+                height: 40px;
+            }
+
+            nav h1{
+                margin: 0;
+            }
+
+            .time{
+                display: none;
+            }
+
+            main{
+                padding: 10px clamp(3.5vw, 4vw, 5vw);
+            }
+
+            /* ROOMS */
+            /* div containing rooms */
+            main .rooms-div{
+                min-height: fit-content;
+                height: 35%;
+                padding: 10px;
+
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                gap: 15px;
+
+                border-radius: 10px;
+                background-color: white;
+                box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
+            }
+
+            /* all rooms */
+            main .rooms{
+                /* border: 1px solid black; */
+                border-radius: 0;
+                background-color: transparent;
+                box-shadow: none;
+                max-width: 50%;
+                width: 30%;
+                min-width: 25%;
+                height: 100px;
+                padding: 5px;
+            }
+
+            /* logo of room */
+            main .rooms i {
+                font-size: clamp(2rem, 3vw, 3rem);
+                top: 10px;
+                left: 50%;
+
+                padding: clamp(10px, 2.5vw, 15px) clamp(13px, 3vw, 20px);
+            }
+
+            main .stats-div{
+            grid-template-columns: 1fr;
+            grid-template-areas: 
+                "top"
+                "recent"
+                "monthly";
+
+            grid-template-rows: 210px 1fr 1fr;
+            }
+
+            .popup-aside {
+                width: 90%;
+                padding: 0 15px;
+            }
+
+            .popup-aside .title {
+                font-size: 0.9rem;
+            }
+
+            .popup-aside table th,
+            .popup-aside table td {
+                font-size: 0.75rem;
+                padding: 8px 6px;
+            }
+        }
+    </style>
+
+</head>
+<body>
+    <nav>
+        <h1>Dashboard</h1>
+
+        <div>
+            <p>00/00/00</p>
+            <p class="time">00:00 AM</p>
+        </div>
+    </nav>
+
+    <main>
+        <div class="rooms-div">
+            <div class="room1 rooms" onclick="selectRoom(1, this)">
+                <i class="fa-solid fa-bell"></i>
+
+                <div class="texts">
+                    <h2>Room 1</h2>
+                    <p onclick="renameRoom(this, event)">rename</p>
+                </div>
+            </div>
+
+            <div class="room2 rooms" onclick="selectRoom(2, this)">
+                <i class="fa-solid fa-bell"></i>
+
+                <div class="texts">
+                    <h2>Room 2</h2>
+                    <p onclick="renameRoom(this, event)">rename</p>
+                </div>
+            </div>
+
+            <div class="room3 rooms" onclick="selectRoom(3, this)">
+                <i class="fa-solid fa-bell"></i>
+
+                <div class="texts">
+                    <h2>Room 3</h2>
+                    <p onclick="renameRoom(this, event)">rename</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-div">
+            <div class="recent stats"> recent</div>
+            <div class="monthly stats"> monthly</div>
+            <div class="top stats"> top</div>
+        </div>
+    </main>
+
+    <aside>
+        <header>
+            <h2>Room #</h2>
+            <i class="fa-solid fa-pen-to-square"></i>
+        </header>
+        
+        <p class="title">Alert History</p>
+
+        <div class="table-div">
+            <table>
+                <tr>
+                    <th>Action</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                </tr>
+
+                <tr>
+                    <td>Alarm reset</td>
+                    <td>00/00/00</td>
+                    <td>00:00 AM</td>
+                </tr>
+
+                <tr>
+                    <td>Alarm detected</td>
+                    <td>00/00/00</td>
+                    <td>00:00 AM</td>
+                </tr>
+            </table>
+        </div>
+    </aside>
+
+    <!-- mobile overlay -->
+    <div class="popup-overlay" onclick="closePopup()"></div>
+    <div class="popup-aside">        
+        <header>
+            <div>
+                <h2>Room #</h2>
+                <i class="fa-solid fa-pen"></i>
+            </div>
+
+            <i class="fa-solid fa-times popup-close" onclick="closePopup()"></i>
+        </header>
+        
+        <p class="title">Alert History</p>
+
+        <div class="table-div">
+            <table>
+                <tr>
+                    <th>Action</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                </tr>
+
+                <tr>
+                    <td>Alarm reset</td>
+                    <td>00/00/00</td>
+                    <td>00:00 AM</td>
+                </tr>
+
+                <tr>
+                    <td>Alarm detected</td>
+                    <td>00/00/00</td>
+                    <td>00:00 AM</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // temp room data storage
+        const roomData = {
+            1: {
+                name: "Room 1",
+                history: [
+                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
+                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
+                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" }
+                ]
+            },
+            2: {
+                name: "Room 2", 
+                history: [
+                    { action: "Alarm reset", date: "12/14/24", time: "09:45 AM" },
+                    { action: "Alarm detected", date: "12/14/24", time: "09:30 AM" },
+                    { action: "Alarm reset", date: "12/14/24", time: "08:00 AM" }
+                ]
+            },
+            3: {
+                name: "Room 3",
+                history: [
+                    { action: "Alarm detected", date: "12/13/24", time: "06:00 PM" },
+                    { action: "Alarm reset", date: "12/13/24", time: "05:45 PM" },
+                    { action: "Alarm detected", date: "12/13/24", time: "05:30 PM" }
+                ]
+            }
+        };
+
+        let currentSelectedRoom = 1;
+
+        // Initialize with Room 1 selected on page load
+        window.onload = function() {
+            // Only select room for desktop, don't show active styling on mobile
+            const aside = document.querySelector('aside');
+            const isDesktop = window.getComputedStyle(aside).display !== 'none';
+            
+            if (isDesktop) {
+                selectRoom(1, document.querySelector('.room1'));
+            } else {
+                currentSelectedRoom = 1;
+            }
+
+            // update alert states on page load
+            updateAlertStates();
+        };
+
+        function selectRoom(roomNumber, roomElement) {
+            // update current selected room
+            currentSelectedRoom = roomNumber;
+            
+            // check if we're on mobile (when aside is hidden)
+            const aside = document.querySelector('aside');
+            const isDesktop = window.getComputedStyle(aside).display !== 'none';
+            
+            if (isDesktop) {
+                // desktop behavior - apply active styling and update aside
+                document.querySelectorAll('.rooms').forEach(room => {
+                    room.classList.remove('active-room');
+                });
+                roomElement.classList.add('active-room');
+                
+                const roomName = roomData[roomNumber].name;
+                document.querySelector('aside header h2').textContent = roomName;
+                updateHistoryTable(roomNumber, 'aside');
+            } else {
+                // mobile behavior - show popup but don't apply active styling until popup is shown
+                const roomName = roomData[roomNumber].name;
+                document.querySelector('.popup-aside header h2').textContent = roomName;
+                updateHistoryTable(roomNumber, '.popup-aside');
+                showPopup();
+            }
+        }
+
+        function updateHistoryTable(roomNumber, container) {
+            const tableBody = document.querySelector(`${container} table`);
+            const history = roomData[roomNumber].history;
+            
+            // clear existing rows (keep header)
+            while (tableBody.rows.length > 1) {
+                tableBody.deleteRow(1);
+            }
+            
+            // add new rows
+            history.forEach(entry => {
+                const row = tableBody.insertRow();
+                row.insertCell(0).textContent = entry.action;
+                row.insertCell(1).textContent = entry.date;
+                row.insertCell(2).textContent = entry.time;
+            });
+        }
+
+        function showPopup() {
+            const overlay = document.querySelector('.popup-overlay');
+            const popup = document.querySelector('.popup-aside');
+            
+            overlay.classList.add('show');
+            popup.classList.add('show');
+            
+            // apply active styling to current room when popup is shown
+            const currentRoom = document.querySelector(`.room${currentSelectedRoom}`);
+            if (currentRoom) {
+                document.querySelectorAll('.rooms').forEach(room => {
+                    room.classList.remove('active-room');
+                });
+                currentRoom.classList.add('active-room');
+            }
+            
+            // prevent body scrolling when popup is open
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closePopup() {
+            const overlay = document.querySelector('.popup-overlay');
+            const popup = document.querySelector('.popup-aside');
+            
+            overlay.classList.remove('show');
+            popup.classList.remove('show');
+            
+            // remove active styling when popup is closed
+            document.querySelectorAll('.rooms').forEach(room => {
+                room.classList.remove('active-room');
+            });
+            
+            // restore body scrolling
+            document.body.style.overflow = 'auto';
+        }
+
+        function ensureActiveRoomState() {
+            // make sure the currently selected room has the active-room class
+            const activeRoom = document.querySelector(`.room${currentSelectedRoom}`);
+            if (activeRoom && !activeRoom.classList.contains('active-room')) {
+                // remove active class from all rooms first
+                document.querySelectorAll('.rooms').forEach(room => {
+                    room.classList.remove('active-room');
+                });
+                // add active class to current room
+                activeRoom.classList.add('active-room');
+            }
+        }
+
+        function renameRoom(renameElement, event) {
+            // prevent the room selection when clicking rename
+            event.stopPropagation();
+            
+            // get the h2 element (room name) that is the sibling of the clicked "rename" element
+            const roomNameElement = renameElement.previousElementSibling;
+            const currentName = roomNameElement.textContent;
+            
+            // find which room this belongs to by traversing up to the room div
+            const roomDiv = renameElement.closest('.rooms');
+            let roomNumber;
+            
+            if (roomDiv.classList.contains('room1')) {
+                roomNumber = 1;
+            } else if (roomDiv.classList.contains('room2')) {
+                roomNumber = 2;
+            } else if (roomDiv.classList.contains('room3')) {
+                roomNumber = 3;
+            }
+            
+            // prompt user for new room name
+            const newName = prompt(`Enter new name for ${currentName}:`, currentName);
+            
+            // If user didn't cancel and entered a name, update it
+            if (newName !== null && newName.trim() !== '') {
+                const trimmedName = newName.trim();
+                roomNameElement.textContent = trimmedName;
+                
+                // Update room data for the correct room
+                roomData[roomNumber].name = trimmedName;
+                
+                // Update aside header if this is the currently selected room
+                if (roomDiv.classList.contains('active-room')) {
+                    // Update both desktop and mobile headers
+                    const desktopHeader = document.querySelector('aside header h2');
+                    const mobileHeader = document.querySelector('.popup-aside header h2');
+                    
+                    if (desktopHeader) desktopHeader.textContent = trimmedName;
+                    if (mobileHeader) mobileHeader.textContent = trimmedName;
+                }
+            }
+        }
+
+        // Handle window resize to close popup if switching to desktop
+        window.addEventListener('resize', function() {
+            const aside = document.querySelector('aside');
+            const isDesktop = window.getComputedStyle(aside).display !== 'none';
+            
+            if (isDesktop) {
+                closePopup();
+                // Update desktop aside with current selected room and apply active styling
+                const roomName = roomData[currentSelectedRoom].name;
+                document.querySelector('aside header h2').textContent = roomName;
+                updateHistoryTable(currentSelectedRoom, 'aside');
+                
+                // Apply active styling for desktop
+                const currentRoom = document.querySelector(`.room${currentSelectedRoom}`);
+                if (currentRoom) {
+                    document.querySelectorAll('.rooms').forEach(room => {
+                        room.classList.remove('active-room');
+                    });
+                    currentRoom.classList.add('active-room');
+                }
+            } else {
+                // When switching to mobile, remove active styling
+                document.querySelectorAll('.rooms').forEach(room => {
+                    room.classList.remove('active-room');
+                });
+            }
+        });
+
+        // Close popup on escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closePopup();
+            }
+        });
+
+        // Function to update alert states based on room stats
+        function updateAlertStates() {
+            const room1 = document.querySelector('.room1');
+            const room2 = document.querySelector('.room2');
+            const room3 = document.querySelector('.room3');
+
+            // Update Room 1 alert state
+            if (Room1Stat === 1) {
+                room1.classList.add('alert-active');
+            } else {
+                room1.classList.remove('alert-active');
+            }
+
+            // Update Room 2 alert state
+            if (Room2Stat === 1) {
+                room2.classList.add('alert-active');
+            } else {
+                room2.classList.remove('alert-active');
+            }
+
+            // Update Room 3 alert state
+            if (Room3Stat === 1) {
+                room3.classList.add('alert-active');
+            } else {
+                room3.classList.remove('alert-active');
+            }
+        }
+    </script>
+
+    <script>
+        let Room1Stat = 0;
+        let Room2Stat = 0;
+        let Room3Stat = 0;
+        
+        // update alert states of rooms
+        setInterval(updateAlertStates, 100);
+    </script>
+
+</body>
+</html>
