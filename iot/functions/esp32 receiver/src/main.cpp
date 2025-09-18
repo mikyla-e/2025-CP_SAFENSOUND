@@ -22,6 +22,9 @@ RoomStatus room1 = {0, "Room 1"};
 RoomStatus room2 = {0, "Room 2"};
 RoomStatus room3 = {0, "Room 3"};
 
+void addMicrophone(uint8_t* macAddress);
+void processAudioML();
+
 void dataReceived(const uint8_t *mac, const uint8_t *incomingData, int len) {
   Serial.print("Audio received!");
 }

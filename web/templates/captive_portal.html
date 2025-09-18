@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SafeNSound ESP32 Setup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial; margin: 40px; background: #f0f0f0; }
+        .container { background: white; padding: 20px; border-radius: 10px; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔊 SafeNSound Configuration</h1>
+        <p>Configure your ESP32 to connect to WiFi and communicate with your laptop.</p>
+        
+        <form action="/configure" method="POST">
+            <h3>WiFi Settings</h3>
+            <input type="text" name="ssid" placeholder="WiFi Network Name (SSID)" required>
+            <input type="password" name="password" placeholder="WiFi Password">
+            
+            <h3>Laptop Settings</h3>
+            <input type="text" name="laptop_ip" placeholder="Laptop IP Address (e.g., 192.168.1.100)" required>
+            
+            <h3>Device Settings</h3>
+            <input type="number" name="room_id" placeholder="Room ID (1-99)" min="1" max="99" value="1">
+            
+            <br><br>
+            <button type="submit">💾 Save Configuration</button>
+        </form>
+        
+        <div id="status"></div>
+        
+        <script>
+            // Auto-refresh status
+            setInterval(function() {
+                fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('status').innerHTML = 
+                        '<div class="status ' + (data.connected ? 'success' : 'error') + '">' +
+                        'Status: ' + (data.connected ? 'Connected to WiFi' : 'Not Connected') +
+                        '<br>IP: ' + data.ip + '</div>';
+                });
+            }, 2000);
+        </script>
+    </div>
+    <br>
+    <div class="container">
+        <h1>✅ Configuration Saved!</h1>
+        <p>ESP32 is now connected to WiFi.</p>
+        <p>You can close this page.</p>
+        <!-- <script>setTimeout(function(){window.close();}, 10000);</script> -->
+    </div>
+</body>
+</html>
