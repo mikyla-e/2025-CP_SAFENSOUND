@@ -86,7 +86,7 @@ async def lifespan(app: FastAPI):
         print("Periodic updates cancelled.")
 
 app = FastAPI(title="SafeNSound Dashboard", version="1.0", lifespan=lifespan)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")  
 templates = Jinja2Templates(directory=templates_dir)
 
 db = Database()
