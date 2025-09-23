@@ -18,7 +18,7 @@ WiFiUDP udp;
 
 String stored_ssid = "";
 String stored_password = "";
-String stored_ip = ""; //lappy ip
+String laptop_ip = ""; //lappy ip
 bool wifi_configured = false;
 
 #define SSID_ADDR 0
@@ -35,7 +35,7 @@ typedef struct AudioRecording {
 
 AudioRecording audioRecording;
 bool audioReady = false;
-const int ROOM_ID = 1;
+const int room_id = 1;
 
 /////////////////////////////////////////////////////////
 
@@ -47,8 +47,16 @@ void setup() { // esp setup
 
   if (wifi_configured && connectToWiFi()) {
     Serial.println("Connected to saved WiFi.");
-    setupAudio();
-    setupResetButton();
+
+    if (laptop_ip.length() == 0 || discoverIP()) {
+      Serial.println("Discovered Main Device IP: " + laptop_ip + ". Starting captive portal...");
+      setupAudio();
+      setupResetButton();
+    } else {
+      Serial.println("Could not discover main device. Starting captive portal...");
+      startCaptivePortal();
+      return;
+    }
   } else {
     Serial.println("Failed to connect to saved WiFi. Starting captive portal.");
     startCaptivePortal();
@@ -57,30 +65,68 @@ void setup() { // esp setup
 
 /////////////////////////////////////////////////////////
 
+bool discoverIP() {
+  WiFiUDP udp;
+  udp.begin(8081);
+
+  IPAddress broadcastIP = WiFi.localIP();
+  broadcastIP[3] = 255;
+
+  udp.beginPacket(broadcastIP, 8081);
+  udp.print("DISCOVER_MAIN_DEVICE");
+  udp.endPacket();
+
+  unsigned long startTime = millis();
+  while (millis() - startTime < 5000) {
+    int packetSize = udp.parsePacket();
+    if (packetSize) {
+      String response = udp.readString();
+      response.trim();
+
+      if(response.startsWith("MAIN_DEVICE_HERE:")) {
+        laptop_ip = response.substring(17);
+        laptop_ip.trim();
+        Serial.println("Discovered Main Device IP: " + laptop_ip);
+
+        EEPROM.writeString(IP_ADDR, laptop_ip);
+        EEPROM.commit();
+
+        udp.stop();
+        return true;
+      }
+    }
+    delay(100);
+  }
+
+  udp.stop();
+  Serial.println("Failed to discover laptop IP.");
+  return false;
+}
+
 void saveWiFiCredentials() {
   EEPROM.writeString(SSID_ADDR, stored_ssid);
   EEPROM.writeString(PASS_ADDR, stored_password);
-  EEPROM.writeString(IP_ADDR, stored_ip);
+  EEPROM.writeString(IP_ADDR, laptop_ip);
   EEPROM.writeBool(CONFIG_FLAG_ADDR, true);
-  EPPROM.commit();
+  EEPROM.commit();
 
   wifi_configured = true;
 
-  Serial.println(" Wifi Credentials saved to EPPROM");
+  Serial.println(" Wifi Credentials saved to EEPROM");
 }
 
 void loadWiFiCredentials() {
-  wifi_configured = EPPROM.readbool(CONFIG_FLAG_ADDR);
+  wifi_configured = EEPROM.readBool(CONFIG_FLAG_ADDR);
   if (wifi_configured) {
     stored_ssid = EEPROM.readString(SSID_ADDR);
     stored_password = EEPROM.readString(PASS_ADDR);
-    stored_ip = EEPROM.readString(IP_ADDR);
+    laptop_ip = EEPROM.readString(IP_ADDR);
     
     Serial.println("📖 Loaded saved credentials");
   }
 }
 
-void connectToWiFi() {
+bool connectToWiFi() {
   if (stored_ssid.length() == 0) return false;
 
   WiFi.mode(WIFI_STA);
@@ -90,10 +136,10 @@ void connectToWiFi() {
 
   int attempts = 0;
 
-  while (WiFi.status() != WL_CONNECTED && attempt <20) {
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
     delay(500);
     Serial.print(".");
-    attempts++
+    attempts++;
   }
 
   if (WiFi.status() == WL_CONNECTED){
@@ -108,7 +154,7 @@ void connectToWiFi() {
 }
 
 void startCaptivePortal() {
-  Serial.println("Starting Captive Portal...")
+  Serial.println("Starting Captive Portal...");
 
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid_ap, password_ap);
@@ -134,14 +180,14 @@ void handleRoot() {
 }
 
 void handleConfigure() {
-  if (server.hasArg("ssid") && server.harArg("laptop_ip")) {
+  if (server.hasArg("ssid") && server.hasArg("laptop_ip")) {
     stored_ssid = server.arg("ssid");
     stored_password = server.arg("password");
     laptop_ip = server.arg("laptop_ip");
 
     saveWiFiCredentials();
 
-    if (connectToWifi()) {
+    if (connectToWiFi()) {
       String html_connected = R"()"; // <--- connected to wifi ui @Danisa hehe 
       server.send(200, "text/html", html_connected);
       delay(2000);
@@ -158,7 +204,7 @@ void handleStatus() {
   doc["connected"] = (WiFi.status() == WL_CONNECTED);
   doc["wifi_ip"] = WiFi.localIP().toString();
   doc["ap_ip"] = WiFi.softAPIP().toString();
-  doc["room_id"] = ROOM_ID;
+  doc["room_id"] = room_id;
   doc["laptop_ip"] = laptop_ip;
 
   String jsonResponse;
@@ -177,16 +223,28 @@ void sendData() {
   if (audioReady && WiFi.status() == WL_CONNECTED) {
     udp.beginPacket(laptop_ip.c_str(), 8080);
 
-    DynamicJsonDocument jsonDoc(1024);
-    jsonDoc["roomID"] = ROOM_ID;
+    DynamicJsonDocument jsonDoc(2048);
+    jsonDoc["roomID"] = room_id;
     jsonDoc["timestamp"] = audioRecording.timestamp;
-    jsonDoc["audioData"] = audioRecording.audioData;
+    jsonDoc["sampleCount"] = audioRecording.sampleCount;
+
+    JsonArray audioArray = jsonDoc.createNestedArray("audioData");
+    for (size_t i = 0; i < audioRecording.sampleCount; i++) {
+      audioArray.add(audioRecording.audioData[i]);
+    }
 
     String sendAudioData;
     serializeJson(jsonDoc, sendAudioData);
 
     udp.print(sendAudioData);
-    udp.endPacket();
+
+    int result = udp.endPacket();
+        
+    if (result) {
+        Serial.println("✅ Sent");
+    } else {
+        Serial.println("❌ Failed");
+    }
 
     audioReady = false;
   }
@@ -200,7 +258,7 @@ void prepareAudio(int16_t* audio, size_t sampleCount) { //prepare audio data to 
 
   audioRecording.sampleCount = copyCount;
   audioRecording.timestamp = millis();
-  audioRecording.roomID = ROOM_ID;
+  audioRecording.roomID = room_id;
 
   audioReady = true;
 

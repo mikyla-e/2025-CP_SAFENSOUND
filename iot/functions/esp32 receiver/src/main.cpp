@@ -1,71 +1,83 @@
 #include <Arduino.h>
-#include <WiFi.h>
-#include <esp_now.h>
 
-uint8_t receiverMAC[] = {0x00, 0x4B, 0x12, 0x3A, 0x4D, 0x78}; //this esp32 (receiver)
-uint8_t senderMAC1[] = {0x00, 0x4B, 0x12, 0x3A, 0xC0, 0xC0}; //sender
+#define BUZZER_PIN 25
+#define LED_PIN 26
+#define RESET_BUTTON_PIN 27
 
-typedef struct AudioRecording {
-  uint16_t audioData[160];
-  size_t sampleCount;
-  uint32_t timestamp;
-  int roomID;
-};
+bool alarmActive = false;
+unsigned long alarmStartTime = 0;
+const unsigned long ALARM_DURATION = 60000; // 1 minute
 
-struct RoomStatus {
-  int emergencyCount;
-  String roomName;
-
-};
-
-RoomStatus room1 = {0, "Room 1"};
-RoomStatus room2 = {0, "Room 2"};
-RoomStatus room3 = {0, "Room 3"};
-
-void addMicrophone(uint8_t* macAddress);
-void processAudioML();
-
-void dataReceived(const uint8_t *mac, const uint8_t *incomingData, int len) {
-  Serial.print("Audio received!");
-}
 
 void setup() {
   Serial.begin(115200);
-  WiFi.mode(WIFI_STA);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
 
-  if(esp_now_init() != ESP_OK) {
-    Serial.println("Error initializing ESP-NOW");
-    return;
+  digitalWrite(LED_PIN, LOW);
+  digitalWrite(BUZZER_PIN, LOW);
+
+  Serial.println("Receiver ready!");
+}
+
+void triggerAlarm() {
+  alarmActive = true;
+  alarmStartTime = millis();
+  digitalWrite(LED_PIN, HIGH);
+  digitalWrite(BUZZER_PIN, HIGH);
+  Serial.println("Alarm activated!");
+}
+
+void resetAlarm() {
+  alarmActive = false;
+  digitalWrite(LED_PIN, LOW);
+  digitalWrite(BUZZER_PIN, LOW);
+  Serial.println("Alarm reset!");
+} 
+
+void processCommand() {
+  if (Serial.available()) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+    if (command == "ALARM") {
+      int roomID = command.substring(6).toInt();
+      Serial.printf("Alarm triggered from room %d\n", roomID);
+      triggerAlarm();
+    } else if (command == "RESET") {
+      resetAlarm();
+    } else if (command == "STATUS") {
+      Serial.println(alarmActive ? "ALARM_ACTIVE" : "NO_ALARM");
+    }
   }
-
-  esp_now_register_recv_cb(dataReceived);
-
-  addMicrophone(senderMAC1);
-
 }
 
-void addMicrophone(uint8_t* macAddress) {
-  esp_now_peer_info_t peerInfo = {};
-  memcpy(peerInfo.peer_addr, macAddress, 6);
-  peerInfo.channel = 0;
-  peerInfo.encrypt = false;
-
-  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    Serial.println("Failed to add Microphone.");
-  } else {
-    Serial.println("Added Microphone from... ");
-    Serial.printf("Added Microphone from... %02X:%02X:%02X:%02X:%02X:%02X\n", 
-                  macAddress[0], macAddress[1], macAddress[2], 
-                  macAddress[3], macAddress[4], macAddress[5]);
-    
+void checkResetButton() {
+  static unsigned long lastCheck = 0;
+  static bool lastState = HIGH;
+  
+  if (millis() - lastCheck > 50) {
+    bool currentState = digitalRead(RESET_BUTTON_PIN);
+    if (lastState == HIGH && currentState == LOW) {
+        resetAlarm();
+    }
+    lastState = currentState;
+    lastCheck = millis();
   }
 }
 
-void processAudioML() {
-
+void autoReset() {
+  if (alarmActive && (millis() - alarmStartTime > ALARM_DURATION)) {
+    Serial.println("AUTO_RESET");
+    resetAlarm();
+  }
 }
+
 
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  checkResetButton();
+  autoReset();
+  processCommand();
+  delay(100);
 }
