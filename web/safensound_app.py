@@ -73,9 +73,9 @@ async def periodic_updates():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     task = asyncio.create_task(periodic_updates())
-    print("🚀 FastAPI SafeNSound Dashboard started!")
-    print("📊 Dashboard available at: http://localhost:8000")
-    print("📖 API Documentation at: http://localhost:8000/docs")
+    print("FastAPI SafeNSound Dashboard started!")
+    print("Dashboard available at: http://localhost:8000")
+    print("API Documentation at: http://localhost:8000/docs")
 
     yield
     print("Shutting down...")
@@ -164,25 +164,6 @@ async def handle_alert(data: AlertData):
         })
         
         return {"success": True, "message": "Alert processed successfully."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@app.post("/api/audio")
-async def receive_audio(data: AudioData):
-    """Receive audio data from ESP32 devices"""
-    try:
-        print(f"🎵 Received audio from Room {data.room_id}: {data.sample_count} samples")
-        
-        # Here you would process the audio data with your ML model
-        # For now, just broadcast that audio was received
-        await manager.broadcast({
-            "type": "audio_received",
-            "room_id": data.room_id,
-            "timestamp": data.timestamp,
-            "sample_count": data.sample_count
-        })
-        
-        return {"success": True, "message": "Audio received successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     

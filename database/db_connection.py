@@ -11,23 +11,6 @@ class Database:
         self.initialize_rooms()
 
 
-    def initialize_rooms(self):
-        try:
-            cursor = self.conn.execute('SELECT COUNT(*) FROM room')
-            count = cursor.fetchone()[0]
-            
-            if count == 0:
-                default_rooms = [
-                    (1, "Room 1"),
-                    (2, "Room 2"), 
-                    (3, "Room 3")
-                ]
-                self.conn.executemany('INSERT INTO room (room_id, room_name) VALUES (?, ?)', default_rooms)
-                self.conn.commit()
-        except Exception as e:
-            print(f"Error initializing rooms: {e}")
-
-
     # create tables
     def create_room(self):
         with self.conn:
@@ -53,6 +36,21 @@ class Database:
                 )
             ''')
 
+    def initialize_rooms(self):
+        try:
+            cursor = self.conn.execute('SELECT COUNT(*) FROM room')
+            count = cursor.fetchone()[0]
+            
+            if count == 0:
+                default_rooms = [
+                    (1, "Room 1"),
+                    (2, "Room 2"), 
+                    (3, "Room 3")
+                ]
+                self.conn.executemany('INSERT INTO room (room_id, room_name) VALUES (?, ?)', default_rooms)
+                self.conn.commit()
+        except Exception as e:
+            print(f"Error initializing rooms: {e}")
 
     #insert data
     def insert_history(self, action, date, time, room_id):
