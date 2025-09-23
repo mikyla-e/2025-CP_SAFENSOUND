@@ -9,10 +9,10 @@ import json
 # --- networking ---
 import socket
 import paho.mqtt.client as mqtt
-# from flask import Flask, request, jsonify
 import threading
 import requests
 import serial
+import aiohttp
 
 # --- audio processing ---
 import joblib
@@ -296,10 +296,11 @@ def trigger_alarm(room_id=None):
     alarming_count = 0
     emergency_detected = False
 
-def send_alert(room_id, action=None):
+async def send_alert(room_id, action=None):
     success_web = False
     success_esp32 = False
 
+    # esp32
     try:
         if esp32_serial and esp32_serial.is_open:
             if "Emergency" in action:
@@ -317,18 +318,20 @@ def send_alert(room_id, action=None):
     except Exception as e:
         print("Failed to communicate with ESP32:", e)
 
-
+    # web
     try:
         payload_web = {
             "room_id": room_id,
-            "alert": "Emergency Detected",
+            "action": action
         }
-        response = requests.post("http://localhost:5000/api/alert", json=payload_web, timeout=2)
-        if response.ok:
-            print(f"Alert sent to Web Dashboard for Room {room_id}")
-            success_web = True
-        else:
-            print(f"Failed to send alert to Web Dashboard for Room {room_id}")
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post("http://localhost:5000/api/alert", json=payload_web, timeout=2) as response:
+                if response.status == 200:
+                    print(f"Alert sent to Web Dashboard for Room {room_id}")
+                    success_web = True
+                else:
+                    print(f"Failed to send alert to Web Dashboard for Room {room_id}")
 
     except Exception as e:
         print("Failed to send alert to Web Dashboard:", e)
