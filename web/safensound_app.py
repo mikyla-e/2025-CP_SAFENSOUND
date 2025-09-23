@@ -17,7 +17,6 @@ from database.db_connection import Database
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
-css_dir = os.path.join(static_dir, "css")
 
 class RoomRename(BaseModel):
     new_name: str
@@ -88,7 +87,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="SafeNSound Dashboard", version="1.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory=templates_dir)
 
 db = Database()
 
