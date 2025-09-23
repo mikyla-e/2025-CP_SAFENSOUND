@@ -304,9 +304,6 @@ def send_alert(room_id, action=None):
         if esp32_serial and esp32_serial.is_open:
             if "Emergency" in action:
                 command = f"ALERT: {room_id}\n"
-            elif "Reset" in action:
-                command = "RESET\n"
-
             esp32_serial.write(command.encode())
             
             response = esp32_serial.readline().decode().strip()
