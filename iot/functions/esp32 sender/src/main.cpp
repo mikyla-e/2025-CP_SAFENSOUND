@@ -266,6 +266,19 @@ void prepareAudio(int16_t* audio, size_t sampleCount) { //prepare audio data to 
 
 }
 
+void sendResetSignal() {
+  udp.beginPacket(laptop_ip.c_str(), 8082);
+  
+  DynamicJsonDocument jsonDoc(1024);
+    jsonDoc["roomID"] = room_id;
+    jsonDoc["action"] = "reset";
+
+    String sendResetData;
+    serializeJson(jsonDoc, sendResetData);
+
+  udp.endPacket();
+}
+
 void loop() { //loops
   if(WiFi.getMode() == WIFI_AP) {
     dns.processNextRequest();
@@ -273,6 +286,12 @@ void loop() { //loops
   } else {
     processAudioRecording();
     sendData();
-    delay(1000);
+
+    if (processResetButton()) {
+      Serial.println("Reset button pressed.");
+      sendResetSignal();
+    }
+
+    delay(1000); 
   }
 }

@@ -1,7 +1,9 @@
-#ifndef RESET_F
-#define RESET_F
+#ifndef RESET_H
+#define RESET_H
+
+#include <Arduino.h>
 
 void setupResetButton();
-void pressResetButton();
+bool processResetButton();
 
 #endif

@@ -16,9 +16,8 @@ class Database:
         with self.conn:
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS room (
-                    room_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    room_id INTEGER PRIMARY KEY CHECK (room_id IN (1, 2, 3)),
                     room_name TEXT NOT NULL
-                    CHECK (room_id IN ('1', '2', '3'))
                 )
             ''')
 

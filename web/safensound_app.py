@@ -144,14 +144,14 @@ async def rename_room(room_id: int, data: RoomRename):
 @app.post("/api/alert")
 async def handle_alert(data: AlertData):
     try:
-        current_time = datetime.now().strftime("%H:%M %p")
-        current_date = datetime.now().strftime("%m/%d/%y")
+        # current_time = datetime.now().strftime("%H:%M %p")
+        # current_date = datetime.now().strftime("%m/%d/%y")
 
-        db.insert_history(data.action, current_date, current_time, data.room_id)
+        # db.insert_history(data.action, current_date, current_time, data.room_id)
 
-        if data.action == "Emergency Detected":
-            room_status[data.room_id] = 1
-        elif data.action == "Alarm Reset":
+        # if data.action == "Emergency Detected":
+        #     room_status[data.room_id] = 1
+        if data.action == "Alert Acknowledged":
             room_status[data.room_id] = 0
 
         await manager.broadcast({

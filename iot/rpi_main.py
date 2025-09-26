@@ -132,6 +132,23 @@ class LaptopDiscoverServer:
     def stop(self):
         self.running = False
 
+def init_esp32_serial():
+    global esp32_serial
+    try:
+        esp32_serial = serial.Serial(esp32_port, 115200, timeout=1)
+        time.sleep(2)
+        print(f"Connected to ESP32 on {esp32_port}")
+
+        esp32_serial.write(b'STATUS\n')
+        response = esp32_serial.readline().decode('utf-8').strip()
+        print(f"Received from ESP32: {response}")
+        return True
+
+    except Exception as e:
+        print(f"Failed to connect to ESP32 on {esp32_port}: {e}")
+        esp32_serial = None
+
+
 # audio recording and receiving --------------------
 def get_audio_local():
     # get audio from microphone
@@ -157,14 +174,13 @@ def get_audio_local():
 
     return audio.flatten(), audio_wav
 
-def receive_audio_esp32():
+def receive_audio_data():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', 8080))
 
     while True:
         try:
             data, addr = sock.recvfrom(4096)
-
             audio_data = json.loads(data.decode('utf-8'))
 
             room_id = audio_data.get('roomID')
@@ -180,24 +196,29 @@ def receive_audio_esp32():
             thread.start()
 
         except Exception as e:
-            print(f"UDP error: {e}")
+            print(f"Audio Data - UDP error: {e}")
 
-def init_esp32_serial():
-    global esp32_serial
-    try:
-        esp32_serial = serial.Serial(esp32_port, 115200, timeout=1)
-        time.sleep(2)
-        print(f"Connected to ESP32 on {esp32_port}")
+def receive_reset_signals():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(('0.0.0.0', 8082))
 
-        esp32_serial.write(b'STATUS\n')
-        response = esp32_serial.readline().decode('utf-8').strip()
-        print(f"Received from ESP32: {response}")
-        return True
+    while True:
+        try:
+            data, addr = sock.recvfrom(1024)
+            reset_data = json.loads(data.decode('utf-8'))
 
-    except Exception as e:
-        print(f"Failed to connect to ESP32 on {esp32_port}: {e}")
-        esp32_serial = None
+            room_id = reset_data.get('roomID')
+            action = reset_data.get('action')
+            current_time = datetime.now().strftime("%H:%M %p")
+            current_date = datetime.now().strftime("%m/%d/%y")
 
+            if action == "reset":
+                print(f"Received audio data from {addr}: Room {room_id}")
+                db.insert_history(action="Alarm Reset", date=current_date, time=current_time, room_id=room_id)
+                send_reset_to_receiver(room_id)
+        
+        except Exception as e:
+            print(f"Reset Signal - UDP error: {e}")
 
 # audio processing and inference --------------------
 def process_audio(audio_data_int16, room_id=None, timestamp=None):
@@ -289,9 +310,13 @@ def trigger_alarm(room_id=None):
 
     if (emergency_detected == True):
         print(f"\nALARM TRIGGERED")
+        action = "Possible emergency detected"
+        current_time = datetime.now().strftime("%H:%M %p")
+        current_date = datetime.now().strftime("%m/%d/%y")
 
-        send_alert(room_id, action="Emergency")
-
+        db.insert_history(action=action, date=current_date, time=current_time, room_id=room_id)
+        send_alert(room_id, action)
+        
     emergency_count = 0
     alarming_count = 0
     emergency_detected = False
@@ -303,7 +328,7 @@ async def send_alert(room_id, action=None):
     # esp32
     try:
         if esp32_serial and esp32_serial.is_open:
-            if "Emergency" in action:
+            if "Possible emergency detected" in action:
                 command = f"ALERT: {room_id}\n"
             esp32_serial.write(command.encode())
             
@@ -337,21 +362,36 @@ async def send_alert(room_id, action=None):
         print("Failed to send alert to Web Dashboard:", e)
 
     return success_web, success_esp32
+
+def send_reset_to_receiver(room_id):
+    try:
+        if esp32_serial and esp32_serial.is_open:
+            command = f"RESET: {room_id}\n"
+            esp32_serial.write(command.encode())
+            
+            response = esp32_serial.readline().decode().strip()
+            if response:
+                print(f"Received from ESP32: {response}")
+    except Exception as e:
+        print("Failed to communicate with ESP32:", e)
     
 
 # main loop -----------------------------------------
 
 if __name__ == "__main__":
     try:
-        if not init_esp32_serial():
-            print("Exiting due to Receiver connection failure.")
-            exit(1)
+        # if not init_esp32_serial():
+        #     print("Exiting due to Receiver connection failure.")
+        #     exit(1)
 
         discovery_server = LaptopDiscoverServer()
         discovery_server.start()
         
-        audio_thread = threading.Thread(target=receive_audio_esp32, daemon=True)
+        audio_thread = threading.Thread(target=receive_audio_data, daemon=True)
         audio_thread.start()
+
+        reset_thread = threading.Thread(target=receive_reset_signals, daemon=True)
+        reset_thread.start()
         
         print("=" * 60)
         print(f"💻 LAPTOP IP: {discovery_server.laptop_ip}")
