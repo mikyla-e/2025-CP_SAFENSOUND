@@ -7,7 +7,7 @@
     <title>SnS Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/dashboard.css') }}">
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"> -->
 
 </head>
 <body>
@@ -35,7 +35,10 @@
             </div>
 
             <div class="room2 rooms" onclick="selectRoom(2, this)">
-                <i class="fa-solid fa-bell"></i>
+                <svg class="logo" xmlns="http://www.w3.org/2000/svg" 
+                    viewBox="0 0 512 512" fill="white" style="vertical-align: middle;">
+                    <path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/>
+                </svg>
 
                 <div class="texts">
                     <h2>Room 2</h2>
@@ -44,7 +47,10 @@
             </div>
 
             <div class="room3 rooms" onclick="selectRoom(3, this)">
-                <i class="fa-solid fa-bell"></i>
+                <svg class="logo" xmlns="http://www.w3.org/2000/svg" 
+                    viewBox="0 0 512 512" fill="white" style="vertical-align: middle;">
+                    <path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/>
+                </svg>
 
                 <div class="texts">
                     <h2>Room 3</h2>
