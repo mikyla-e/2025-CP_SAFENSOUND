@@ -8,7 +8,7 @@
 #include <ArduinoJson.h>
 #include <WiFiUdp.h>
 
-const char* ssid_ap = "ssid"; //ssid
+const char* ssid_ap = "SafeNSound_ESP32"; //ssid
 const char* password_ap = ""; //password
 // const int port = 8080; //port
 
@@ -174,7 +174,9 @@ void startCaptivePortal() {
 }
 
 void handleRoot() {
-  String html_root = R"()"; // <--- captive portal ui @Danisa hehe 
+  String html_root = R"(
+  
+  )"; // <--- captive portal ui @Danisa hehe 
 
   server.send(200, "text/html", html_root);
 }
@@ -188,12 +190,16 @@ void handleConfigure() {
     saveWiFiCredentials();
 
     if (connectToWiFi()) {
-      String html_connected = R"()"; // <--- connected to wifi ui @Danisa hehe 
+      String html_connected = R"(
+      
+      )"; // <--- connected to wifi ui @Danisa hehe 
       server.send(200, "text/html", html_connected);
       delay(2000);
       ESP.restart();
     } else {
-      String html_failed = R"()"; // <--- NOT connected to wifi ui @Danisa hehe 
+      String html_failed = R"(
+      
+      )"; // <--- NOT connected to wifi ui @Danisa hehe 
       server.send(400, "text/html", html_failed);
     }
   }

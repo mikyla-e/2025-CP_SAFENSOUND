@@ -174,6 +174,7 @@ def get_audio_local():
 
     return audio.flatten(), audio_wav
 
+
 def receive_audio_data():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', 8080))
@@ -214,8 +215,8 @@ def receive_reset_signals():
 
             if action == "reset":
                 print(f"Received audio data from {addr}: Room {room_id}")
-                db.insert_history(action="Alarm Reset", date=current_date, time=current_time, room_id=room_id)
-                send_reset_to_receiver(room_id)
+                db.insert_history(action="Alert Acknowledged", date=current_date, time=current_time, room_id=room_id)
+                send_reset(room_id)
         
         except Exception as e:
             print(f"Reset Signal - UDP error: {e}")
@@ -233,23 +234,33 @@ def process_audio(audio_data_int16, room_id=None, timestamp=None):
         return False
 
 
-def extract_mfcc(audio, sample_rate, n_mfcc=40, hop_length=512, max_len=160):
-    mfcc = lb.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=n_mfcc, hop_length=hop_length)
+def extract_features(audio, sample_rate, max_len=160):
+    mfcc = lb.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=20, hop_length=512)
     
-    if mfcc.shape[1] < max_len:
-        mfcc = np.pad(mfcc, ((0,0),(0, max_len - mfcc.shape[1])), mode='constant')
-    else:
-        mfcc = mfcc[:, :max_len]
+    zcr = lb.feature.zero_crossing_rate(audio)
+    spectral_centroid = lb.feature.spectral_centroid(y=audio, sr=sample_rate)
+    spectral_rolloff = lb.feature.spectral_rolloff(y=audio, sr=sample_rate)
+    rms = lb.feature.rms(y=audio)
     
-    flat_mfcc = mfcc.flatten()
-    
-    return flat_mfcc
+    features = [mfcc, spectral_centroid, spectral_rolloff, zcr, rms]
+    extracted_features = []
+
+    for feature in features:
+        if feature.shape[1] < max_len:
+            feature = np.pad(feature, ((0,0),(0, max_len - feature.shape[1])), mode='constant')
+        else:
+            feature = feature[:, :max_len]
+        
+        feature = feature.flatten()
+        extracted_features.append(feature)
+
+    return np.concatenate(extracted_features)
 
 def inference(audio, wav_name, room_id=None):
     global emergency_count, alarming_count, nonemergency_count, emergency_detected
 
     # extracting
-    audio_features = extract_mfcc(audio, sample_rate)
+    audio_features = extract_features(audio, sample_rate)
 
     # predicting
     prediction = model.predict(audio_features.reshape(1, -1))
@@ -304,22 +315,31 @@ def inference(audio, wav_name, room_id=None):
 # alarm triggering -----------------------------------
 def trigger_alarm(room_id=None):
     # trigger alarm if emergency was detected
-    global emergency_detected, emergency_count, alarming_count, nonemergency_count
+    global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_esp32
 
     nonemergency_count = 0
 
     if (emergency_detected == True):
         print(f"\nALARM TRIGGERED")
-        action = "Possible emergency detected"
+        action = "Emergency Detected"
         current_time = datetime.now().strftime("%H:%M %p")
         current_date = datetime.now().strftime("%m/%d/%y")
 
         db.insert_history(action=action, date=current_date, time=current_time, room_id=room_id)
-        send_alert(room_id, action)
-        
-    emergency_count = 0
-    alarming_count = 0
-    emergency_detected = False
+        try:
+            if send_alert(room_id, action):
+                emergency_count = 0
+                alarming_count = 0
+                emergency_detected = False
+            else:
+                print("Failed to send alert. Retrying...")
+                sleep(2)
+                retry += 1
+                send_alert(room_id, action)
+                if retry == 3 and not success_web and not success_esp32:
+                    print("Failed to send alert after 3 attempts.")
+        except Exception as e:
+            print(f"Error sending alert: {e}")
 
 async def send_alert(room_id, action=None):
     success_web = False
@@ -328,7 +348,7 @@ async def send_alert(room_id, action=None):
     # esp32
     try:
         if esp32_serial and esp32_serial.is_open:
-            if "Possible emergency detected" in action:
+            if "Emergency Detected" in action:
                 command = f"ALERT: {room_id}\n"
             esp32_serial.write(command.encode())
             
@@ -363,7 +383,7 @@ async def send_alert(room_id, action=None):
 
     return success_web, success_esp32
 
-def send_reset_to_receiver(room_id):
+def send_reset(room_id):
     try:
         if esp32_serial and esp32_serial.is_open:
             command = f"RESET: {room_id}\n"

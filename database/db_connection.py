@@ -72,7 +72,7 @@ class Database:
             ''', (new_name, room_id))
 
     #fetch and display data
-    def fetch_rooms():
+    def fetch_rooms(self):
         with self.conn:
             cursor = self.conn.execute('SELECT * FROM room')
             return cursor.fetchall()
