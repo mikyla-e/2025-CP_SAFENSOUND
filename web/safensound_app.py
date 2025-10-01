@@ -8,7 +8,7 @@ import sys
 import os
 import asyncio
 import json
-from typing import List, Dict
+from typing import List
 from datetime import datetime
 import uvicorn
 
@@ -149,6 +149,10 @@ async def handle_alert(data: AlertData):
 
         if data.action == "Alert Acknowledged":
             room_status[data.room_id] = 0
+        elif data.action == "Emergency Detected":
+            room_status[data.room_id] = 1
+        else:
+            raise HTTPException(status_code=400, detail="Invalid action.")
 
         await manager.broadcast({
             "type": "alert_update",

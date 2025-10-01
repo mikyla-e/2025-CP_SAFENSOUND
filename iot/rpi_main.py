@@ -13,28 +13,26 @@ import threading
 import requests
 import serial
 import aiohttp
+import asyncio
 
 # --- audio processing ---
 import joblib
 
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import seaborn as sns
 
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers, models
-from tensorflow.keras.utils import to_categorical
+# import tensorflow as tf
+# from tensorflow import keras
+# from tensorflow.keras import layers, models
+# from tensorflow.keras.utils import to_categorical
 
 import librosa as lb
 import librosa.display as ld
 import sounddevice as sd
 import soundfile as sf
 
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, accuracy_score
 
 # hardware control ---------------------------------
 # import RPi.GPIO as GPIO
@@ -219,11 +217,27 @@ def receive_reset_signals():
             current_date = datetime.now().strftime("%m/%d/%y")
 
             if action == "reset":
+                operation = "Alert Acknowledged"
 
                 print(f"Received audio data from {addr}: Room {room_id}")
-                db.insert_history(action="Alert Acknowledged", date=current_date, time=current_time, room_id=room_id)
-                send_reset(room_id)
-        
+                db.insert_history(action=operation, date=current_date, time=current_time, room_id=room_id)
+                
+                retry = 0
+                try:
+                    while retry < 3:
+                        success_web, success_esp32 = asyncio.run(send_reset(room_id, operation))
+                        if success_web and success_esp32:
+                            print(f"Sent reset command from {room_id}")
+                            break
+                        else:
+                            print("Failed to send reset command. Retrying...")
+                            sleep(2)
+                            retry += 1
+                            success_web, success_esp32 = asyncio.run(send_reset(room_id, operation))
+                            if retry == 3 and not success_web and not success_esp32:
+                                print("Failed to send reset command after 3 attempts.")
+                except Exception as e:
+                    print(f"Error sending reset command: {e}")
         except Exception as e:
             print(f"Reset Signal - UDP error: {e}")
             
@@ -335,17 +349,19 @@ def trigger_alarm(room_id=None):
 
         db.insert_history(action=action, date=current_date, time=current_time, room_id=room_id)
         try:
-            if send_alert(room_id, action):
-                emergency_count = 0
-                alarming_count = 0
-                emergency_detected = False
-            else:
-                print("Failed to send alert. Retrying...")
-                sleep(2)
-                retry += 1
-                send_alert(room_id, action)
-                if retry == 3 and not success_web and not success_esp32:
-                    print("Failed to send alert after 3 attempts.")
+            retry = 0
+            while retry < 3:
+                success_web, success_esp32 = asyncio.run(send_alert(room_id, action))
+                if success_web and success_esp32:
+                    print(f"Sent emergency alert from {room_id}")
+                    break
+                else:
+                    print("Failed to send alert. Retrying...")
+                    sleep(2)
+                    retry += 1
+                    success_web, success_esp32 = asyncio.run(send_alert(room_id, action))
+                    if retry == 3 and not success_web and not success_esp32:
+                        print("Failed to send alert after 3 attempts.")
         except Exception as e:
             print(f"Error sending alert: {e}")
 
@@ -369,7 +385,7 @@ async def send_alert(room_id, action=None):
             print("Serial port not open.")
 
     except Exception as e:
-        print("Failed to send alert command to ESP32 receiver:", e)
+        print("Failed to send alert to ESP32 receiver:", e)
 
     # web
     try:
@@ -383,15 +399,16 @@ async def send_alert(room_id, action=None):
                 if response.status == 200:
                     print(f"Alert sent to Web Dashboard for Room {room_id}")
                     success_web = True
-                else:
-                    print(f"Failed to send alert to Web Dashboard for Room {room_id}")
 
     except Exception as e:
         print("Failed to send alert to Web Dashboard:", e)
 
     return success_web, success_esp32
 
-def send_reset(room_id):
+async def send_reset(room_id, action=None):
+    success_web = False
+    success_esp32 = False
+
     try:
         if esp32_serial and esp32_serial.is_open:
             command = f"RESET: {room_id}\n"
@@ -400,10 +417,29 @@ def send_reset(room_id):
             response = esp32_serial.readline().decode().strip()
             if response:
                 print(f"Received from ESP32: {response}")
+
+            success_esp32 = True
         else:
             print("Serial port not open.")
     except Exception as e:
         print("Failed to send reset command to ESP32 receiver:", e)
+
+    try:
+        payload_web = {
+            "room_id": room_id,
+            "action": action
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post("http://localhost:5000/api/alert", json=payload_web, timeout=2) as response:
+                if response.status == 200:
+                    print(f"Reset command sent to Web Dashboard for Room {room_id}")
+                    success_web = True
+
+    except Exception as e:
+        print("Failed to send reset command to Web Dashboard:", e)
+    
+    return success_web, success_esp32
     
 
 # main loop -----------------------------------------
