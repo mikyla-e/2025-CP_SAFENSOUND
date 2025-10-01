@@ -43,8 +43,16 @@ void processCommand() {
       int roomID = command.substring(7).toInt();
       Serial.printf("Alarm triggered from room %d\n", roomID);
       triggerAlarm();
-    } else if (command == "STATUS") {
-      Serial.println(alarmActive ? "ALARM_ACTIVE" : "NO_ALARM");
+    }
+    else if (command.startsWith("RESET: ")) {
+      int roomID = command.substring(7).toInt();
+      Serial.printf("Reset command received from room %d\n", roomID);
+      resetAlarm();
+    } 
+    else if (command == "STATUS") {
+      Serial.println(alarmActive ? "ALARM ACTIVE" : "NO ALARM");
+    } else {
+      Serial.println("UNKNOWN COMMAND");
     }
 
   }
@@ -52,15 +60,15 @@ void processCommand() {
 
 void autoReset() {
   if (alarmActive && (millis() - alarmStartTime > ALARM_DURATION)) {
-    Serial.println("AUTO_RESET");
+    Serial.println("AUTO RESET");
     resetAlarm();
   }
 }
 
-
+///////////////////////////////////////////////////////////////
 
 void loop() {
   processCommand();
-  autoReset();
+  // autoReset();
   delay(100);
 }

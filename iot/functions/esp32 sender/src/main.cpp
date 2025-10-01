@@ -276,13 +276,19 @@ void sendResetSignal() {
   udp.beginPacket(laptop_ip.c_str(), 8082);
   
   DynamicJsonDocument jsonDoc(1024);
-    jsonDoc["roomID"] = room_id;
-    jsonDoc["action"] = "reset";
+  jsonDoc["roomID"] = room_id;
+  jsonDoc["action"] = "reset";
 
-    String sendResetData;
-    serializeJson(jsonDoc, sendResetData);
+  String sendResetData;
+  serializeJson(jsonDoc, sendResetData);
 
-  udp.endPacket();
+  int result = udp.endPacket();
+
+  if (result) {
+      Serial.println("✅ Sent");
+  } else {
+      Serial.println("❌ Failed");
+  }
 }
 
 void loop() { //loops

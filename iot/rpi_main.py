@@ -81,6 +81,8 @@ emergency_detected = False
 esp32_serial = None
 esp32_port = "COM5"
 
+stop_event = threading.Event()
+
 class LaptopDiscoverServer:
     def __init__(self):
         self.running = True
@@ -100,11 +102,11 @@ class LaptopDiscoverServer:
     def discovery_listener(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(('', 8081))
+        sock.bind(('0.0.0.0', 8081))
 
         print(f"🔍 Discovery server listening on {self.laptop_ip}:8081")
 
-        while self.running:
+        while self.running and not stop_event.is_set():
             try:
                 data, addr = sock.recvfrom(1024)
                 message = data.decode('utf-8').strip()
@@ -118,7 +120,6 @@ class LaptopDiscoverServer:
             except Exception as e:
                 if self.running:
                     print(f"Error in discovery listener: {e}")
-
 
         sock.close()
 
@@ -134,6 +135,7 @@ class LaptopDiscoverServer:
 
 def init_esp32_serial():
     global esp32_serial
+
     try:
         esp32_serial = serial.Serial(esp32_port, 115200, timeout=1)
         time.sleep(2)
@@ -155,7 +157,7 @@ def get_audio_local():
     date_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
     try:
-        print("\n//////////////////////////////////")
+        print("\n/" * 60)
         print(f"Recording audio... at {date_time}")
         audio = sd.rec(int(audio_duration * sample_rate), samplerate=sample_rate, channels=1)
         sd.wait()
@@ -179,7 +181,7 @@ def receive_audio_data():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', 8080))
 
-    while True:
+    while not stop_event.is_set():
         try:
             data, addr = sock.recvfrom(4096)
             audio_data = json.loads(data.decode('utf-8'))
@@ -199,27 +201,33 @@ def receive_audio_data():
         except Exception as e:
             print(f"Audio Data - UDP error: {e}")
 
+    sock.close()
+
 def receive_reset_signals():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', 8082))
 
-    while True:
+    while not stop_event.is_set():
         try:
             data, addr = sock.recvfrom(1024)
             reset_data = json.loads(data.decode('utf-8'))
 
             room_id = reset_data.get('roomID')
             action = reset_data.get('action')
+
             current_time = datetime.now().strftime("%H:%M %p")
             current_date = datetime.now().strftime("%m/%d/%y")
 
             if action == "reset":
+
                 print(f"Received audio data from {addr}: Room {room_id}")
                 db.insert_history(action="Alert Acknowledged", date=current_date, time=current_time, room_id=room_id)
                 send_reset(room_id)
         
         except Exception as e:
             print(f"Reset Signal - UDP error: {e}")
+            
+    sock.close()
 
 # audio processing and inference --------------------
 def process_audio(audio_data_int16, room_id=None, timestamp=None):
@@ -361,7 +369,7 @@ async def send_alert(room_id, action=None):
             print("Serial port not open.")
 
     except Exception as e:
-        print("Failed to communicate with ESP32:", e)
+        print("Failed to send alert command to ESP32 receiver:", e)
 
     # web
     try:
@@ -392,42 +400,51 @@ def send_reset(room_id):
             response = esp32_serial.readline().decode().strip()
             if response:
                 print(f"Received from ESP32: {response}")
+        else:
+            print("Serial port not open.")
     except Exception as e:
-        print("Failed to communicate with ESP32:", e)
+        print("Failed to send reset command to ESP32 receiver:", e)
     
 
 # main loop -----------------------------------------
 
 if __name__ == "__main__":
     try:
-        # if not init_esp32_serial():
-        #     print("Exiting due to Receiver connection failure.")
-        #     exit(1)
+        if not init_esp32_serial():
+            print("Exiting due to Receiver connection failure.")
+            exit(1)
+        else:
+            print("Receiver connected successfully.")
 
-        discovery_server = LaptopDiscoverServer()
-        discovery_server.start()
-        
-        audio_thread = threading.Thread(target=receive_audio_data, daemon=True)
-        audio_thread.start()
+            discovery_server = LaptopDiscoverServer()
+            discovery_server.start()
+            
+            audio_thread = threading.Thread(target=receive_audio_data, daemon=True)
+            audio_thread.start()
 
-        reset_thread = threading.Thread(target=receive_reset_signals, daemon=True)
-        reset_thread.start()
-        
-        print("=" * 60)
-        print(f"💻 LAPTOP IP: {discovery_server.laptop_ip}")
-        print(f"🔍 Discovery server: Port 8081")
-        print(f"🎵 Audio receiver: Port 8080")
-        print("=" * 60)
-        
-        # Main loop for local recording
-        while True:
-            audio_data, audio_wav = get_audio_local()
-            if audio_data is not None and audio_wav is not None:
-                inference(audio_data, audio_wav)
-            time.sleep(1)
+            reset_thread = threading.Thread(target=receive_reset_signals, daemon=True)
+            reset_thread.start()
+            
+            print("=" * 60)
+            print(f"LAPTOP IP: {discovery_server.laptop_ip}")
+            print(f"Discovery server: Port 8081")
+            print(f"Audio receiver: Port 8080")
+            print(f"Reset signal: Port 8082")
+            print("=" * 60)
+            
+            # Main loop for local recording
+            # while True:
+            #     audio_data, audio_wav = get_audio_local()
+            #     if audio_data is not None and audio_wav is not None:
+            #         inference(audio_data, audio_wav)
+            #     time.sleep(1)
 
     except KeyboardInterrupt:
         print("\n[INFO] Exiting gracefully...")
+        stop_event.set()
+        discovery_server.stop()
+        audio_thread.join()
+        reset_thread.join()
         if esp32_serial and esp32_serial.is_open:
             esp32_serial.close()
-        discovery_server.stop()
+        
