@@ -70,6 +70,9 @@ audio_wav = None
 audio_duration = 5 #seconds
 sample_rate = 16000
 
+loudness_threshold = 10000
+loud_threshold_ms = 1000
+
 alarming_count = 0
 emergency_count = 0
 nonemergency_count = 0
@@ -190,9 +193,12 @@ def receive_audio_data():
 
             print(f"Received audio data from {addr}: Room {room_id}")
 
+            num_samples = len(audio_samples)
+            duration_ms = (num_samples / sample_rate) * 1000
+
             thread = threading.Thread(
                 target=process_audio,
-                args=(audio_samples, room_id, timestamp)
+                args=(audio_samples, duration_ms, room_id, timestamp)
             )
             thread.start()
 
@@ -244,15 +250,29 @@ def receive_reset_signals():
     sock.close()
 
 # audio processing and inference --------------------
-def process_audio(audio_data_int16, room_id=None, timestamp=None):
+def process_audio(audio_data_int16, duration_ms, room_id=None, timestamp=None):
     try:
-        audio_data = np.array(audio_data_int16, dtype=np.float32) / 32768.0
+        audio_data = np.array(audio_data_int16, dtype=np.int16)
+        avg_amplitude = np.mean(np.abs(audio_data))
+        
+        print(f"Loudness: {avg_amplitude}, Duration: {duration_ms} ms")
 
-        inference(audio_data, f"Room{room_id}_{timestamp}", room_id)
+
+        if avg_amplitude > loudness_threshold:
+            loud_duration_ms += duration_ms
+        else:
+            loud_duration_ms = 0
+            inference(audio_data, f"Room{room_id}_{timestamp}", room_id)
+
+        if loud_duration_ms >= loud_threshold_ms:
+            loud_duration_ms = 0
+            trigger_alarm(room_id)
+
         return True
         
     except Exception as e:
         print(f"Error processing audio: {e}")
+
         return False
 
 
@@ -287,51 +307,46 @@ def inference(audio, wav_name, room_id=None):
     # predicting
     prediction = model.predict(audio_features.reshape(1, -1))
 
-    # prediction with threshold
-    # prediction = model.predict_proba(audio_reshaped)
-    # threshold = 0.3
-    # prediction = (prediction[:, 1] >= threshold).astype(int)
-
 
     # alarm and emergency logic
     predicted_class = prediction[0]
 
-    print(f"\nPrediction for {wav_name}: {'emergency' if predicted_class == 2 else 'alarming' if predicted_class == 1 else 'non-emergency'}")
-
     # alarming sound = 4 times before emergency is confirmed
     # emergency sound = 2 times after emergency is confirmed
-    
-    if predicted_class == 1:
-        alarming_count += 1
-        print("ALARMING sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
 
-        if alarming_count >= 4:
-            emergency_detected = True
-            trigger_alarm(room_id)
+    print(f"\nPrediction for {wav_name}: ")
+
+    # if predicted_class == 1:
+    #     alarming_count += 1
+    #     print("ALARMING sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
+
+    #     if alarming_count >= 4:
+    #         emergency_detected = True
+    #         trigger_alarm(room_id)
         
-        elif alarming_count == 2 and emergency_count >= 1:
-            emergency_detected = True
-            trigger_alarm(room_id)
+    #     elif alarming_count == 2 and emergency_count >= 1:
+    #         emergency_detected = True
+    #         trigger_alarm(room_id)
 
-    elif predicted_class == 2:
-        emergency_count += 1
-        print("EMERGENCY sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
-        if emergency_count >= 2:
-            emergency_detected = True
-            trigger_alarm(room_id)
+    # elif predicted_class == 2:
+    #     emergency_count += 1
+    #     print("EMERGENCY sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
+    #     if emergency_count >= 2:
+    #         emergency_detected = True
+    #         trigger_alarm(room_id)
 
-        elif emergency_count == 1 and alarming_count >= 2:
-            emergency_detected = True
-            trigger_alarm(room_id)
+    #     elif emergency_count == 1 and alarming_count >= 2:
+    #         emergency_detected = True
+    #         trigger_alarm(room_id)
 
-    elif predicted_class == 0:
-        print("No emergency detected.")
-        nonemergency_count += 1
-        if nonemergency_count >= 6:
-            alarming_count = 0
-            emergency_count = 0
-            nonemergency_count = 0
-            print("System reset due to consecutive non-emergency sounds.")
+    # elif predicted_class == 0:
+    #     print("No emergency detected.")
+    #     nonemergency_count += 1
+    #     if nonemergency_count >= 6:
+    #         alarming_count = 0
+    #         emergency_count = 0
+    #         nonemergency_count = 0
+    #         print("System reset due to consecutive non-emergency sounds.")
 
 
 # alarm triggering -----------------------------------
@@ -369,39 +384,39 @@ async def send_alert(room_id, action=None):
     success_web = False
     success_esp32 = False
 
-    # esp32
-    try:
-        if esp32_serial and esp32_serial.is_open:
-            if "Emergency Detected" in action:
+    if "Emergency Detected" in action:
+        # esp32
+        try:
+            if esp32_serial and esp32_serial.is_open:
                 command = f"ALERT: {room_id}\n"
-            esp32_serial.write(command.encode())
-            
-            response = esp32_serial.readline().decode().strip()
-            if response:
-                print(f"Received from ESP32: {response}")
-            
-            success_esp32 = True
-        else:
-            print("Serial port not open.")
+                esp32_serial.write(command.encode())
+                
+                response = esp32_serial.readline().decode().strip()
+                if response:
+                    print(f"Received from ESP32: {response}")
+                
+                success_esp32 = True
+            else:
+                print("Serial port not open.")
 
-    except Exception as e:
-        print("Failed to send alert to ESP32 receiver:", e)
+        except Exception as e:
+            print("Failed to send alert to ESP32 receiver:", e)
 
-    # web
-    try:
-        payload_web = {
-            "room_id": room_id,
-            "action": action
-        }
+        # web
+        try:
+            payload_web = {
+                "room_id": room_id,
+                "action": action
+            }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post("http://localhost:5000/api/alert", json=payload_web, timeout=2) as response:
-                if response.status == 200:
-                    print(f"Alert sent to Web Dashboard for Room {room_id}")
-                    success_web = True
+            async with aiohttp.ClientSession() as session:
+                async with session.post("http://localhost:5000/api/alert", json=payload_web, timeout=2) as response:
+                    if response.status == 200:
+                        print(f"Alert sent to Web Dashboard for Room {room_id}")
+                        success_web = True
 
-    except Exception as e:
-        print("Failed to send alert to Web Dashboard:", e)
+        except Exception as e:
+            print("Failed to send alert to Web Dashboard:", e)
 
     return success_web, success_esp32
 
@@ -409,35 +424,36 @@ async def send_reset(room_id, action=None):
     success_web = False
     success_esp32 = False
 
-    try:
-        if esp32_serial and esp32_serial.is_open:
-            command = f"RESET: {room_id}\n"
-            esp32_serial.write(command.encode())
-            
-            response = esp32_serial.readline().decode().strip()
-            if response:
-                print(f"Received from ESP32: {response}")
+    if "Alert Acknowledged" in action:
+        try:
+            if esp32_serial and esp32_serial.is_open:
+                command = f"RESET: {room_id}\n"
+                esp32_serial.write(command.encode())
+                
+                response = esp32_serial.readline().decode().strip()
+                if response:
+                    print(f"Received from ESP32: {response}")
 
-            success_esp32 = True
-        else:
-            print("Serial port not open.")
-    except Exception as e:
-        print("Failed to send reset command to ESP32 receiver:", e)
+                success_esp32 = True
+            else:
+                print("Serial port not open.")
+        except Exception as e:
+            print("Failed to send reset command to ESP32 receiver:", e)
 
-    try:
-        payload_web = {
-            "room_id": room_id,
-            "action": action
-        }
+        try:
+            payload_web = {
+                "room_id": room_id,
+                "action": action
+            }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post("http://localhost:5000/api/alert", json=payload_web, timeout=2) as response:
-                if response.status == 200:
-                    print(f"Reset command sent to Web Dashboard for Room {room_id}")
-                    success_web = True
+            async with aiohttp.ClientSession() as session:
+                async with session.post("http://localhost:5000/api/alert", json=payload_web, timeout=2) as response:
+                    if response.status == 200:
+                        print(f"Reset command sent to Web Dashboard for Room {room_id}")
+                        success_web = True
 
-    except Exception as e:
-        print("Failed to send reset command to Web Dashboard:", e)
+        except Exception as e:
+            print("Failed to send reset command to Web Dashboard:", e)
     
     return success_web, success_esp32
     

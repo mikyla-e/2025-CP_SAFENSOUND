@@ -56,16 +56,16 @@ void processAudioRecording(){
     if (result == ESP_OK && bytes_read > 0) {
         int samples_read = bytes_read / sizeof(int16_t);
     
-        long sum = 0;
-        for (int i = 0; i < samples_read; i++) {
-            sum += abs(audio[i]);
-        }
+        // long sum = 0;
+        // for (int i = 0; i < samples_read; i++) {
+        //     sum += abs(audio[i]);
+        // }
         
-        int average_amplitude = sum / samples_read;
-        Serial.printf("Audio level: %d\n", average_amplitude);
+        // int average_amplitude = sum / samples_read;
+        // Serial.printf("Audio level: %d\n", average_amplitude);
 
         prepareAudio(audio, samples_read);
     }
 
-    delay(100);
+    delay(10);
 }
