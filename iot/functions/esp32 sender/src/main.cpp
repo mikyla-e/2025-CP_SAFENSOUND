@@ -38,6 +38,215 @@ bool audioReady = false;
 const int room_id = 1;
 
 /////////////////////////////////////////////////////////
+void handleCSS() {
+  String css = R"(
+      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+
+      :root {
+          --primary: white;
+          --second: #2D336B;
+          --background: linear-gradient(133deg, #F7F7F7 13.25%, #A9B5DF 205.83%);
+      }
+
+      * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+      }
+
+      body {
+          font-family: "DM Sans", sans-serif;
+          background: var(--background);
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 20px;
+      }
+
+      /* ALL BOXES */
+      .container {
+          background: var(--primary);
+          padding: 30px;
+          border-radius: 13px;
+          box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
+          width: 100%;
+          max-width: 600px;
+          margin-bottom: 20px;
+      }
+
+      /* BELL ICON CIRCLE */
+      .header-icon {
+          width: 60px;
+          height: 60px;
+          background-color: var(--second);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 20px;
+          position: relative;
+      }
+
+      /* BELL ICON */
+      .header-icon svg {
+          width: 35px;
+          height: 35px;
+          fill: white;
+      }
+
+      /* SafeNSound Configuration */
+      h1 {
+          text-align: center;
+          color: var(--second);
+          font-size: clamp(1.3rem, 3vw, 1.8rem);
+          font-weight: 600;
+          margin-bottom: 10px;
+      }
+
+      /* Configure your device... */
+      p {
+          text-align: center;
+          color: #666;
+          margin-bottom: 25px;
+          font-size: clamp(0.9rem, 2vw, 1rem);
+      }
+
+      /* ... Settings */
+      h3 {
+          color: var(--second);
+          font-size: clamp(1rem, 2.5vw, 1.2rem);
+          margin: 20px 0 10px;
+          font-weight: 600;
+          opacity: 0.8;
+      }
+
+      /* INPUT FIELDS */
+      input {
+          width: 100%;
+          padding: 12px 15px;
+          margin: 8px 0;
+          border: 2px solid rgba(45, 51, 107, 0.2);
+          border-radius: 10px;
+          font-family: "DM Sans", sans-serif;
+          font-size: clamp(0.9rem, 2vw, 1rem);
+          transition: all 0.3s ease;
+      }
+
+      input:focus {
+          outline: none;
+          /* border-color: var(--second); */
+          border-color: #2d336baf;
+          box-shadow: 0 0 0 3px rgba(45, 51, 107, 0.1);
+      }
+
+      input::placeholder {
+          color: #999;
+      }
+
+      button {
+          width: 100%;
+          background: var(--second);
+          color: white;
+          padding: 14px 20px;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          font-family: "DM Sans", sans-serif;
+          font-size: clamp(1rem, 2.5vw, 1.1rem);
+          font-weight: 600;
+          margin-top: 20px;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 15px rgba(45, 51, 107, 0.3);
+      }
+
+      button:hover {
+          background: #1f2449;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(45, 51, 107, 0.4);
+      }
+
+      button:active {
+          transform: translateY(0);
+      }
+
+      .status {
+          padding: 15px;
+          margin: 15px 0;
+          border-radius: 10px;
+          font-size: clamp(0.9rem, 2vw, 1rem);
+          text-align: center;
+      }
+
+      .success {
+          background: rgba(76, 175, 80, 0.1);
+          color: #2e7d32;
+          border: 2px solid rgba(76, 175, 80, 0.3);
+      }
+
+      .error {
+          background: rgba(244, 67, 54, 0.1);
+          color: #c62828;
+          border: 2px solid rgba(244, 67, 54, 0.3);
+      }
+
+      .link {
+          display: inline-block;
+          margin-top: 15px;
+          color: var(--second);
+          text-decoration: none;
+          font-weight: 600;
+          padding: 10px 20px;
+          border: 2px solid var(--second);
+          border-radius: 10px;
+          transition: all 0.3s ease;
+      }
+
+      .link:hover {
+          background: var(--second);
+          color: white;
+      }
+
+      .hidden {
+          display: none;
+      }
+
+      /* Responsive design */
+      @media screen and (max-width: 768px) {
+          body {
+              padding: 15px;
+          }
+
+          .container {
+              padding: 20px;
+          }
+
+          nav {
+              height: 50px;
+              margin-bottom: 15px;
+          }
+      }
+
+      @media screen and (max-width: 375px) {
+          .container {
+              padding: 15px;
+          }
+
+          .header-icon {
+              width: 50px;
+              height: 50px;
+          }
+
+          .header-icon svg {
+              width: 28px;
+              height: 28px;
+          }
+      }
+    )";
+    server.send(200, "text/css", css);
+  }
+
+/////////////////////////////////////////////////////////
 
 void setup() { // esp setup
   Serial.begin(115200);
@@ -164,6 +373,7 @@ void startCaptivePortal() {
   server.on("/", handleRoot);
   server.on("/configure", handleConfigure);
   server.on("/status", handleStatus);
+  server.on("/captive_portal.css", handleCSS);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -175,8 +385,41 @@ void startCaptivePortal() {
 
 void handleRoot() {
   String html_root = R"(
-  
-  )"; // <--- captive portal ui @Danisa hehe 
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <link rel="stylesheet" href="/captive_portal.css">
+    </head>
+    <body>
+      <div class="container" id="configForm">
+        <div class="header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                <path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/>
+            </svg>
+        </div>
+        
+        <h1>SafeNSound Configuration</h1>
+        <p>Configure your device to connect to WiFi and communicate with your system.</p>
+        
+        <form action="/configure" method="POST">
+          <h3>WiFi Settings</h3>
+          <input type="text" name="ssid" placeholder="WiFi Network Name '(SSID)'" required>
+          <input type="password" name="password" placeholder="WiFi Password">
+            
+          <h3>Laptop Settings</h3>
+          <input type="text" name="laptop_ip" placeholder="Laptop IP Address '(e.g., 192.168.1.100)'" required>
+            
+            <h3>Device Settings</h3>
+            <input type="number" name="room_id" placeholder="Room ID '(1-99)'" min="1" max="99" value="1">
+            
+            <button type="submit">Save</button>
+        </form>
+        
+        <div id="status"></div>
+      </div>     
+    </body>
+    </html>
+  )"; // <--- Configuration Form
 
   server.send(200, "text/html", html_root);
 }
@@ -191,14 +434,47 @@ void handleConfigure() {
 
     if (connectToWiFi()) {
       String html_connected = R"(
-      
-      )"; // <--- connected to wifi ui @Danisa hehe 
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <link rel="stylesheet" href="/captive_portal.css">
+        </head>
+        <body>
+            <div class="container" id="successMessage">
+                <div class="header-icon" style="background-color: #4CAF50;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                        <path d="M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-111 111-47-47c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l64 64c9.4 9.4 24.6 9.4 33.9 0L369 209z"/>
+                    </svg>
+                </div>
+                <h1>Configuration Saved!</h1>
+                <p>ESP32 is now connected to WiFi. You can close this page.</p>
+            </div>
+        </body>
+        </html>
+      )"; // <--- Success Message
       server.send(200, "text/html", html_connected);
       delay(2000);
       ESP.restart();
     } else {
       String html_failed = R"(
-      
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <link rel="stylesheet" href="/captive_portal.css">    
+        </head>
+        <body>
+            <div class="container " id="errorMessage">
+                <div class="header-icon" style="background-color: #f44336;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                        <path d="M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c-13.3 0-24 10.7-24 24V264c0 13.3 10.7 24 24 24s24-10.7 24-24V152c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/>
+                    </svg>
+                </div>
+                <h1>Connection Failed</h1>
+                <p>Could not connect to WiFi. Please check your credentials and try again.</p>
+                <center><a href="/" class="link">Go Back</a></center>
+            </div>
+        </body>
+        </html>
       )"; // <--- NOT connected to wifi ui @Danisa hehe 
       server.send(400, "text/html", html_failed);
     }
