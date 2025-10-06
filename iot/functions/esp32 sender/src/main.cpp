@@ -26,18 +26,240 @@ bool wifi_configured = false;
 #define IP_ADDR 64
 #define CONFIG_FLAG_ADDR 96
 
-typedef struct AudioRecording {
+typedef struct {
   int16_t audioData[160];
   size_t sampleCount;
   uint32_t timestamp;
   int roomID;
-};
+} AudioRecording;
 
 AudioRecording audioRecording;
 bool audioReady = false;
 const int room_id = 1;
 
 /////////////////////////////////////////////////////////
+
+bool discoverIP() {
+  WiFiUDP udp;
+  udp.begin(8080);
+
+  IPAddress broadcastIP = WiFi.localIP();
+  broadcastIP[3] = 255;
+
+  udp.beginPacket(broadcastIP, 8080);
+  udp.print("DISCOVER_MAIN_DEVICE");
+  udp.endPacket();
+
+  unsigned long startTime = millis();
+  while (millis() - startTime < 5000) {
+    int packetSize = udp.parsePacket();
+    if (packetSize) {
+      String response = udp.readString();
+      response.trim();
+
+      if(response.startsWith("MAIN_DEVICE_HERE:")) {
+        laptop_ip = response.substring(17);
+        laptop_ip.trim();
+        Serial.println("Discovered Main Device IP: " + laptop_ip);
+
+        EEPROM.writeString(IP_ADDR, laptop_ip);
+        EEPROM.commit();
+
+        udp.stop();
+        return true;
+      }
+    }
+    delay(100);
+  }
+
+  udp.stop();
+  Serial.println("Failed to discover laptop IP.");
+  return false;
+}
+
+void saveWiFiCredentials() {
+  EEPROM.writeString(SSID_ADDR, stored_ssid);
+  EEPROM.writeString(PASS_ADDR, stored_password);
+  EEPROM.writeString(IP_ADDR, laptop_ip);
+  EEPROM.writeBool(CONFIG_FLAG_ADDR, true);
+  EEPROM.commit();
+
+  wifi_configured = true;
+
+  Serial.println("Wifi Credentials saved to EEPROM");
+}
+
+void loadWiFiCredentials() {
+  wifi_configured = EEPROM.readBool(CONFIG_FLAG_ADDR);
+  if (wifi_configured) {
+    stored_ssid = EEPROM.readString(SSID_ADDR);
+    stored_password = EEPROM.readString(PASS_ADDR);
+    laptop_ip = EEPROM.readString(IP_ADDR);
+    
+    Serial.println("📖 Loaded saved credentials");
+  }
+}
+
+bool connectToWiFi() {
+  if (stored_ssid.length() == 0) return false;
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(stored_ssid.c_str(), stored_password.c_str());
+
+  Serial.print("Connecting to " + stored_ssid + "...");
+
+  int attempts = 0;
+
+  while (WiFi.status() != WL_CONNECTED && attempts < 100) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED){
+    Serial.println("\nWiFi connected!");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+    return true;
+  }
+
+  if (WiFi.status() == WL_NO_SSID_AVAIL) {
+    Serial.println("SSID not available.");
+  } else if (WiFi.status() == WL_CONNECT_FAILED) {
+    Serial.println("Connection failed. Check password.");
+  } else if (WiFi.status() == WL_DISCONNECTED) {
+    Serial.println("Disconnected from WiFi.");
+  } else {
+    Serial.println("Unknown error.");
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////
+
+void handleDiscoverIP() {
+  String discovered_ip = "";
+  if (discoverIP()) {
+    discovered_ip = laptop_ip;
+    server.send(200, "text/plain", discovered_ip);
+  } else {
+    server.send(500, "text/plain", "Discovery failed");
+  }
+}
+
+void handleRoot() {
+  String html_root = R"(
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <link rel="stylesheet" href="/captive_portal.css">
+    </head>
+    <body>
+      <div class="container" id="configForm">
+        <div class="header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                <path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/>
+            </svg>
+        </div>
+        
+        <h1>SafeNSound Configuration</h1>
+        <p>Configure your device to connect to WiFi and communicate with your system.</p>
+        
+        <form action="/configure" method="POST">
+          <h3>Settings</h3>
+          <input type="text" name="ssid" placeholder="WiFi Network Name" required>
+          <input type="password" name="password" placeholder="WiFi Password">
+            
+          <input type="text" name="laptop_ip" placeholder="Laptop IP Address">
+            
+          <button type="submit">Save</button>
+        </form>
+        
+        <div id="status"></div>
+      </div>
+    </body>
+    </html>
+  )"; // <--- Configuration Form
+
+  server.send(200, "text/html", html_root);
+}
+
+void handleConfigure() {
+  if (server.hasArg("ssid") && server.hasArg("laptop_ip")) {
+    stored_ssid = server.arg("ssid");
+    stored_password = server.arg("password");
+    laptop_ip = server.arg("laptop_ip");
+
+    saveWiFiCredentials();
+
+    if (connectToWiFi()) {
+      String html_connected = R"(
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <link rel="stylesheet" href="/captive_portal.css">
+        </head>
+        <body>
+            <div class="container" id="successMessage">
+                <div class="header-icon" style="background-color: #4CAF50;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                        <path d="M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-111 111-47-47c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l64 64c9.4 9.4 24.6 9.4 33.9 0L369 209z"/>
+                    </svg>
+                </div>
+                <h1>Configuration Saved!</h1>
+                <p>ESP32 is now connected to WiFi. You can close this page.</p>
+            </div>
+        </body>
+        </html>
+      )"; // <--- Success Message
+      server.send(200, "text/html", html_connected);
+      delay(2000);
+      ESP.restart();
+    } else {
+      String html_failed = R"(
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <link rel="stylesheet" href="/captive_portal.css">    
+        </head>
+        <body>
+            <div class="container " id="errorMessage">
+                <div class="header-icon" style="background-color: #f44336;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                        <path d="M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c-13.3 0-24 10.7-24 24V264c0 13.3 10.7 24 24 24s24-10.7 24-24V152c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/>
+                    </svg>
+                </div>
+                <h1>Connection Failed</h1>
+                <p>Could not connect to WiFi. Please check your credentials and try again.</p>
+                <center><a href="/" class="link">Go Back</a></center>
+            </div>
+        </body>
+        </html>
+      )"; // <--- NOT connected to wifi ui @Danisa hehe 
+      server.send(400, "text/html", html_failed);
+    }
+  }
+}
+
+void handleStatus() {
+  JsonDocument doc;
+  doc["connected"] = (WiFi.status() == WL_CONNECTED);
+  doc["wifi_ip"] = WiFi.localIP().toString();
+  doc["ap_ip"] = WiFi.softAPIP().toString();
+  doc["room_id"] = room_id;
+  doc["laptop_ip"] = laptop_ip;
+
+  String jsonResponse;
+  serializeJson(doc, jsonResponse);
+  server.send(200, "application/json", jsonResponse);
+}
+
+void handleNotFound() {
+  server.sendHeader("Location", "http://" + WiFi.softAPIP().toString(), true);
+  server.send(302, "text/plain", "");
+}
+
 void handleCSS() {
   String css = R"(
       @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
@@ -248,120 +470,6 @@ void handleCSS() {
 
 /////////////////////////////////////////////////////////
 
-void setup() { // esp setup
-  Serial.begin(115200);
-  EEPROM.begin(512);
-
-  loadWiFiCredentials();
-
-  if (wifi_configured && connectToWiFi()) {
-    Serial.println("Connected to saved WiFi.");
-
-    if (laptop_ip.length() == 0 || discoverIP()) {
-      Serial.println("Discovered Main Device IP: " + laptop_ip + ". Starting captive portal...");
-      setupAudio();
-      setupResetButton();
-    } else {
-      Serial.println("Could not discover main device. Starting captive portal...");
-      startCaptivePortal();
-      return;
-    }
-  } else {
-    Serial.println("Failed to connect to saved WiFi. Starting captive portal.");
-    startCaptivePortal();
-  }
-}
-
-/////////////////////////////////////////////////////////
-
-bool discoverIP() {
-  WiFiUDP udp;
-  udp.begin(8081);
-
-  IPAddress broadcastIP = WiFi.localIP();
-  broadcastIP[3] = 255;
-
-  udp.beginPacket(broadcastIP, 8081);
-  udp.print("DISCOVER_MAIN_DEVICE");
-  udp.endPacket();
-
-  unsigned long startTime = millis();
-  while (millis() - startTime < 5000) {
-    int packetSize = udp.parsePacket();
-    if (packetSize) {
-      String response = udp.readString();
-      response.trim();
-
-      if(response.startsWith("MAIN_DEVICE_HERE:")) {
-        laptop_ip = response.substring(17);
-        laptop_ip.trim();
-        Serial.println("Discovered Main Device IP: " + laptop_ip);
-
-        EEPROM.writeString(IP_ADDR, laptop_ip);
-        EEPROM.commit();
-
-        udp.stop();
-        return true;
-      }
-    }
-    delay(100);
-  }
-
-  udp.stop();
-  Serial.println("Failed to discover laptop IP.");
-  return false;
-}
-
-void saveWiFiCredentials() {
-  EEPROM.writeString(SSID_ADDR, stored_ssid);
-  EEPROM.writeString(PASS_ADDR, stored_password);
-  EEPROM.writeString(IP_ADDR, laptop_ip);
-  EEPROM.writeBool(CONFIG_FLAG_ADDR, true);
-  EEPROM.commit();
-
-  wifi_configured = true;
-
-  Serial.println(" Wifi Credentials saved to EEPROM");
-}
-
-void loadWiFiCredentials() {
-  wifi_configured = EEPROM.readBool(CONFIG_FLAG_ADDR);
-  if (wifi_configured) {
-    stored_ssid = EEPROM.readString(SSID_ADDR);
-    stored_password = EEPROM.readString(PASS_ADDR);
-    laptop_ip = EEPROM.readString(IP_ADDR);
-    
-    Serial.println("📖 Loaded saved credentials");
-  }
-}
-
-bool connectToWiFi() {
-  if (stored_ssid.length() == 0) return false;
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(stored_ssid.c_str(), stored_password.c_str());
-
-  Serial.print("Connecting to " + stored_ssid + "...");
-
-  int attempts = 0;
-
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    delay(500);
-    Serial.print(".");
-    attempts++;
-  }
-
-  if (WiFi.status() == WL_CONNECTED){
-    Serial.println("\nWiFi connected!");
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());
-    return true;
-  }
-
-  Serial.println("Wifi connection failed");
-  return false;
-}
-
 void startCaptivePortal() {
   Serial.println("Starting Captive Portal...");
 
@@ -374,6 +482,7 @@ void startCaptivePortal() {
   server.on("/configure", handleConfigure);
   server.on("/status", handleStatus);
   server.on("/captive_portal.css", handleCSS);
+  server.on("/discover_ip", handleDiscoverIP);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -383,134 +492,38 @@ void startCaptivePortal() {
 
 }
 
-void handleRoot() {
-  String html_root = R"(
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <link rel="stylesheet" href="/captive_portal.css">
-    </head>
-    <body>
-      <div class="container" id="configForm">
-        <div class="header-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                <path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/>
-            </svg>
-        </div>
-        
-        <h1>SafeNSound Configuration</h1>
-        <p>Configure your device to connect to WiFi and communicate with your system.</p>
-        
-        <form action="/configure" method="POST">
-          <h3>WiFi Settings</h3>
-          <input type="text" name="ssid" placeholder="WiFi Network Name '(SSID)'" required>
-          <input type="password" name="password" placeholder="WiFi Password">
-            
-          <h3>Laptop Settings</h3>
-          <input type="text" name="laptop_ip" placeholder="Laptop IP Address '(e.g., 192.168.1.100)'" required>
-            
-            <h3>Device Settings</h3>
-            <input type="number" name="room_id" placeholder="Room ID '(1-99)'" min="1" max="99" value="1">
-            
-            <button type="submit">Save</button>
-        </form>
-        
-        <div id="status"></div>
-      </div>     
-    </body>
-    </html>
-  )"; // <--- Configuration Form
+/////////////////////////////////////////////////////////
 
-  server.send(200, "text/html", html_root);
-}
+void setup() { // esp setup
+  Serial.begin(115200);
+  EEPROM.begin(512);
 
-void handleConfigure() {
-  if (server.hasArg("ssid") && server.hasArg("laptop_ip")) {
-    stored_ssid = server.arg("ssid");
-    stored_password = server.arg("password");
-    laptop_ip = server.arg("laptop_ip");
+  loadWiFiCredentials();
 
-    saveWiFiCredentials();
-
-    if (connectToWiFi()) {
-      String html_connected = R"(
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <link rel="stylesheet" href="/captive_portal.css">
-        </head>
-        <body>
-            <div class="container" id="successMessage">
-                <div class="header-icon" style="background-color: #4CAF50;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                        <path d="M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-111 111-47-47c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l64 64c9.4 9.4 24.6 9.4 33.9 0L369 209z"/>
-                    </svg>
-                </div>
-                <h1>Configuration Saved!</h1>
-                <p>ESP32 is now connected to WiFi. You can close this page.</p>
-            </div>
-        </body>
-        </html>
-      )"; // <--- Success Message
-      server.send(200, "text/html", html_connected);
-      delay(2000);
-      ESP.restart();
-    } else {
-      String html_failed = R"(
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <link rel="stylesheet" href="/captive_portal.css">    
-        </head>
-        <body>
-            <div class="container " id="errorMessage">
-                <div class="header-icon" style="background-color: #f44336;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                        <path d="M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c-13.3 0-24 10.7-24 24V264c0 13.3 10.7 24 24 24s24-10.7 24-24V152c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/>
-                    </svg>
-                </div>
-                <h1>Connection Failed</h1>
-                <p>Could not connect to WiFi. Please check your credentials and try again.</p>
-                <center><a href="/" class="link">Go Back</a></center>
-            </div>
-        </body>
-        </html>
-      )"; // <--- NOT connected to wifi ui @Danisa hehe 
-      server.send(400, "text/html", html_failed);
-    }
+  if (wifi_configured && connectToWiFi()) {
+    Serial.println("Connected to saved WiFi.");
+    Serial.println("Discovered Main Device IP: " + laptop_ip);
+    setupAudio();
+    setupResetButton();
+  } else {
+    Serial.println("Failed to connect to saved WiFi. Starting captive portal.");
+    startCaptivePortal();
+    return;
   }
 }
 
-void handleStatus() {
-  DynamicJsonDocument doc(300);
-  doc["connected"] = (WiFi.status() == WL_CONNECTED);
-  doc["wifi_ip"] = WiFi.localIP().toString();
-  doc["ap_ip"] = WiFi.softAPIP().toString();
-  doc["room_id"] = room_id;
-  doc["laptop_ip"] = laptop_ip;
-
-  String jsonResponse;
-  serializeJson(doc, jsonResponse);
-  server.send(200, "application/json", jsonResponse);
-}
-
-void handleNotFound() {
-  server.sendHeader("Location", "http://" + WiFi.softAPIP().toString(), true);
-  server.send(302, "text/plain", "");
-}
-
-/////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
 
 void sendData() {
   if (audioReady && WiFi.status() == WL_CONNECTED) {
-    udp.beginPacket(laptop_ip.c_str(), 8080);
+    udp.beginPacket(laptop_ip.c_str(), 8081);
 
-    DynamicJsonDocument jsonDoc(2048);
+    JsonDocument jsonDoc;
     jsonDoc["roomID"] = room_id;
     jsonDoc["timestamp"] = audioRecording.timestamp;
     jsonDoc["sampleCount"] = audioRecording.sampleCount;
 
-    JsonArray audioArray = jsonDoc.createNestedArray("audioData");
+    JsonArray audioArray = jsonDoc["audioData"].to<JsonArray>();
     for (size_t i = 0; i < audioRecording.sampleCount; i++) {
       audioArray.add(audioRecording.audioData[i]);
     }
@@ -551,7 +564,7 @@ void prepareAudio(int16_t* audio, size_t sampleCount) { //prepare audio data to 
 void sendResetSignal() {
   udp.beginPacket(laptop_ip.c_str(), 8082);
   
-  DynamicJsonDocument jsonDoc(1024);
+  JsonDocument jsonDoc;
   jsonDoc["roomID"] = room_id;
   jsonDoc["action"] = "reset";
 
@@ -561,9 +574,9 @@ void sendResetSignal() {
   int result = udp.endPacket();
 
   if (result) {
-      Serial.println("✅ Sent");
+      Serial.println("Sent");
   } else {
-      Serial.println("❌ Failed");
+      Serial.println("Failed");
   }
 }
 
@@ -572,6 +585,7 @@ void loop() { //loops
     dns.processNextRequest();
     server.handleClient();
   } else {
+    Serial.println("Processing audio...");
     processAudioRecording();
     sendData();
 
