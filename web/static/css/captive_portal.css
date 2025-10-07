@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+
+:root {
+    --primary: white;
+    --second: #2D336B;
+    --background: linear-gradient(133deg, #F7F7F7 13.25%, #A9B5DF 205.83%);
+}
+
+/* * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+} */
+
+body {
+    font-family: "DM Sans", sans-serif;
+    background: var(--background);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* padding: 20px; */
+}
+
+/* ALL BOXES */
+.container {
+    background: var(--primary);
+    padding: 30px;
+    border-radius: 13px;
+    box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
+    width: 100%;
+    /* max-width: 90%; */
+    margin-bottom: 20px;
+}
+
+/* BELL ICON CIRCLE */
+.header-icon {
+    width: 60px;
+    height: 60px;
+    background-color: var(--second);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    position: relative;
+}
+
+/* BELL ICON */
+.header-icon svg {
+    width: 35px;
+    height: 35px;
+    fill: white;
+}
+
+/* SafeNSound Configuration */
+h1 {
+    text-align: center;
+    color: var(--second);
+    font-size: clamp(1.3rem, 3vw, 1.8rem);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+/* Configure your device... */
+p {
+    text-align: center;
+    color: #666;
+    margin-bottom: 25px;
+    font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+/* ... Settings */
+h3 {
+    color: var(--second);
+    font-size: clamp(1rem, 2.5vw, 1.2rem);
+    margin: 20px 0 10px;
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+/* INPUT FIELDS */
+input {
+    width: 100%;
+    padding: 12px 15px;
+    margin: 8px 0;
+    border: 2px solid rgba(45, 51, 107, 0.2);
+    border-radius: 10px;
+    font-family: "DM Sans", sans-serif;
+    font-size: clamp(0.9rem, 2vw, 1rem);
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+input:focus {
+    outline: none;
+    /* border-color: var(--second); */
+    border-color: #2d336baf;
+    box-shadow: 0 0 0 3px rgba(45, 51, 107, 0.1);
+}
+
+input::placeholder {
+    color: #999;
+}
+
+button {
+    width: 100%;
+    background: var(--second);
+    color: white;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: "DM Sans", sans-serif;
+    font-size: clamp(1rem, 2.5vw, 1.1rem);
+    font-weight: 600;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(45, 51, 107, 0.3);
+}
+
+button:hover {
+    background: #1f2449;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(45, 51, 107, 0.4);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.status {
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 10px;
+    font-size: clamp(0.9rem, 2vw, 1rem);
+    text-align: center;
+}
+
+.success {
+    background: rgba(76, 175, 80, 0.1);
+    color: #2e7d32;
+    border: 2px solid rgba(76, 175, 80, 0.3);
+}
+
+.error {
+    background: rgba(244, 67, 54, 0.1);
+    color: #c62828;
+    border: 2px solid rgba(244, 67, 54, 0.3);
+}
+
+.link {
+    display: inline-block;
+    margin-top: 15px;
+    color: var(--second);
+    text-decoration: none;
+    font-weight: 600;
+    padding: 10px 20px;
+    border: 2px solid var(--second);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.link:hover {
+    background: var(--second);
+    color: white;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Responsive design */
+@media (min-width: 768px) {
+    .container {
+        padding: 20px;
+        max-width: 600px;
+    }
+}
+
+@media (max-width: 375px) {
+    body {
+        padding: 0px;
+    }
+    .container {
+        padding: 15px;
+        max-width: 100%;
+        min-height: 100vh;
+        margin: 0;
+        border-radius: 0;
+    }
+
+    .header-icon {
+        width: 50px;
+        height: 50px;
+    }
+
+    .header-icon svg {
+        width: 28px;
+        height: 28px;
+    }
+}
+
+@media (max-width: 500px) {
+    .container {
+        max-width: 900px;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 15px;
+    }
+
+    .container {
+        padding: 20px;
+    }
+}
+

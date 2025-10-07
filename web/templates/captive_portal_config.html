@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="../static/css/captive_portal.css">    
+</head>
+<body>
+    <div class="container" id="configForm">
+    <div class="header-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/>
+        </svg>
+    </div>
+    
+    <h1>SafeNSound Configuration</h1>
+    <p>Configure your device to connect to WiFi and communicate with your system.</p>
+    
+    <form action="/configure" method="POST">
+        <h3>WiFi Settings</h3>
+        <input type="text" name="ssid" placeholder="WiFi Network Name '(SSID)'" required>
+        <input type="password" name="password" placeholder="WiFi Password">
+        
+        <button type="submit">Save</button>
+    </form>
+    
+    <div id="status"></div>
+    </div>     
+</body>
+</html>
