@@ -27,7 +27,7 @@ bool wifi_configured = false;
 #define CONFIG_FLAG_ADDR 96
 
 typedef struct {
-  int16_t audioData[160];
+  int16_t audioData[1024];
   size_t sampleCount;
   uint32_t timestamp;
   int roomID;
@@ -110,7 +110,7 @@ bool connectToWiFi() {
 
   int attempts = 0;
 
-  while (WiFi.status() != WL_CONNECTED && attempts < 100) {
+  while (WiFi.status() != WL_CONNECTED && attempts < 50) {
     delay(500);
     Serial.print(".");
     attempts++;
@@ -594,6 +594,6 @@ void loop() { //loops
       sendResetSignal();
     }
 
-    delay(1000); 
+    delay(5); 
   }
 }

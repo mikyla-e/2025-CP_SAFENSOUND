@@ -13,22 +13,24 @@
 #define TOTAL_SAMPLES (SAMPLE_RATE * AUDIO_DURATION)
 #define BUFFER_SIZE 160
 
+#define MIC_CHANNEL_RIGHT 0 // Set to 1 if using right channel, 0 for left channel
+
 extern void prepareAudio(int16_t* audio, size_t sampleCount);
 
 i2s_config_t i2s_config = {
     .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
     .sample_rate = SAMPLE_RATE,
-    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+    .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
+    .channel_format = MIC_CHANNEL_RIGHT ? I2S_CHANNEL_FMT_ONLY_RIGHT
+                                        : I2S_CHANNEL_FMT_ONLY_LEFT,
     .communication_format = I2S_COMM_FORMAT_STAND_I2S,
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-    .dma_buf_count = 4,
+    .dma_buf_count = 8,
     .dma_buf_len = BUFFER_SIZE,
-    .use_apll = false,
+    .use_apll = true,
     .tx_desc_auto_clear = false,
     .fixed_mclk = 0
 };
-
 
 i2s_pin_config_t pin_config = {
     .bck_io_num = I2S_SCK,
@@ -54,38 +56,19 @@ void setupAudio(){
         Serial.println("I2S pin set.");
     }
     
-    int16_t test_buffer[BUFFER_SIZE];
+    i2s_set_clk(I2S_PORT, SAMPLE_RATE, I2S_BITS_PER_CHAN_32BIT, I2S_CHANNEL_MONO);
+
+
+
     size_t bytes_read = 0;
 
-    Serial.println("Checking microphone connection...");
-    result = i2s_read(I2S_PORT, test_buffer, sizeof(test_buffer), &bytes_read, 100 / portTICK_PERIOD_MS); // 100ms timeout
-
-    if (result != ESP_OK || bytes_read == 0) {
-        Serial.println("Error: No data read from microphone. Please check the connection.");
-        return;
+    int32_t discard[BUFFER_SIZE];
+    size_t br = 0;
+    for (int i = 0; i < 8; ++i) {
+        i2s_read(I2S_PORT, discard, sizeof(discard), &br, 20 / portTICK_PERIOD_MS);
+        delay(5);
     }
-
-    while(true) {
-        result = i2s_read(I2S_PORT, test_buffer, sizeof(test_buffer), &bytes_read, 100 / portTICK_PERIOD_MS); // 100ms timeout
-
-        if (result == ESP_OK && bytes_read > 0) {
-            bool valid_data = false;
-            for (int i = 0; i < bytes_read / sizeof(int16_t); i++) {
-            if (test_buffer[i] != 0) {
-                    valid_data = true;
-                    break;
-                }
-            }
-
-            if (valid_data) {
-                Serial.println("Microphone connected and ready.");
-                break;
-            }
-        } 
-        Serial.println("Waiting for valid microphone data...");
-        delay(1000);
-    }
-
+    Serial.println("I2S microphone ready.");
 }
 
 void processAudioRecording(){
@@ -103,7 +86,11 @@ void processAudioRecording(){
     
         for (int i = 0; i < samples_read && samples_collected < TOTAL_SAMPLES; i++) {
             Serial.printf("%d ", audio[i]);
-            audio_buffer[samples_collected++] = audio[i];
+            int32_t s32 = audio[i] >> 8;
+            if (s32 > 32767) s32 = 32767;
+            if (s32 < -32768) s32 = -32768;
+            audio_buffer[samples_collected++] = (int16_t)s32;
+            //audio_buffer[samples_collected++] = audio[i];
         }
 
         if (samples_collected >= TOTAL_SAMPLES) {
@@ -121,5 +108,5 @@ void processAudioRecording(){
         }
     }
 
-    delay(100);
+    delay(1000);
 }
