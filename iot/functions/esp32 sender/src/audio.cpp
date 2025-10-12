@@ -4,14 +4,14 @@
 #include "esp_heap_caps.h"
 
 #define I2S_PORT I2S_NUM_0
-#define I2S_SCK 26
-#define I2S_WS 25
+#define I2S_SCK 14
+#define I2S_WS 15
 #define I2S_SD 32
 
-#define AUDIO_DURATION 2
+#define AUDIO_DURATION 5
 #define SAMPLE_RATE 16000
 #define TOTAL_SAMPLES (SAMPLE_RATE * AUDIO_DURATION)
-#define BUFFER_SIZE 160
+#define BUFFER_SIZE 256
 
 #define MIC_CHANNEL_RIGHT 0 // Set to 1 if using right channel, 0 for left channel
 
@@ -21,13 +21,12 @@ i2s_config_t i2s_config = {
     .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
     .sample_rate = SAMPLE_RATE,
     .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
-    .channel_format = MIC_CHANNEL_RIGHT ? I2S_CHANNEL_FMT_ONLY_RIGHT
-                                        : I2S_CHANNEL_FMT_ONLY_LEFT,
-    .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+    .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
+    .communication_format = I2S_COMM_FORMAT_STAND_MSB,
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
     .dma_buf_count = 8,
-    .dma_buf_len = BUFFER_SIZE,
-    .use_apll = true,
+    .dma_buf_len = 1024,
+    .use_apll = false,
     .tx_desc_auto_clear = false,
     .fixed_mclk = 0
 };
@@ -39,7 +38,54 @@ i2s_pin_config_t pin_config = {
     .data_in_num = I2S_SD
 };
 
+void debug_print_raw() {
+  const int WORDS = 32;
+  int32_t audio_buf[WORDS];
+  size_t br = 0;
+  esp_err_t res = i2s_read(I2S_PORT, audio_buf, sizeof(audio_buf), &br, 200 / portTICK_PERIOD_MS);
+  Serial.printf("i2s_read res=%d bytes=%u words=%u\n", (int)res, (unsigned)br, (unsigned)(br/4));
+  if (res == ESP_OK && br > 0) {
+    int words = br / sizeof(int32_t);
+    Serial.printf("raw %d words (pairs shown as L,R):\n", words);
+    for (int i = 0; i < words; i += 2) {
+      uint32_t L = (uint32_t)audio_buf[i];
+      uint32_t R = (i+1 < words) ? (uint32_t)audio_buf[i+1] : 0;
+      Serial.printf("[%02d] L=0x%08X %d   R=0x%08X %d\n", i/2, L, (int32_t)L, R, (int32_t)R);
+    }
+  } else {
+    Serial.println("No data or read failed.");
+  }
+}
+
+void print_pin_levels() {
+  int sck = gpio_get_level((gpio_num_t)I2S_SCK);
+  int ws  = gpio_get_level((gpio_num_t)I2S_WS);
+  int sd  = gpio_get_level((gpio_num_t)I2S_SD);
+  Serial.printf("GPIO levels SCK=%d WS=%d SD=%d\n", sck, ws, sd);
+}
+
+void test_pin_output() {
+    // Temporarily configure as GPIO output
+    pinMode(I2S_SCK, OUTPUT);
+    pinMode(I2S_WS, OUTPUT);
+    pinMode(I2S_SD, INPUT);
+    
+    Serial.println("Testing pin output capability:");
+    for (int i = 0; i < 5; i++) {
+        digitalWrite(I2S_SCK, HIGH);
+        digitalWrite(I2S_WS, HIGH);
+        delay(100);
+        print_pin_levels();
+        
+        digitalWrite(I2S_SCK, LOW);
+        digitalWrite(I2S_WS, LOW);
+        delay(100);
+        print_pin_levels();
+    }
+}
+
 void setupAudio(){
+    
     esp_err_t result = i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
     if (result != ESP_OK) {
         Serial.printf("Error installing I2S driver: %d\n", result);
@@ -55,58 +101,68 @@ void setupAudio(){
     } else {
         Serial.println("I2S pin set.");
     }
-    
-    i2s_set_clk(I2S_PORT, SAMPLE_RATE, I2S_BITS_PER_CHAN_32BIT, I2S_CHANNEL_MONO);
 
+    i2s_set_clk(I2S_PORT, SAMPLE_RATE, I2S_BITS_PER_SAMPLE_32BIT, I2S_CHANNEL_MONO);
 
+    i2s_zero_dma_buffer(I2S_PORT);
+    i2s_start(I2S_PORT);
+    delay(100);
+
+    print_pin_levels();
 
     size_t bytes_read = 0;
 
-    int32_t discard[BUFFER_SIZE];
+    int32_t discard[1024];
     size_t br = 0;
-    for (int i = 0; i < 8; ++i) {
-        i2s_read(I2S_PORT, discard, sizeof(discard), &br, 20 / portTICK_PERIOD_MS);
-        delay(5);
+    for (int i = 0; i < 15; ++i) {
+        result = i2s_read(I2S_PORT, discard, sizeof(discard), &br, 200 / portTICK_PERIOD_MS);
+        Serial.printf("Warm read %d: res=%d bytes=%u\n", i, (int)result, (unsigned)br);
+        
+        if (br > 0 && i > 5) {
+            Serial.printf("  Sample data: 0x%08X 0x%08X 0x%08X\n", 
+                         (uint32_t)discard[0], (uint32_t)discard[1], (uint32_t)discard[2]);
+        }
+        delay(20);
     }
+
+    print_pin_levels();
     Serial.println("I2S microphone ready.");
+
+    debug_print_raw();
 }
 
+#define CHUNK_SAMPLES 16000
+#define CHUNKS_PER_RECORDING 5
+
 void processAudioRecording(){
-    static int16_t audio_buffer[TOTAL_SAMPLES];
-
+    static int16_t audio_buffer[CHUNK_SAMPLES];
     static size_t samples_collected = 0;
+    static int chunk_count = 0;
 
-    int16_t audio[BUFFER_SIZE];
+    int32_t audio[BUFFER_SIZE];
     size_t bytes_read;
 
     esp_err_t result = i2s_read(I2S_PORT, audio, sizeof(audio), &bytes_read, portMAX_DELAY);
     if (result == ESP_OK && bytes_read > 0) {
-        int samples_read = bytes_read / sizeof(int16_t);
-        Serial.printf("Read %d samples from I2S\n", samples_read);
+        int samples_read = bytes_read / sizeof(int32_t);
     
-        for (int i = 0; i < samples_read && samples_collected < TOTAL_SAMPLES; i++) {
-            Serial.printf("%d ", audio[i]);
+        for (int i = 0; i < samples_read && samples_collected < CHUNK_SAMPLES; i++) {
             int32_t s32 = audio[i] >> 8;
             if (s32 > 32767) s32 = 32767;
             if (s32 < -32768) s32 = -32768;
             audio_buffer[samples_collected++] = (int16_t)s32;
-            //audio_buffer[samples_collected++] = audio[i];
         }
 
-        if (samples_collected >= TOTAL_SAMPLES) {
-            Serial.println("Audio recording complete.");
-
-            long sum = 0;
-            for (size_t i = 0; i < TOTAL_SAMPLES; i++) {
-                sum += abs(audio_buffer[i]);
-            }
-            int average_amplitude = sum / TOTAL_SAMPLES;
-            Serial.printf("Average amplitude: %d\n", average_amplitude);
-
+        if (samples_collected >= CHUNK_SAMPLES) {
+            prepareAudio(audio_buffer, CHUNK_SAMPLES);
+            
             samples_collected = 0;
-            prepareAudio(audio_buffer, TOTAL_SAMPLES);
+            chunk_count++;
+            
+            if (chunk_count >= CHUNKS_PER_RECORDING) {
+                Serial.println("Full 5-second recording sent in chunks.");
+                chunk_count = 0;
+            }
         }
     }
-
-    delay(1000);
 }
