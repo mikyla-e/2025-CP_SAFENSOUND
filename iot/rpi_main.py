@@ -5,6 +5,8 @@ import time
 from time import sleep
 import datetime
 import json
+import struct
+import wave
 
 # --- networking ---
 import socket
@@ -185,41 +187,99 @@ def receive_audio_data():
     sock.bind(('0.0.0.0', 8081))
     sock.settimeout(1.0)
 
+    audio_chunks = {}
+    chunk_timestamps = {}
+    EXPECTED_TOTAL_SAMPLES = 80000
+
+    last_packet_time = time.time()
+
     while not stop_event.is_set():
         try:
+            data, addr = sock.recvfrom(65536)
+
+            if len(data) < 12:
+                print(f"Received packet too small from {addr}: {len(data)} bytes")
+                continue
+
+            room_id = int.from_bytes(data[0:4], 'little')
+            timestamp = int.from_bytes(data[4:8], 'little')
+            chunk_samples = int.from_bytes(data[8:12], 'little')
+
+            audio_chunk = np.frombuffer(data[12:], dtype=np.int16)
+            print(f"Room {room_id}: Received {len(audio_chunk)} samples (Expected: {chunk_samples})")
+
+            if room_id not in audio_chunks:
+                audio_chunks[room_id] = []
+                chunk_timestamps[room_id] = time.time()
+
+            audio_chunks[room_id].append(audio_chunk)
+            total_samples = sum(len(chunk) for chunk in audio_chunks[room_id])
+
+            print(f"Room {room_id}: Total samples received so far: {total_samples}/{EXPECTED_TOTAL_SAMPLES}")
+
+            if total_samples >= EXPECTED_TOTAL_SAMPLES:
+                print(f"✅ Received complete audio data: {total_samples} samples from Room {room_id}")
+                full_audio = np.concatenate(audio_chunks[room_id])[:EXPECTED_TOTAL_SAMPLES]
+                
+                # Save the audio as a WAV file
+                datetime_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                wav_filename = f"recorded_audio/Room{room_id}_{datetime_str}.wav"
+                save_wav(wav_filename, full_audio, sample_rate)
+
+                # Process the audio
+                thread = threading.Thread(
+                    target=process_audio,
+                    args=(full_audio, room_id, timestamp)
+                )
+                thread.start()
+
+                # Reset buffer for the next transmission
+                del audio_chunks[rid]
+                del chunk_timestamps[rid]
+
+            last_packet_time = time.time()
+            for rid in list(chunk_timestamps.keys()):
+                if last_packet_time - chunk_timestamps[rid] > 40:
+                    print(f"⏱️ Timeout: Discarding incomplete recording from room {rid}")
+                    del audio_chunks[rid]
+                    del chunk_timestamps[rid]
+                    
+
             # print("Audio data receiver is running...")
 
-            data, addr = sock.recvfrom(4096)
-            if not data:
-                continue
-            try:
-                audio_data = json.loads(data.decode('utf-8'))
-            except json.JSONDecodeError:
-                print(f"Invalid JSON received from {addr}: {data}")
-                continue
+            # data, addr = sock.recvfrom(4096)
+            # if not data:
+            #     continue
+            # try:
+            #     audio_data = json.loads(data.decode('utf-8'))
+            # except json.JSONDecodeError as e:
+            #     print(f"Invalid JSON received from {addr}: {data[:100]}... Error: {e}")
+            #     continue
 
-            room_id = audio_data.get('roomID')
-            timestamp = audio_data.get('timestamp')
-            audio_samples = audio_data.get('audioData')
+            # room_id = audio_data.get('roomID')
+            # timestamp = audio_data.get('timestamp')
+            # audio_samples = audio_data.get('audioData')
 
-            if not room_id or not timestamp or not audio_samples:
-                print(f"Incomplete data received from {addr}: {audio_data}")
-                continue
-            if len(audio_samples) == 0:
-                print(f"No audio samples received from {addr}")
-                continue
+            # if not room_id or not timestamp or not audio_samples:
+            #     print(f"Incomplete data received from {addr}: {audio_data}")
+            #     continue
+            # if len(audio_samples) == 0:
+            #     print(f"No audio samples received from {addr}")
+            #     continue
 
-            print(f"Received audio data {len(audio_samples)} from {addr}: Room {room_id}")
+            # print(f"Received audio data {len(audio_samples)} from {addr}: Room {room_id}")
 
-            thread = threading.Thread(
-                target=process_audio,
-                args=(audio_samples, room_id, timestamp)
-            )
-            thread.start()
+            # thread = threading.Thread(
+            #     target=process_audio,
+            #     args=(audio_samples, room_id, timestamp)
+            # )
+            # thread.start()
         except socket.timeout:
             continue
         except Exception as e:
             print(f"Audio Data - UDP error: {e}")
+            import traceback
+            traceback.print_exc()
 
     sock.close()
     print("Audio data receiver stopped.")
@@ -279,6 +339,27 @@ def receive_reset_signals():
             
     sock.close()
     print("Reset signal receiver stopped.")
+
+def save_wav(filename, audio_data, sample_rate):
+    """Save int16 audio data as WAV file"""
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+    if not isinstance(audio_data, np.ndarray):
+        audio_data = np.array(audio_data, dtype=np.int16)
+
+    try:
+        with wave.open(filename, 'w') as wav_file:
+            wav_file.setnchannels(1)  # Mono
+            wav_file.setsampwidth(2)  # 2 bytes = 16-bit
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(audio_data.tobytes())
+
+        print(f"✅ Audio saved: {filename}")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to save WAV: {e}")
+        return False
+    
 
 # audio processing and inference --------------------
 def process_audio(audio_data_int16, room_id=None, timestamp=None):

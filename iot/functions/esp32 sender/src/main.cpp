@@ -7,6 +7,7 @@
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 #include <WiFiUdp.h>
+#include "driver/gpio.h"
 
 const char* ssid_ap = "SafeNSound_ESP32"; //ssid
 const char* password_ap = ""; //password
@@ -27,7 +28,7 @@ bool wifi_configured = false;
 #define CONFIG_FLAG_ADDR 96
 
 typedef struct {
-  int16_t audioData[1024];
+  int16_t audioData[16000];
   size_t sampleCount;
   uint32_t timestamp;
   int roomID;
@@ -498,6 +499,8 @@ void setup() { // esp setup
   Serial.begin(115200);
   EEPROM.begin(512);
 
+  delay(1000); // Give time for serial to initialize
+
   loadWiFiCredentials();
 
   if (wifi_configured && connectToWiFi()) {
@@ -516,31 +519,59 @@ void setup() { // esp setup
 
 void sendData() {
   if (audioReady && WiFi.status() == WL_CONNECTED) {
-    udp.beginPacket(laptop_ip.c_str(), 8081);
+    // udp.beginPacket(laptop_ip.c_str(), 8081);
 
-    JsonDocument jsonDoc;
-    jsonDoc["roomID"] = room_id;
-    jsonDoc["timestamp"] = audioRecording.timestamp;
-    jsonDoc["sampleCount"] = audioRecording.sampleCount;
+    // StaticJsonDocument<1024> jsonDoc;
+    // jsonDoc["roomID"] = room_id;
+    // jsonDoc["timestamp"] = audioRecording.timestamp;
+    // jsonDoc["sampleCount"] = audioRecording.sampleCount;
 
-    JsonArray audioArray = jsonDoc["audioData"].to<JsonArray>();
-    for (size_t i = 0; i < audioRecording.sampleCount; i++) {
-      audioArray.add(audioRecording.audioData[i]);
+    // JsonArray audioArray = jsonDoc["audioData"].to<JsonArray>();
+    // for (size_t i = 0; i < audioRecording.sampleCount; i++) {
+    //   audioArray.add(audioRecording.audioData[i]);
+    // }
+
+    // String sendAudioData;
+    // serializeJson(jsonDoc, sendAudioData);
+
+    // udp.print(sendAudioData);
+
+    size_t maxPacketSize = 1400;
+    size_t headerSize = 12;
+    // size_t audioSize = audioRecording.sampleCount * sizeof(int16_t);
+    size_t maxAudioSize = maxPacketSize - headerSize;
+    size_t maxSamplesPerPacket = maxAudioSize / sizeof(int16_t);
+
+    size_t totalSamples = audioRecording.sampleCount;
+    size_t samplesSent = 0;
+
+    while (samplesSent < totalSamples) {
+      size_t samplesToSend = min(maxSamplesPerPacket, totalSamples - samplesSent);
+      size_t packetSize = headerSize + samplesToSend * sizeof(int16_t);
+
+      uint8_t* buffer = (uint8_t*)malloc(packetSize);
+      if (!buffer) {
+        Serial.println("❌ Failed to allocate buffer");
+        return;
+      }
+
+      memcpy(buffer, &room_id, 4);
+      memcpy(buffer + 4, &audioRecording.timestamp, 4);
+      memcpy(buffer + 8, &samplesToSend, 4);
+      memcpy(buffer + headerSize, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
+
+      udp.beginPacket(laptop_ip.c_str(), 8081);
+      udp.write(buffer, packetSize);
+      udp.endPacket();
+      
+      free(buffer);
+
+      samplesSent += samplesToSend;
+          
+      delay(1);
     }
 
-    String sendAudioData;
-    serializeJson(jsonDoc, sendAudioData);
-
-    udp.print(sendAudioData);
-
-    int result = udp.endPacket();
-        
-    if (result) {
-        Serial.println("✅ Sent");
-    } else {
-        Serial.println("❌ Failed");
-    }
-
+    Serial.println("✅ All packets sent");
     audioReady = false;
   }
 }
@@ -558,7 +589,6 @@ void prepareAudio(int16_t* audio, size_t sampleCount) { //prepare audio data to 
   audioReady = true;
 
   Serial.printf("Audio ready: %d samples, %d bytes\n", copyCount, copyCount * sizeof(int16_t));
-
 }
 
 void sendResetSignal() {
