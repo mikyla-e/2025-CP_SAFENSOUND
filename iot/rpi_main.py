@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 import struct
 import wave
+import traceback
 
 # --- networking ---
 import socket
@@ -288,7 +289,6 @@ def receive_audio_data():
             continue
         except Exception as e:
             print(f"Audio Data - UDP error: {e}")
-            import traceback
             traceback.print_exc()
 
     sock.close()
@@ -499,9 +499,9 @@ def trigger_alarm(room_id=None):
         try:
             retry = 0
             while retry < 3:
-                # success_web = asyncio.run(send_alert_web(room_id, action))
+                success_web = asyncio.run(send_alert_web(room_id, action))
                 success_esp32 = asyncio.run(send_alert_esp(room_id, action))
-                if success_esp32: # and success_web:
+                if success_esp32 and success_web:
                     print(f"Sent emergency alert from {room_id}")
                     break
                 else:
@@ -509,9 +509,9 @@ def trigger_alarm(room_id=None):
                     sleep(2)
 
                     retry += 1
-                    # success_web = asyncio.run(send_alert_web(room_id, action))
+                    success_web = asyncio.run(send_alert_web(room_id, action))
                     success_esp32 = asyncio.run(send_alert_esp(room_id, action))
-                    if retry == 3 and not success_esp32: # and not success_web:
+                    if retry == 3 and not success_esp32 and not success_web:
                         print("Failed to send alert after 3 attempts.")
 
         except Exception as e:
@@ -529,13 +529,14 @@ async def send_alert_web(room_id, action=None):
             }
 
             async with aiohttp.ClientSession() as session:
-                async with session.post("http://localhost:5000/api/alert", json=payload_web, timeout=2) as response:
+                async with session.post("http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
                     if response.status == 200:
                         print(f"Alert sent to Web Dashboard for Room {room_id}")
                         success_web = True
 
         except Exception as e:
             print("Failed to send alert to Web Dashboard:", e)
+            traceback.print_exc()
 
     return success_web
 
@@ -593,7 +594,7 @@ async def send_reset(room_id, action=None):
             }
 
             async with aiohttp.ClientSession() as session:
-                async with session.post("http://localhost:5000/api/alert", json=payload_web, timeout=2) as response:
+                async with session.post("http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
                     if response.status == 200:
                         print(f"Reset command sent to Web Dashboard for Room {room_id}")
                         success_web = True
