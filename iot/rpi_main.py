@@ -3,7 +3,7 @@ import sys
 import os
 import time
 from time import sleep
-import datetime
+from datetime import datetime
 import json
 import struct
 import wave
@@ -83,7 +83,7 @@ emergency_detected = False
 
 # esp32_receiver_ip = None
 esp32_serial = None
-esp32_port = "COM5"
+esp32_port = "COM9"
 
 stop_event = threading.Event()
 
@@ -146,14 +146,24 @@ def init_esp32_serial():
         time.sleep(2)
         print(f"Connected to ESP32 on {esp32_port}")
 
-        esp32_serial.write(b'STATUS\n')
-        response = esp32_serial.readline().decode('utf-8').strip()
-        print(f"Received from ESP32: {response}")
+        ready = False
+        for _ in range(11):
+            line = esp32_serial.readline().decode('utf-8').strip()
+            if "Receiver ready!" in line:
+                print(f"Received from ESP32: {line}")
+                ready = True
+                break
+            time.sleep(0.5)
+        if not ready:
+            print("ESP32 did not send 'Receiver ready!' message.")
+            return False
+        
         return True
 
     except Exception as e:
         print(f"Failed to connect to ESP32 on {esp32_port}: {e}")
         esp32_serial = None
+        return False
 
 
 # audio recording and receiving --------------------
@@ -407,8 +417,15 @@ def extract_features(audio, sample_rate, max_len=160):
         else:
             feature = feature[:, :max_len]
         
-        feature = feature.flatten()
-        extracted_features.append(feature)
+        feature_stat = [
+            np.mean(feature, axis=1),
+            np.std(feature, axis=1),
+            np.min(feature, axis=1),
+            np.max(feature, axis=1)
+        ]
+        
+        for stat in feature_stat:
+            extracted_features.append(stat.flatten())
 
     return np.concatenate(extracted_features)
 
@@ -428,7 +445,7 @@ def inference(audio, wav_name, room_id=None):
     # alarming sound = 4 times before emergency is confirmed
     # emergency sound = 2 times after emergency is confirmed
 
-    print(f"Prediction for {wav_name}: ")
+    print(f"\nPrediction for {wav_name}: ")
 
     if predicted_class == 1:
         alarming_count += 1
@@ -468,6 +485,8 @@ def trigger_alarm(room_id=None):
     # trigger alarm if emergency was detected
     global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_esp32
 
+    alarming_count = 0
+    emergency_count = 0
     nonemergency_count = 0
 
     if (emergency_detected == True):
@@ -480,42 +499,28 @@ def trigger_alarm(room_id=None):
         try:
             retry = 0
             while retry < 3:
-                success_web, success_esp32 = asyncio.run(send_alert(room_id, action))
-                if success_web and success_esp32:
+                # success_web = asyncio.run(send_alert_web(room_id, action))
+                success_esp32 = asyncio.run(send_alert_esp(room_id, action))
+                if success_esp32: # and success_web:
                     print(f"Sent emergency alert from {room_id}")
                     break
                 else:
                     print("Failed to send alert. Retrying...")
                     sleep(2)
+
                     retry += 1
-                    success_web, success_esp32 = asyncio.run(send_alert(room_id, action))
-                    if retry == 3 and not success_web and not success_esp32:
+                    # success_web = asyncio.run(send_alert_web(room_id, action))
+                    success_esp32 = asyncio.run(send_alert_esp(room_id, action))
+                    if retry == 3 and not success_esp32: # and not success_web:
                         print("Failed to send alert after 3 attempts.")
+
         except Exception as e:
             print(f"Error sending alert: {e}")
 
-async def send_alert(room_id, action=None):
+async def send_alert_web(room_id, action=None):
     success_web = False
-    success_esp32 = False
 
     if "Emergency Detected" in action:
-        # esp32
-        try:
-            if esp32_serial and esp32_serial.is_open:
-                command = f"ALERT: {room_id}\n"
-                esp32_serial.write(command.encode())
-                
-                response = esp32_serial.readline().decode().strip()
-                if response:
-                    print(f"Received from ESP32: {response}")
-                
-                success_esp32 = True
-            else:
-                print("Serial port not open.")
-
-        except Exception as e:
-            print("Failed to send alert to ESP32 receiver:", e)
-
         # web
         try:
             payload_web = {
@@ -532,7 +537,34 @@ async def send_alert(room_id, action=None):
         except Exception as e:
             print("Failed to send alert to Web Dashboard:", e)
 
-    return success_web, success_esp32
+    return success_web
+
+async def send_alert_esp(room_id, action=None):
+    success_esp32 = False
+
+    if "Emergency Detected" in action:
+        # esp32
+        try:
+            if esp32_serial and esp32_serial.is_open:
+                command = f"ALERT: {room_id}\n"
+                print(command)
+                esp32_serial.write(command.encode())
+
+                responses = []
+                responses.append(esp32_serial.readline().decode().strip())
+                if responses:
+                    for response in responses:
+                        print(f"Received from ESP32: {response}")
+
+                success_esp32 = True
+            else:
+                print("Serial port not open.")
+
+        except Exception as e:
+            print("Failed to send alert to ESP32 receiver:", e)
+
+    return success_esp32
+
 
 async def send_reset(room_id, action=None):
     success_web = False
@@ -579,10 +611,10 @@ async def main_loop():
         await asyncio.sleep(1)
 
 if __name__ == "__main__":
-    # if not init_esp32_serial():
-    #     print("Exiting due to Receiver connection failure.")
-    #     exit(1)
-    # else:
+    if not init_esp32_serial():
+        print("Exiting due to Receiver connection failure.")
+        exit(1)
+
     print("Receiver connected successfully.")
 
     discovery_server = LaptopDiscoverServer()
@@ -600,14 +632,34 @@ if __name__ == "__main__":
     print(f"Audio receiver: Port 8081")
     print(f"Reset signal: Port 8082")
     print("=" * 60)
-    
-    # Main loop for local recording
-    # while True:
-    #     audio_data, audio_wav = get_audio_local()
-    #     if audio_data is not None and audio_wav is not None:
-    #         inference(audio_data, audio_wav)
-    #     time.sleep(1)
 
+    trigger = 0
+    while True:
+        # Main loop for local recording
+        # audio_data, audio_wav = get_audio_local()
+        # if audio_data is not None and audio_wav is not None:
+        #     inference(audio_data, audio_wav)
+
+        # Main loop for dataset
+        while trigger < 4:
+            audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+            audio_wav = "wav name"
+            room_no = 1
+
+            audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+            inference(audio_data, audio_wav, room_no)
+
+            time.sleep(1)
+            print(f"Next audio... {trigger}")
+
+            trigger += 1
+
+        else:
+            audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
+
+            audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+            inference(audio_data, audio_wav, room_no)
+            time.sleep(1)
     try:
         asyncio.run(main_loop())
 
@@ -620,4 +672,4 @@ if __name__ == "__main__":
         if esp32_serial and esp32_serial.is_open:
             esp32_serial.close()
         print("\nPorts closed successfully.")
-        
+

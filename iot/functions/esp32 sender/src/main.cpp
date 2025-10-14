@@ -499,7 +499,7 @@ void setup() { // esp setup
   Serial.begin(115200);
   EEPROM.begin(512);
 
-  delay(1000); // Give time for serial to initialize
+  delay(1000);
 
   loadWiFiCredentials();
 
@@ -513,6 +513,8 @@ void setup() { // esp setup
     startCaptivePortal();
     return;
   }
+
+  setupAudio();
 }
 
 ///////////////////////////////////////////////////////////

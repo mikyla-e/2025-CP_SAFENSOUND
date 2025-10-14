@@ -3,7 +3,7 @@
 #include "audio.h"
 #include "esp_heap_caps.h"
 
-#define I2S_PORT I2S_NUM_0
+#define I2S_PORT I2S_NUM_1
 #define I2S_SCK 26 //BCLK
 #define I2S_WS 25 //LRCLK
 #define I2S_SD 32 //DOUT
@@ -22,7 +22,7 @@ i2s_config_t i2s_config = {
     .sample_rate = SAMPLE_RATE,
     .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
     .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-    .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+    .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
     .dma_buf_count = 8,
     .dma_buf_len = 1024,
@@ -86,67 +86,30 @@ void print_pin_levels() {
   Serial.printf("GPIO levels SCK=%d WS=%d SD=%d\n", sck, ws, sd);
 }
 
-void verify_i2s_clocks() {
-    // Set up interrupt to check if clock is toggling
-    static volatile int sck_toggles = 0;
-    static volatile int ws_toggles = 0;
-    
-    Serial.println("Checking I2S clock signals for 100ms...");
-    
-    // Sample the pins rapidly
-    int last_sck = gpio_get_level((gpio_num_t)I2S_SCK);
-    int last_ws = gpio_get_level((gpio_num_t)I2S_WS);
-    
-    unsigned long start = millis();
-    while (millis() - start < 100) {
-        int cur_sck = gpio_get_level((gpio_num_t)I2S_SCK);
-        int cur_ws = gpio_get_level((gpio_num_t)I2S_WS);
-        
-        if (cur_sck != last_sck) {
-            sck_toggles++;
-            last_sck = cur_sck;
-        }
-        if (cur_ws != last_ws) {
-            ws_toggles++;
-            last_ws = cur_ws;
-        }
-        delayMicroseconds(10);
-    }
-    
-    Serial.printf("Clock toggles detected - SCK: %d, WS: %d\n", sck_toggles, ws_toggles);
-    
-    if (sck_toggles < 100) {
-        Serial.println("WARNING: SCK clock not toggling properly!");
-    }
-    if (ws_toggles < 10) {
-        Serial.println("WARNING: WS clock not toggling properly!");
-    }
-}
-
-void test_pin_output() {
-    // Temporarily configure as GPIO output
-    pinMode(I2S_SCK, OUTPUT);
-    pinMode(I2S_WS, OUTPUT);
-    pinMode(I2S_SD, INPUT);
-    
-    Serial.println("Testing pin output capability:");
-    for (int i = 0; i < 5; i++) {
-        digitalWrite(I2S_SCK, HIGH);
-        digitalWrite(I2S_WS, HIGH);
-        delay(100);
-        print_pin_levels();
-        
-        digitalWrite(I2S_SCK, LOW);
-        digitalWrite(I2S_WS, LOW);
-        delay(100);
-        print_pin_levels();
-    }
-}
-
 void setupAudio(){
     gpio_reset_pin((gpio_num_t)I2S_SCK);
     gpio_reset_pin((gpio_num_t)I2S_WS);
     gpio_reset_pin((gpio_num_t)I2S_SD);
+
+    Serial.println("Testing GPIO output capability...");
+    pinMode(I2S_SCK, OUTPUT);
+    pinMode(I2S_WS, OUTPUT);
+    digitalWrite(I2S_SCK, HIGH);
+    digitalWrite(I2S_WS, HIGH);
+    delay(100);
+    Serial.printf("Manual test - SCK=%d WS=%d\n", 
+                digitalRead(I2S_SCK), digitalRead(I2S_WS));
+    digitalWrite(I2S_SCK, LOW);
+    digitalWrite(I2S_WS, LOW);
+    delay(100);
+    Serial.printf("Manual test - SCK=%d WS=%d\n", 
+    digitalRead(I2S_SCK), digitalRead(I2S_WS));
+
+    gpio_reset_pin((gpio_num_t)I2S_SCK);
+    gpio_reset_pin((gpio_num_t)I2S_WS);
+    gpio_reset_pin((gpio_num_t)I2S_SD);
+
+    ////////////////////////////////////////////////////////
     
     esp_err_t result = i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
     if (result != ESP_OK) {
@@ -173,12 +136,14 @@ void setupAudio(){
     }
 
     i2s_zero_dma_buffer(I2S_PORT);
-    i2s_start(I2S_PORT);
-    delay(100);
 
-    verify_i2s_clocks();
+    i2s_start(I2S_PORT);
+    Serial.println("I2S start called.");
+    delay(500);
+
     print_pin_levels();
 
+    //////////////////////////////////////////////////////////////////////
     size_t bytes_read = 0;
 
     int32_t discard[1024];
