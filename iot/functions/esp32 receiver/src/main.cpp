@@ -1,11 +1,11 @@
 #include <Arduino.h>
 
-#define BUZZER_PIN 25
-#define LED_PIN 26
+#define BUZZER_PIN 23
+#define LED_PIN 22
 
 bool alarmActive = false;
 unsigned long alarmStartTime = 0;
-const unsigned long ALARM_DURATION = 120000; // 1 minute
+const unsigned long ALARM_DURATION = 120000; // 120 seconds
 
 
 void setup() {
@@ -37,9 +37,9 @@ void resetAlarm() {
 void processCommand() {
   if (Serial.available()) {
     String command = Serial.readStringUntil('\n');
-    command.trim();
+    Serial.println("Received command: " + command);
 
-    if (command.startsWith("ALARM: ")) {
+    if (command.startsWith("ALERT: ")) {
       int roomID = command.substring(7).toInt();
       Serial.printf("Alarm triggered from room %d\n", roomID);
       triggerAlarm();
@@ -48,11 +48,8 @@ void processCommand() {
       int roomID = command.substring(7).toInt();
       Serial.printf("Reset command received from room %d\n", roomID);
       resetAlarm();
-    } 
-    else if (command == "STATUS") {
-      Serial.println(alarmActive ? "ALARM ACTIVE" : "NO ALARM");
     } else {
-      Serial.println("UNKNOWN COMMAND");
+      Serial.println("UNKNOWN COMMAND: " + command + ". Ignored.");
     }
 
   }
@@ -67,8 +64,8 @@ void autoReset() {
 
 ///////////////////////////////////////////////////////////////
 
-void loop() {
+void loop() { 
   processCommand();
   // autoReset();
-  delay(100);
+  delay(5);
 }

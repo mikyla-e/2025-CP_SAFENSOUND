@@ -499,14 +499,14 @@ void setup() { // esp setup
   Serial.begin(115200);
   EEPROM.begin(512);
 
-  delay(1000); // Give time for serial to initialize
+  delay(1000);
 
   loadWiFiCredentials();
 
   if (wifi_configured && connectToWiFi()) {
     Serial.println("Connected to saved WiFi.");
     Serial.println("Discovered Main Device IP: " + laptop_ip);
-    setupAudio();
+    // setupAudio();
     setupResetButton();
   } else {
     Serial.println("Failed to connect to saved WiFi. Starting captive portal.");
@@ -592,6 +592,16 @@ void prepareAudio(int16_t* audio, size_t sampleCount) { //prepare audio data to 
 }
 
 void sendResetSignal() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("❌ WiFi not connected!");
+    return;
+  }
+  if (laptop_ip.length() == 0 || laptop_ip == "0.0.0.0") {
+    Serial.println("❌ Invalid laptop IP!");
+    return;
+  }
+  /////
+  
   udp.beginPacket(laptop_ip.c_str(), 8082);
   
   JsonDocument jsonDoc;
@@ -601,6 +611,7 @@ void sendResetSignal() {
   String sendResetData;
   serializeJson(jsonDoc, sendResetData);
 
+  udp.print(sendResetData);
   int result = udp.endPacket();
 
   if (result) {
@@ -615,15 +626,14 @@ void loop() { //loops
     dns.processNextRequest();
     server.handleClient();
   } else {
-    Serial.println("Processing audio...");
-    processAudioRecording();
-    sendData();
-
+    // Serial.println("Processing audio...");
+    // processAudioRecording();
+    // sendData();
     if (processResetButton()) {
       Serial.println("Reset button pressed.");
       sendResetSignal();
     }
 
-    delay(5); 
+    delay(10); 
   }
 }

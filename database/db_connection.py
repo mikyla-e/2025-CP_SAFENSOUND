@@ -31,7 +31,7 @@ class Database:
                     time TIME,
                     room_id INTEGER,
                     FOREIGN KEY (room_id) REFERENCES room (room_id),
-                    CHECK (action IN ('Alarm Reset', 'Emergency Detected'))
+                    CHECK (action IN ('Alert Acknowledged', 'Emergency Detected'))
                 )
             ''')
 
