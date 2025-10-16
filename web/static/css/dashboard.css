@@ -90,7 +90,7 @@ main .rooms-div{
 
 /* all rooms */
 main .rooms{
-    border-radius: 25.683px;
+    border-radius: 20px;
     background-color: white;
     box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
     /* width: 100%; */
@@ -246,7 +246,7 @@ main .stats-div{
 
 /* all stats */
 main .stats-div .stats{
-    border-radius: 18px;
+    border-radius: 15px;
     background-color: white;
     box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
     min-height: 120px;
@@ -332,20 +332,29 @@ aside header h2,
     font-size: clamp(1.2rem, 3vw, 1.5rem);
 }
 
-/* edit button */
-aside header i,
-.popup-aside header i {
-    opacity: .3;
+/* edit button and X icon */
+aside header span,
+.popup-aside header span,
+aside header .fa-pen,
+.popup-aside header .fa-pen {
+    opacity: .5;
 }
 
-aside header i,
+/* edit button */
+aside header .fa-pen,
+.popup-aside header .fa-pen{
+    transform: scaleX(-1);
+}
+
+/* X ICON */
+aside header span,
 .popup-aside header .popup-close{
     font-size: clamp(1.1rem, 2.5vw, 1.3rem);
 }
 
-.popup-aside header .fa-pen{
+/* edit bell icon */
+.popup-aside header .logo{
     font-size: clamp(.8rem, 2vw, 1rem);
-
 }
 
 .popup-aside header div{
@@ -365,7 +374,7 @@ aside .table-div,
     overflow-x: auto;
 
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border-radius: 7px;
+    border-radius: 5px;
 }
 
 /* table */
@@ -376,7 +385,7 @@ aside .table-div table,
 
     border-collapse: collapse;
     background: white;
-    border-radius: 7px;
+    border-radius: 5px;
     overflow: hidden;
 }
 
@@ -397,19 +406,68 @@ aside .title,
 aside table th,
 .popup-aside table th{
     background-color: rgba(136, 143, 167, 0.42);
-    padding: 5px 10px;
+    padding: 7px 10px;
     font-size: clamp(0.8rem, 1.8vw, 0.9rem);
 }
 
 aside table td,
 .popup-aside table td{
-    padding: 5px 10px;
+    padding: 7px 10px;
     font-size: clamp(0.75rem, 1.6vw, 0.85rem);
 }
 
 aside .table-div table tr:nth-child(odd),
 .popup-aside .table-div table tr:nth-child(odd) {
     background-color: rgba(136, 143, 167, 0.10);
+}
+
+/* PAGINATION CONTROLS */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    margin: 18px 0 0 0;
+    font-family: "DM Sans", sans-serif;
+}
+
+.pagination-controls button {
+    background: linear-gradient(133deg, var(--second) 60%, #A9B5DF 120%);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 7px 22px;
+    font-size: clamp(0.75rem, 1.6vw, 0.85rem);
+    font-weight: 500;
+    box-shadow: 0 2px 8px 0 rgba(45, 51, 107, 0.10);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    outline: none;
+    letter-spacing: 0.5px;
+}
+
+.pagination-controls button:active:not(:disabled) {
+    transform: scale(0.97);
+    box-shadow: 0 1px 4px 0 rgba(45, 51, 107, 0.07);
+}
+
+.pagination-controls button:disabled {
+    background: #e0e0e0;
+    color: #bfc3d6;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.pagination-controls span {
+    font-size: clamp(0.75rem, 1.6vw, 0.85rem);
+    color: var(--second);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    background: #f7f7f7;
+    padding: 6px 16px;
+    border-radius: 5px;
+    box-shadow: 0 1px 4px 0 rgba(45, 51, 107, 0.07);
+    border: 1px solid #e0e0e0;
 }
 
 /* ================================ */
@@ -563,7 +621,7 @@ aside .table-div table tr:nth-child(odd),
 }
 
 /* mobile phones */
-@media screen and (max-width: 375px) {
+@media screen and (max-width: 426px) {
     nav{
         padding: 0 clamp(3.5vw, 4vw, 5vw);
 
@@ -646,5 +704,16 @@ aside .table-div table tr:nth-child(odd),
     .popup-aside table td {
         font-size: 0.75rem;
         padding: 8px 6px;
+    }
+}
+
+@media screen and (max-width: 376px) {
+    .popup-aside {
+        width: 100%;
+        max-width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+
+        box-sizing: border-box;
     }
 }
