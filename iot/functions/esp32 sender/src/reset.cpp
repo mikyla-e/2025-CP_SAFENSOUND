@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "reset.h"
 
-#define RESET_BUTTON 21
+#define RESET_BUTTON 15
 
 bool resetButtonPressed = false;
 

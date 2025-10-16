@@ -1,11 +1,11 @@
 #include <Arduino.h>
 
 #define BUZZER_PIN 23
-#define LED_PIN 16
+#define LED_PIN 22
 
 bool alarmActive = false;
 unsigned long alarmStartTime = 0;
-const unsigned long ALARM_DURATION = 5000; // 5 seconds
+const unsigned long ALARM_DURATION = 120000; // 120 seconds
 
 
 void setup() {
@@ -66,6 +66,6 @@ void autoReset() {
 
 void loop() { 
   processCommand();
-  autoReset();
+  // autoReset();
   delay(5);
 }

@@ -170,7 +170,7 @@ def init_esp32_serial():
 # audio recording and receiving --------------------
 def get_audio_local():
     # get audio from microphone
-    date_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     try:
         print("/" * 60 + "\n")
@@ -194,6 +194,9 @@ def get_audio_local():
 
 
 def receive_audio_data():
+    from database.db_connection import Database
+    db = Database()
+    
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', 8081))
     sock.settimeout(1.0)
@@ -233,7 +236,7 @@ def receive_audio_data():
                 full_audio = np.concatenate(audio_chunks[room_id])[:EXPECTED_TOTAL_SAMPLES]
                 
                 # Save the audio as a WAV file
-                datetime_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
                 wav_filename = f"recorded_audio/Room{room_id}_{datetime_str}.wav"
                 save_wav(wav_filename, full_audio, sample_rate)
 
@@ -295,16 +298,19 @@ def receive_audio_data():
     print("Audio data receiver stopped.")
 
 def receive_reset_signals():
+    from database.db_connection import Database
+    db = Database()
+    
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', 8082))
     sock.settimeout(1.0)
+    print("Reset signal receiver is running...")
 
     while not stop_event.is_set():
-        # print("Reset signal receiver is running...")
+        
         try:
             data, addr = sock.recvfrom(1024)
-            if not data:
-                continue
+            print(f"Raw reset packet from {addr}: {data}")
             try:
                 reset_data = json.loads(data.decode('utf-8'))
             except json.JSONDecodeError:
@@ -313,6 +319,7 @@ def receive_reset_signals():
 
             room_id = reset_data.get('roomID')
             action = reset_data.get('action')
+            print(f"Received reset data from {addr}: Room {room_id}, Action: {action}")
             if not room_id or not action:
                 print(f"Incomplete reset data received from {addr}: {reset_data}")
                 continue
@@ -634,36 +641,34 @@ if __name__ == "__main__":
     print(f"Reset signal: Port 8082")
     print("=" * 60)
 
-    trigger = 0
-    while True:
-        # Main loop for local recording
-        # audio_data, audio_wav = get_audio_local()
-        # if audio_data is not None and audio_wav is not None:
-        #     inference(audio_data, audio_wav)
-
-        # Main loop for dataset
-        while trigger < 4:
-            audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-            audio_wav = "wav name"
-            room_no = 1
-
-            audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-            inference(audio_data, audio_wav, room_no)
-
-            time.sleep(1)
-            print(f"Next audio... {trigger}")
-
-            trigger += 1
-
-        else:
-            audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
-
-            audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-            inference(audio_data, audio_wav, room_no)
-            time.sleep(1)
     try:
-        asyncio.run(main_loop())
+        trigger = 0
+        while True:
+            # Main loop for local recording
+            # audio_data, audio_wav = get_audio_local()
+            # if audio_data is not None and audio_wav is not None:
+            #     inference(audio_data, audio_wav)
 
+            # Main loop for dataset
+            while trigger < 4:
+                audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+                audio_wav = "wav name"
+                room_no = 1
+
+                audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+                inference(audio_data, audio_wav, room_no)
+
+                time.sleep(1)
+                print(f"Next audio... {trigger}")
+
+                trigger += 1
+
+            else:
+                audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
+
+                audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+                inference(audio_data, audio_wav, room_no)
+                time.sleep(1)
     except KeyboardInterrupt:
         print("\nExiting...")
         stop_event.set()

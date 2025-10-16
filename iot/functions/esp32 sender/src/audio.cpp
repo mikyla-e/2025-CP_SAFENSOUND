@@ -87,27 +87,27 @@ void print_pin_levels() {
 }
 
 void setupAudio(){
-    gpio_reset_pin((gpio_num_t)I2S_SCK);
-    gpio_reset_pin((gpio_num_t)I2S_WS);
-    gpio_reset_pin((gpio_num_t)I2S_SD);
+    // gpio_reset_pin((gpio_num_t)I2S_SCK);
+    // gpio_reset_pin((gpio_num_t)I2S_WS);
+    // gpio_reset_pin((gpio_num_t)I2S_SD);
 
-    Serial.println("Testing GPIO output capability...");
-    pinMode(I2S_SCK, OUTPUT);
-    pinMode(I2S_WS, OUTPUT);
-    digitalWrite(I2S_SCK, HIGH);
-    digitalWrite(I2S_WS, HIGH);
-    delay(100);
-    Serial.printf("Manual test - SCK=%d WS=%d\n", 
-                digitalRead(I2S_SCK), digitalRead(I2S_WS));
-    digitalWrite(I2S_SCK, LOW);
-    digitalWrite(I2S_WS, LOW);
-    delay(100);
-    Serial.printf("Manual test - SCK=%d WS=%d\n", 
-    digitalRead(I2S_SCK), digitalRead(I2S_WS));
+    // Serial.println("Testing GPIO output capability...");
+    // pinMode(I2S_SCK, OUTPUT);
+    // pinMode(I2S_WS, OUTPUT);
+    // digitalWrite(I2S_SCK, HIGH);
+    // digitalWrite(I2S_WS, HIGH);
+    // delay(100);
+    // Serial.printf("Manual test - SCK=%d WS=%d\n", 
+    //             digitalRead(I2S_SCK), digitalRead(I2S_WS));
+    // digitalWrite(I2S_SCK, LOW);
+    // digitalWrite(I2S_WS, LOW);
+    // delay(100);
+    // Serial.printf("Manual test - SCK=%d WS=%d\n", 
+    // digitalRead(I2S_SCK), digitalRead(I2S_WS));
 
-    gpio_reset_pin((gpio_num_t)I2S_SCK);
-    gpio_reset_pin((gpio_num_t)I2S_WS);
-    gpio_reset_pin((gpio_num_t)I2S_SD);
+    // gpio_reset_pin((gpio_num_t)I2S_SCK);
+    // gpio_reset_pin((gpio_num_t)I2S_WS);
+    // gpio_reset_pin((gpio_num_t)I2S_SD);
 
     ////////////////////////////////////////////////////////
     
@@ -141,7 +141,7 @@ void setupAudio(){
     Serial.println("I2S start called.");
     delay(500);
 
-    print_pin_levels();
+    // print_pin_levels();
 
     //////////////////////////////////////////////////////////////////////
     size_t bytes_read = 0;
@@ -159,10 +159,10 @@ void setupAudio(){
         delay(20);
     }
 
-    print_pin_levels();
+    // print_pin_levels();
     Serial.println("I2S microphone ready.");
 
-    debug_print_raw();
+    // debug_print_raw();
 }
 
 #define CHUNK_SAMPLES 16000
