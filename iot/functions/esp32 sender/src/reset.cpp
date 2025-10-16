@@ -10,5 +10,18 @@ void setupResetButton() {
 }
 
 bool processResetButton() {
-  return digitalRead(RESET_BUTTON) == LOW ? true : false;
+  if(digitalRead(RESET_BUTTON) == LOW) {
+    Serial.println("Button pressed");
+    resetButtonPressed = true;
+
+    while (resetButtonPressed) {
+      if (digitalRead(RESET_BUTTON) == HIGH) {
+        resetButtonPressed = false;
+        return true;
+      }
+      delay(50);
+    }
+  } else {
+    return false;
+  }
 }

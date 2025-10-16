@@ -600,6 +600,8 @@ void sendResetSignal() {
     Serial.println("❌ Invalid laptop IP!");
     return;
   }
+  /////
+  
   udp.beginPacket(laptop_ip.c_str(), 8082);
   
   JsonDocument jsonDoc;

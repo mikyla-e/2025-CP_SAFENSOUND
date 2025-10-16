@@ -644,7 +644,7 @@ if __name__ == "__main__":
     try:
         trigger = 0
         while True:
-            # Main loop for local recording
+            # Main loop for laptop recording
             # audio_data, audio_wav = get_audio_local()
             # if audio_data is not None and audio_wav is not None:
             #     inference(audio_data, audio_wav)
