@@ -3,14 +3,13 @@ import os
 from datetime import datetime
 
 class Database:
-    def __init__(self, db_name="dummysafensound.db"):
+    def __init__(self, db_name="safensound.db"):
         self.db_name = os.path.join(os.path.dirname(os.path.dirname(__file__)), db_name)
         print(f"Using database at: {self.db_name}")
         self.conn = sqlite3.connect(self.db_name)
         self.create_room()
         self.create_history()
         self.initialize_rooms()
-
 
     # create tables
     def create_room(self):

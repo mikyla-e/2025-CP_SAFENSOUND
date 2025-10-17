@@ -73,6 +73,7 @@
                 </tr>
             </table>
         </div>
+
         <div class="pagination-controls">
             <button onclick="prevPage('aside')" id="aside-prev">Prev</button>
             <span id="aside-page-info"></span>
@@ -108,6 +109,7 @@
     </div>
 
     <script>
+        // REAL-TIME DATE AND TIME
         function updateDateTime() {
             const now = new Date();
             
@@ -132,9 +134,8 @@
         // Update immediately, then every second
         updateDateTime();
         setInterval(updateDateTime, 1000);
-    </script>
-
-    <script>
+        
+        // ============================================================
         let roomData = {
             1: { name: "Room 1", history: [] },
             2: { name: "Room 2", history: [] },
@@ -266,6 +267,7 @@
             nextBtn.disabled = page >= totalPages;
         }
 
+        // prev button
         function prevPage(container) {
             if (pageState[container] > 1) {
                 pageState[container]--;
@@ -273,6 +275,7 @@
             }
         }
 
+        // next button
         function nextPage(container) {
             const history = roomData[currentSelectedRoom].history;
             const totalPages = Math.ceil(history.length / PAGE_SIZE);
@@ -282,6 +285,7 @@
             }
         }
 
+        // ============================================================
         // POPUP
         function showPopup() {
             const overlay = document.querySelector('.popup-overlay');
@@ -319,6 +323,7 @@
             }
         }
 
+        // ============================================================
         // RENAME ROOM
         async function renameRoom(renameElement, event) {
             event.stopPropagation();

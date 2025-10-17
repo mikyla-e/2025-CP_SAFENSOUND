@@ -673,7 +673,7 @@ aside .table-div table tr:nth-child(odd),
     }
 
     /* logo of room */
-    main .rooms i {
+    main .rooms .logo {
         font-size: clamp(2rem, 3vw, 3rem);
         top: 10px;
         left: 50%;
