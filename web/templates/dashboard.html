@@ -108,65 +108,11 @@
     </div>
 
     <script>
-        // temp room data storage
-        const roomData = {
-            1: {
-                name: "Room 1",
-                history: [
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "02:30 PM" },
-                    { action: "Alarm detected", date: "12/15/24", time: "02:15 PM" },
-                    { action: "Alarm reset", date: "12/15/24", time: "01:00 PM" }
-                ]
-            },
-            2: {
-                name: "Room 2", 
-                history: [
-                    { action: "Alarm reset", date: "12/14/24", time: "09:45 AM" },
-                    { action: "Alarm detected", date: "12/14/24", time: "09:30 AM" },
-                    { action: "Alarm reset", date: "12/14/24", time: "08:00 AM" }
-                ]
-            },
-            3: {
-                name: "Room 3",
-                history: [
-                    { action: "Alarm detected", date: "12/13/24", time: "06:00 PM" },
-                    { action: "Alarm reset", date: "12/13/24", time: "05:45 PM" },
-                    { action: "Alarm detected", date: "12/13/24", time: "05:30 PM" }
-                ]
-            }
+        // Remove the hardcoded roomData object
+        let roomData = {
+            1: { name: "Room 1", history: [] },
+            2: { name: "Room 2", history: [] },
+            3: { name: "Room 3", history: [] }
         };
 
         let currentSelectedRoom = 1;
@@ -176,11 +122,43 @@
             '.popup-aside': 1
         };
 
-        window.onload = function() {
+        // Fetch room data from API
+        async function fetchRoomData() {
+            try {
+                const response = await fetch('/api/rooms');
+                const rooms = await response.json();
+                
+                for (const [roomId, roomInfo] of Object.entries(rooms)) {
+                    const id = parseInt(roomId);
+                    roomData[id].name = roomInfo.name;
+                    
+                    // Update room name in UI
+                    document.querySelector(`.room${id} h2`).textContent = roomInfo.name;
+                }
+            } catch (error) {
+                console.error('Error fetching room data:', error);
+            }
+        }
+
+        // Fetch history for a specific room
+        async function fetchRoomHistory(roomId) {
+            try {
+                const response = await fetch(`/api/history/${roomId}`);
+                const history = await response.json();
+                roomData[roomId].history = history;
+                return history;
+            } catch (error) {
+                console.error(`Error fetching history for room ${roomId}:`, error);
+                return [];
+            }
+        }
+
+        window.onload = async function() {
+            await fetchRoomData();
             const aside = document.querySelector('aside');
             const isDesktop = window.getComputedStyle(aside).display !== 'none';
             if (isDesktop) {
-                selectRoom(1, document.querySelector('.room1'));
+                await selectRoom(1, document.querySelector('.room1'));
             } else {
                 currentSelectedRoom = 1;
             }
@@ -188,10 +166,14 @@
         };
 
         // select room
-        function selectRoom(roomNumber, roomElement) {
+        async function selectRoom(roomNumber, roomElement) {
             currentSelectedRoom = roomNumber;
             pageState['aside'] = 1;
             pageState['.popup-aside'] = 1;
+            
+            // Fetch fresh history data
+            await fetchRoomHistory(roomNumber);
+            
             const aside = document.querySelector('aside');
             const isDesktop = window.getComputedStyle(aside).display !== 'none';
             if (isDesktop) {
@@ -301,7 +283,7 @@
         }
 
         // RENAME ROOM
-        function renameRoom(renameElement, event) {
+        async function renameRoom(renameElement, event) {
             event.stopPropagation();
             const roomNameElement = renameElement.previousElementSibling;
             const currentName = roomNameElement.textContent;
@@ -317,13 +299,31 @@
             const newName = prompt(`Enter new name for ${currentName}:`, currentName);
             if (newName !== null && newName.trim() !== '') {
                 const trimmedName = newName.trim();
-                roomNameElement.textContent = trimmedName;
-                roomData[roomNumber].name = trimmedName;
-                if (roomDiv.classList.contains('active-room')) {
-                    const desktopHeader = document.querySelector('aside header h2');
-                    const mobileHeader = document.querySelector('.popup-aside header h2');
-                    if (desktopHeader) desktopHeader.textContent = trimmedName;
-                    if (mobileHeader) mobileHeader.textContent = trimmedName;
+                
+                try {
+                    const response = await fetch(`/api/rooms/${roomNumber}/rename`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ new_name: trimmedName })
+                    });
+                    
+                    if (response.ok) {
+                        roomNameElement.textContent = trimmedName;
+                        roomData[roomNumber].name = trimmedName;
+                        if (roomDiv.classList.contains('active-room')) {
+                            const desktopHeader = document.querySelector('aside header h2');
+                            const mobileHeader = document.querySelector('.popup-aside header h2');
+                            if (desktopHeader) desktopHeader.textContent = trimmedName;
+                            if (mobileHeader) mobileHeader.textContent = trimmedName;
+                        }
+                    } else {
+                        alert('Failed to rename room');
+                    }
+                } catch (error) {
+                    console.error('Error renaming room:', error);
+                    alert('Error renaming room');
                 }
             }
         }
