@@ -61,7 +61,7 @@
         <header>
             <h2>Room #</h2>
             <!-- <i class="fa-solid fa-pen-to-square"></i> -->
-            <i class="fa-solid fa-pen">✎</i>
+            <i class="fa-solid fa-pen" onclick="renameRoom(this, event)">✎</i>
         </header>
         <p class="title">Alert History</p>
         <div class="table-div">
@@ -87,7 +87,7 @@
         <header>
             <div>
                 <h2>Room #</h2>
-                <i class="fa-solid fa-pen">✎</i>
+                <i class="fa-solid fa-pen" onclick="renameRoom(this, event)">✎</i>
             </div>
             <span class="fa-solspand fa-times popup-close" onclick="closePopup()">x</i>
         </header>
@@ -422,7 +422,7 @@
     </script>
     <script>
         let Room1Stat = 0;
-        let Room2Stat = 0;
+        let Room2Stat = 1;
         let Room3Stat = 0;
         setInterval(updateAlertStates, 100);
     </script>

@@ -475,6 +475,13 @@ aside .table-div table tr:nth-child(odd),
 /* ================================ */
 
 /* Large tablets and small desktops */
+@media screen and (min-width: 1201px) {
+    main{
+        padding: 20px 30px;
+        gap: 25px;
+    }
+}
+
 @media screen and (max-width: 1200px) {
     body{
         grid-template-columns: 1fr 350px;
@@ -673,7 +680,8 @@ aside .table-div table tr:nth-child(odd),
     }
 
     /* logo of room */
-    main .rooms .logo {
+    main .rooms .logo,
+    main .rooms svg {
         font-size: clamp(2rem, 3vw, 3rem);
         top: 10px;
         left: 50%;
