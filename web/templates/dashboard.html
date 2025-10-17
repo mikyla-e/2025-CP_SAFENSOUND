@@ -12,8 +12,8 @@
     <nav>
         <h1>Dashboard</h1>
         <div>
-            <p>00/00/00</p>
-            <p class="time">00:00 AM</p>
+            <p id="current-date">00/00/00</p>
+            <p class="time" id="current-time">00:00 AM</p>
         </div>
     </nav>
 
@@ -108,7 +108,33 @@
     </div>
 
     <script>
-        // Remove the hardcoded roomData object
+        function updateDateTime() {
+            const now = new Date();
+            
+            // Format date as MM/DD/YY
+            const date = now.toLocaleDateString('en-US', {
+                month: '2-digit',
+                day: '2-digit',
+                year: '2-digit'
+            });
+            
+            // Format time as HH:MM AM/PM
+            const time = now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+            
+            document.getElementById('current-date').textContent = date;
+            document.getElementById('current-time').textContent = time;
+        }
+        
+        // Update immediately, then every second
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+    </script>
+
+    <script>
         let roomData = {
             1: { name: "Room 1", history: [] },
             2: { name: "Room 2", history: [] },
@@ -128,12 +154,18 @@
                 const response = await fetch('/api/rooms');
                 const rooms = await response.json();
                 
+                // Update roomData with fetched data
                 for (const [roomId, roomInfo] of Object.entries(rooms)) {
-                    const id = parseInt(roomId);
-                    roomData[id].name = roomInfo.name;
+                    if (!roomData[roomId]) {
+                        roomData[roomId] = { history: [] };
+                    }
+                    roomData[roomId].name = roomInfo.name;
                     
-                    // Update room name in UI
-                    document.querySelector(`.room${id} h2`).textContent = roomInfo.name;
+                    // Update room display
+                    const roomElement = document.querySelector(`.room${roomId}`);
+                    if (roomElement) {
+                        roomElement.querySelector('h2').textContent = roomInfo.name;
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching room data:', error);
@@ -145,14 +177,19 @@
             try {
                 const response = await fetch(`/api/history/${roomId}`);
                 const history = await response.json();
+                
+                console.log('Fetched history for room', roomId, ':', history); // Debug log
+                
+                // Backend already returns formatted objects
                 roomData[roomId].history = history;
+                
                 return history;
             } catch (error) {
-                console.error(`Error fetching history for room ${roomId}:`, error);
+                console.error('Error fetching room history:', error);
                 return [];
             }
         }
-
+        
         window.onload = async function() {
             await fetchRoomData();
             const aside = document.querySelector('aside');
