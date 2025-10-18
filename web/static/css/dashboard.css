@@ -303,6 +303,9 @@ main .stats-div .recent h2{
     word-wrap: break-word;
     overflow-wrap: break-word;
     line-height: 1.3;
+
+    /* text-align: center; */
+    /* border: 1px solid black; */
 }
 
 /* alarms detected monthly */
@@ -582,11 +585,11 @@ aside .table-div table tr:nth-child(odd),
         padding-top: 10px;
         grid-template-columns: 1fr;
         grid-template-areas: 
-            "top"
             "recent"
+            "top"
             "monthly";
 
-        grid-template-rows: 250px 1fr 1fr;
+        grid-template-rows: 1fr 250px 1fr;
     }
 
     /* room name */
@@ -598,6 +601,10 @@ aside .table-div table tr:nth-child(odd),
     main .rooms .texts p{
         opacity: 0.3;
         font-size: clamp(0.5rem, 1.5vw, 1rem);
+    }
+
+    main .stats-div .recent{
+        height: auto;
     }
 
     /* "view history" */
@@ -671,10 +678,27 @@ aside .table-div table tr:nth-child(odd),
 
         gap: clamp(15px, 20px, 30px);
     }
+
+    main .stats-div .recent{
+        min-height: fit-content;
+        height: 90px;
+    }
+
+    /* date and time */
+    main .stats-div .recent h2{
+        font-size: clamp(.9rem, 2.7vw, 1.5rem);
+    }
+}
+
+@media screen and (max-width: 510px) {
+    /* date and time */
+    main .stats-div .recent h2{
+        font-size: clamp(.7rem, 2.5vw, 1.3rem);
+    }
 }
 
 /* mobile phones */
-@media screen and (max-width: 426px) {
+@media screen and (max-width: 440px) {
     nav{
         padding: 0 clamp(3.5vw, 4vw, 5vw);
 
@@ -747,6 +771,11 @@ aside .table-div table tr:nth-child(odd),
 
     main .stats-div .recent{
         height: auto;
+    }
+
+    /* date and time */
+    main .stats-div .recent h2{
+        font-size: clamp(1.2rem, 3vw, 1.7rem);
     }
 
     /* popup */

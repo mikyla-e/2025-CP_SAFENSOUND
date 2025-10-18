@@ -371,7 +371,7 @@
                 const data = await response.json();
                 const elem = document.getElementById('recent-emergency');
                 if (data && data.date && data.time) {
-                    elem.textContent = `${data.date} @ ${data.time}`;
+                    elem.textContent = `${data.date} @\u00A0${data.time.replace(' ', '\u00A0')}`;
                 } else {
                     elem.textContent = "No emergencies yet";
                 }
