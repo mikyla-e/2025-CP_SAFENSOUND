@@ -25,6 +25,7 @@ nav, main, aside,
 }
 
 nav{
+    box-sizing: border-box;
     grid-area: nav;
     min-height: 50px;
     height: 68px;
@@ -34,7 +35,8 @@ nav{
     justify-content: space-between;
     align-items: center;
 
-    padding: 0 clamp(20px, 5vw, 65px);
+    padding: 0 clamp(10px, 3vw, 30px);
+    /* padding: 0 clamp(20px, 5vw, 65px); */
 }
 
 /* "Dashboard" */
@@ -59,6 +61,7 @@ nav div p {
 }
 
 /* ================================ */
+/* ================================ */
 main{
     grid-area: main;
 
@@ -71,12 +74,13 @@ main{
     /* overflow-y: visible; */
 }
 
+/* ================================ */
 /* ROOMS */
 /* div containing rooms */
 main .rooms-div{
     min-height: fit-content;
-    height: 35%;
-    max-height: 200px;
+    height: 30%;
+    max-height: 190px;
     padding: 10px 40px;
 
     display: flex;
@@ -134,6 +138,7 @@ main .rooms i {
     font-style: normal;
 }
 
+/* bell */
 main .rooms .logo {
     /* font-size: clamp(1rem, 3vw, 2rem); */
     height: clamp(2rem, 5vw, 2.9rem);
@@ -227,7 +232,7 @@ aside header i:hover,
     transition: .5s;
 }
 
-
+/* ================================ */
 /* STATISTICS */
 /* div of statistics */
 main .stats-div{
@@ -254,9 +259,50 @@ main .stats-div .stats{
 
 /* most recent alarm */
 main .stats-div .recent{
+    box-sizing: border-box;
     grid-area: recent;
     min-height: fit-content;
-    height: 135px;
+    height: 100px;
+
+    background: linear-gradient(180deg, #7886C7 0%, var(--second) 181.85%);
+    color: var(--primary);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 0;
+}
+
+main .stats-div .recent div{
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: start;
+    width: 90%;
+
+    gap: 3px;
+}
+
+/* Most Recent Emergency */
+main .stats-div .recent p{
+    /* border: 1px solid black; */
+    margin: 0;
+    font-size: clamp(0.85rem, 2vw, 1rem);
+    white-space: nowrap;
+}
+
+/* date and time */
+main .stats-div .recent h2{
+    font-size: clamp(1.2rem, 3vw, 1.7rem);
+    max-width: 100%;
+    box-sizing: border-box;
+
+    margin: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.3;
 }
 
 /* alarms detected monthly */
@@ -269,6 +315,7 @@ main .stats-div .top{
     grid-area: top;
 }
 
+/* ================================ */
 /* ================================ */
 
 aside{
@@ -343,19 +390,15 @@ aside header .fa-pen,
 /* edit button */
 aside header .fa-pen,
 .popup-aside header .fa-pen{
+    font-size: clamp(.8rem, 2vw, 1rem);
     transform: scaleX(-1);
-    z-index: 1000;
+    z-index: 9000;
 }
 
 /* X ICON */
 aside header span,
 .popup-aside header .popup-close{
     font-size: clamp(1.1rem, 2.5vw, 1.3rem);
-}
-
-/* bell icon */
-.popup-aside header .logo{
-    font-size: clamp(.8rem, 2vw, 1rem);
 }
 
 .popup-aside header div{
@@ -365,6 +408,7 @@ aside header span,
     gap: 5px;
 }
 
+/* ================================ */
 /* TABLE */
 /* div of table */
 aside .table-div,
@@ -422,6 +466,7 @@ aside .table-div table tr:nth-child(odd),
     background-color: rgba(136, 143, 167, 0.10);
 }
 
+/* ================================ */
 /* PAGINATION CONTROLS */
 .pagination-controls {
     display: flex;
@@ -693,13 +738,18 @@ aside .table-div table tr:nth-child(odd),
     main .stats-div{
     grid-template-columns: 1fr;
     grid-template-areas: 
-        "top"
         "recent"
+        "top"
         "monthly";
 
-    grid-template-rows: 210px 1fr 1fr;
+    grid-template-rows: 1fr 210px 1fr;
     }
 
+    main .stats-div .recent{
+        height: auto;
+    }
+
+    /* popup */
     .popup-aside {
         width: 90%;
         padding: 0 15px;

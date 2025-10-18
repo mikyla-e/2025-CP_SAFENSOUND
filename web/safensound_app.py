@@ -14,6 +14,7 @@ import uvicorn
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from database.db_connection import Database
+from datetime import datetime #for date format (separation)
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
@@ -110,22 +111,52 @@ async def get_rooms():
         return rooms_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+# MOST RECENT EMERGENCY
+@app.get("/api/recent_emergency")
+async def get_recent_emergency():
+    try:
+        query = """
+            SELECT action, date, time, room_id
+            FROM history
+            WHERE action = 'Emergency Detected'
+            ORDER BY date DESC, time DESC
+            LIMIT 1
+        """
+        cursor = db.conn.execute(query)
+        row = cursor.fetchone()
+        if row:
+            formatted_date = datetime.strptime(row[1], "%Y-%m-%d").strftime("%b %d, %Y")
+            return {
+                "action": row[0],
+                "date": formatted_date,
+                "time": row[2],
+                "room_id": row[3]
+            }
+        else:
+            return None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# HISTORY FOR A ROOM 
 @app.get("/api/history/{room_id}")
 async def get_history(room_id: int):
     try:
         history = db.fetch_history(room_id)
         formatted_history = []
         for record in history:
+            # Format date as MM/DD/YY
+            formatted_date = datetime.strptime(record[2], "%Y-%m-%d").strftime("%m/%d/%y")
             formatted_history.append({
                 "action": record[1],
-                "date": record[2],
+                "date": formatted_date,
                 "time": record[3]
             })
         return formatted_history
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+# RENAME ROOM
 @app.post("/api/rooms/{room_id}/rename")
 async def rename_room(room_id: int, data: RoomRename):
     try:

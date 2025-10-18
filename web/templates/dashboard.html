@@ -12,8 +12,8 @@
     <nav>
         <h1>Dashboard</h1>
         <div>
-            <p id="current-date">00/00/00</p>
-            <p class="time" id="current-time">00:00 AM</p>
+            <p>00/00/00</p>
+            <p class="time">00:00 AM</p>
         </div>
     </nav>
 
@@ -51,7 +51,14 @@
             </div>
         </div>
         <div class="stats-div">
-            <div class="recent stats"> recent</div>
+            <!-- Most Recent Emergency -->
+            <div class="recent stats"> 
+                <div>
+                    <p>Most Recent Emergency</p>
+                    <h2 id="recent-emergency"></h2>
+                </div>
+            </div>
+
             <div class="monthly stats"> monthly</div>
             <div class="top stats"> top</div>
         </div>
@@ -61,7 +68,7 @@
         <header>
             <h2>Room #</h2>
             <!-- <i class="fa-solid fa-pen-to-square"></i> -->
-            <i class="fa-solid fa-pen" onclick="renameRoom(this, event)">✎</i>
+            <i class="fa-solid fa-pen">✎</i>
         </header>
         <p class="title">Alert History</p>
         <div class="table-div">
@@ -73,7 +80,6 @@
                 </tr>
             </table>
         </div>
-
         <div class="pagination-controls">
             <button onclick="prevPage('aside')" id="aside-prev">Prev</button>
             <span id="aside-page-info"></span>
@@ -87,7 +93,7 @@
         <header>
             <div>
                 <h2>Room #</h2>
-                <i class="fa-solid fa-pen" onclick="renameRoom(this, event)">✎</i>
+                <i class="fa-solid fa-pen">✎</i>
             </div>
             <span class="fa-solspand fa-times popup-close" onclick="closePopup()">x</i>
         </header>
@@ -109,33 +115,7 @@
     </div>
 
     <script>
-        // REAL-TIME DATE AND TIME
-        function updateDateTime() {
-            const now = new Date();
-            
-            // Format date as MM/DD/YY
-            const date = now.toLocaleDateString('en-US', {
-                month: '2-digit',
-                day: '2-digit',
-                year: '2-digit'
-            });
-            
-            // Format time as HH:MM AM/PM
-            const time = now.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-            
-            document.getElementById('current-date').textContent = date;
-            document.getElementById('current-time').textContent = time;
-        }
-        
-        // Update immediately, then every second
-        updateDateTime();
-        setInterval(updateDateTime, 1000);
-        
-        // ============================================================
+        // Remove the hardcoded roomData object
         let roomData = {
             1: { name: "Room 1", history: [] },
             2: { name: "Room 2", history: [] },
@@ -155,18 +135,12 @@
                 const response = await fetch('/api/rooms');
                 const rooms = await response.json();
                 
-                // Update roomData with fetched data
                 for (const [roomId, roomInfo] of Object.entries(rooms)) {
-                    if (!roomData[roomId]) {
-                        roomData[roomId] = { history: [] };
-                    }
-                    roomData[roomId].name = roomInfo.name;
+                    const id = parseInt(roomId);
+                    roomData[id].name = roomInfo.name;
                     
-                    // Update room display
-                    const roomElement = document.querySelector(`.room${roomId}`);
-                    if (roomElement) {
-                        roomElement.querySelector('h2').textContent = roomInfo.name;
-                    }
+                    // Update room name in UI
+                    document.querySelector(`.room${id} h2`).textContent = roomInfo.name;
                 }
             } catch (error) {
                 console.error('Error fetching room data:', error);
@@ -178,19 +152,14 @@
             try {
                 const response = await fetch(`/api/history/${roomId}`);
                 const history = await response.json();
-                
-                console.log('Fetched history for room', roomId, ':', history); // Debug log
-                
-                // Backend already returns formatted objects
                 roomData[roomId].history = history;
-                
                 return history;
             } catch (error) {
-                console.error('Error fetching room history:', error);
+                console.error(`Error fetching history for room ${roomId}:`, error);
                 return [];
             }
         }
-        
+
         window.onload = async function() {
             await fetchRoomData();
             const aside = document.querySelector('aside');
@@ -267,7 +236,6 @@
             nextBtn.disabled = page >= totalPages;
         }
 
-        // prev button
         function prevPage(container) {
             if (pageState[container] > 1) {
                 pageState[container]--;
@@ -275,7 +243,6 @@
             }
         }
 
-        // next button
         function nextPage(container) {
             const history = roomData[currentSelectedRoom].history;
             const totalPages = Math.ceil(history.length / PAGE_SIZE);
@@ -285,7 +252,6 @@
             }
         }
 
-        // ============================================================
         // POPUP
         function showPopup() {
             const overlay = document.querySelector('.popup-overlay');
@@ -323,7 +289,6 @@
             }
         }
 
-        // ============================================================
         // RENAME ROOM
         async function renameRoom(renameElement, event) {
             event.stopPropagation();
@@ -398,6 +363,37 @@
             }
         });
 
+        // ====================================================================
+        // MOST RECENT EMERGENCY
+        async function fetchRecentEmergency() {
+            try {
+                const response = await fetch('/api/recent_emergency');
+                const data = await response.json();
+                const elem = document.getElementById('recent-emergency');
+                if (data && data.date && data.time) {
+                    elem.textContent = `${data.date} @ ${data.time}`;
+                } else {
+                    elem.textContent = "No emergencies yet";
+                }
+            } catch (error) {
+                document.getElementById('recent-emergency').textContent = "Error loading";
+            }
+        }
+
+        window.onload = async function() {
+            await fetchRoomData();
+            await fetchRecentEmergency();
+            const aside = document.querySelector('aside');
+            const isDesktop = window.getComputedStyle(aside).display !== 'none';
+            if (isDesktop) {
+                await selectRoom(1, document.querySelector('.room1'));
+            } else {
+                currentSelectedRoom = 1;
+            }
+            updateAlertStates();
+        };
+
+        // ====================================================================
         // ALERTS
         function updateAlertStates() {
             const room1 = document.querySelector('.room1');
@@ -422,7 +418,7 @@
     </script>
     <script>
         let Room1Stat = 0;
-        let Room2Stat = 1;
+        let Room2Stat = 0;
         let Room3Stat = 0;
         setInterval(updateAlertStates, 100);
     </script>

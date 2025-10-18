@@ -79,7 +79,10 @@ class Database:
         
     def fetch_history(self, room_id):
         with self.conn:
-            cursor = self.conn.execute('SELECT * FROM history where room_id = ?', (room_id,))
+            cursor = self.conn.execute(
+                'SELECT * FROM history WHERE room_id = ? ORDER BY date DESC, time DESC',
+                (room_id,)
+            )
             return cursor.fetchall()
 
 
