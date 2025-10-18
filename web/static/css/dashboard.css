@@ -344,6 +344,7 @@ aside header .fa-pen,
 aside header .fa-pen,
 .popup-aside header .fa-pen{
     transform: scaleX(-1);
+    z-index: 1000;
 }
 
 /* X ICON */
@@ -352,7 +353,7 @@ aside header span,
     font-size: clamp(1.1rem, 2.5vw, 1.3rem);
 }
 
-/* edit bell icon */
+/* bell icon */
 .popup-aside header .logo{
     font-size: clamp(.8rem, 2vw, 1rem);
 }
@@ -483,9 +484,9 @@ aside .table-div table tr:nth-child(odd),
 }
 
 @media screen and (max-width: 1200px) {
-    body{
+    /* body{
         grid-template-columns: 1fr 350px;
-    }
+    } */
 
     main{
         padding: 20px 30px;
@@ -509,7 +510,7 @@ aside .table-div table tr:nth-child(odd),
 /* Tablets */
 @media screen and (max-width: 900px) {
     body{
-        grid-template-columns: 1fr 300px;
+        grid-template-columns: 1fr 350px;
     }
 
     main{
