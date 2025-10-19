@@ -12,8 +12,8 @@
     <nav>
         <h1>Dashboard</h1>
         <div>
-            <p>00/00/00</p>
-            <p class="time">00:00 AM</p>
+            <p id="current-date">00/00/00</p>
+            <p class="time" id="current-time">00:00 AM</p>
         </div>
     </nav>
 
@@ -115,7 +115,34 @@
     </div>
 
     <script>
-        // Remove the hardcoded roomData object
+        // REAL-TIME DATE AND TIME
+        function updateDateTime() {
+            const now = new Date();
+            
+            // Format date as MM/DD/YY
+            const date = now.toLocaleDateString('en-US', {
+                month: '2-digit',
+                day: '2-digit',
+                year: '2-digit'
+            });
+            
+            // Format time as HH:MM AM/PM
+            const time = now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+            
+            document.getElementById('current-date').textContent = date;
+            document.getElementById('current-time').textContent = time;
+        }
+        
+        // Update immediately, then every second
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        // ====================================================================
+        // ROOMS AND HISTORY        
         let roomData = {
             1: { name: "Room 1", history: [] },
             2: { name: "Room 2", history: [] },
