@@ -84,7 +84,40 @@ class Database:
                 (room_id,)
             )
             return cursor.fetchall()
-
+        
+    # monthly emergencies
+    def fetch_monthly_emergencies(self, year):
+        """Fetch emergency count per month for a specific year"""
+        with self.conn:
+            cursor = self.conn.execute('''
+                SELECT 
+                    strftime('%m', date) as month,
+                    COUNT(*) as count
+                FROM history
+                WHERE action = 'Emergency Detected'
+                AND strftime('%Y', date) = ?
+                GROUP BY month
+                ORDER BY month
+            ''', (str(year),))
+            results = cursor.fetchall()
+            
+            # Create dict with all 12 months, defaulting to 0
+            monthly_data = {str(i).zfill(2): 0 for i in range(1, 13)}
+            for month, count in results:
+                monthly_data[month] = count
+            
+            return monthly_data
+    
+    def fetch_available_years(self):
+        """Fetch all years that have emergency data"""
+        with self.conn:
+            cursor = self.conn.execute('''
+                SELECT DISTINCT strftime('%Y', date) as year
+                FROM history
+                WHERE action = 'Emergency Detected'
+                ORDER BY year DESC
+            ''')
+            return [row[0] for row in cursor.fetchall()]
 
     def close(self):
         self.conn.close()

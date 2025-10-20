@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/dashboard.css') }}">
     <link rel="stylesheet" href="../static/css/dashboard.css">
     <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"> -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <nav>
@@ -59,7 +60,19 @@
                 </div>
             </div>
 
-            <div class="monthly stats"> monthly</div>
+            <!-- Monthly Detected Emergencies -->
+            <div class="monthly stats">
+                <div class="monthly-header">
+                    <h3>Monthly Detected Emergencies</h3>
+                    <select id="year-filter" onchange="updateMonthlyGraph()">
+                        <!-- Years will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="chart-div">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+
             <div class="top stats"> top</div>
         </div>
     </main>
@@ -448,6 +461,137 @@
         let Room2Stat = 0;
         let Room3Stat = 0;
         setInterval(updateAlertStates, 100);
+    </script>
+
+    <!-- GRAPHS -->
+    <script>
+        // MONTHLY DETECTED EMERGENCIES
+        let monthlyChart = null;
+
+        async function initializeYearFilter() {
+            try {
+                const response = await fetch('/api/available_years');
+                const years = await response.json();
+                
+                const yearFilter = document.getElementById('year-filter');
+                yearFilter.innerHTML = '';
+                
+                years.forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearFilter.appendChild(option);
+                });
+                
+                // Load data for the first year
+                if (years.length > 0) {
+                    await updateMonthlyGraph();
+                }
+            } catch (error) {
+                console.error('Error loading years:', error);
+            }
+        }
+
+        async function updateMonthlyGraph() {
+            const yearFilter = document.getElementById('year-filter');
+            const selectedYear = yearFilter.value;
+            
+            try {
+                const response = await fetch(`/api/monthly_emergencies/${selectedYear}`);
+                const data = await response.json();
+                
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const values = Object.values(data);
+                
+                const ctx = document.getElementById('monthlyChart').getContext('2d');
+                
+                // Destroy existing chart if it exists
+                if (monthlyChart) {
+                    monthlyChart.destroy();
+                }
+                
+                monthlyChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: months,
+                        datasets: [{
+                            label: 'Moonthly Detected Emergencies',
+                            data: values,
+                            borderColor: '#7886C7',
+                            backgroundColor: 'rgba(120, 134, 199, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#2D336B',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        // aspectRatio: 3,
+                        plugins: {
+                            filler: {
+                                propagate: false
+                            },
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: '#2D336B',
+                                padding: 12,
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#7886C7',
+                                borderWidth: 1,
+                                displayColors: false,
+                                intersect: false,
+                                mode: 'index',
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Emergencies: ${context.parsed.y}`;
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1,
+                                    color: '#666'
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#666'
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error updating monthly graph:', error);
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', async function() {
+            await initializeYearFilter();
+        });
     </script>
 </body>
 </html>

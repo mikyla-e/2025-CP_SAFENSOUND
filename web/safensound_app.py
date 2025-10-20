@@ -172,6 +172,27 @@ async def rename_room(room_id: int, data: RoomRename):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+# MONTHLY EMERGENCIES
+@app.get("/api/monthly_emergencies/{year}")
+async def get_monthly_emergencies(year: int):
+    try:
+        monthly_data = db.fetch_monthly_emergencies(year)
+        return monthly_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/available_years")
+async def get_available_years():
+    try:
+        years = db.fetch_available_years()
+        if not years:
+            # Return current year if no data exists
+            return [datetime.now().year]
+        return years
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ALERT
 @app.post("/api/alert")
 async def handle_alert(data: AlertData):
     try:

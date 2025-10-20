@@ -337,6 +337,10 @@ main .stats-div .recent h2{
 /* alarms detected monthly */
 main .stats-div .monthly{
     grid-area: monthly;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 /* top alarm count */
