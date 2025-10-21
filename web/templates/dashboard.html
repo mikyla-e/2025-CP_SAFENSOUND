@@ -8,6 +8,47 @@
     <link rel="stylesheet" href="../static/css/dashboard.css">
     <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"> -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        main .stats-div .monthly #monthly-header{
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+        }
+
+        main .stats-div .monthly #monthly-header h3{
+            margin: 0;
+            padding: 0;
+        }
+
+        main .stats-div .monthly #monthly-header select{
+            background: #7886C7;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 3px 10px;
+            font-family: "DM Sans", sans-serif;
+            outline: none;
+            cursor: pointer; 
+        }
+
+        main .stats-div .monthly #monthly-header select:focus {
+            background: linear-gradient(133deg, #2D336B 60%, #7886C7 120%);
+            color: #fff;
+        }
+
+        main .stats-div .monthly .chart-div{
+            width: 100%;
+            height: 100%;
+            overflow-x: scroll;
+        }
+
+        main .stats-div .monthly .chart-div canvas{
+            width: 95%;
+            height: 100%;
+        }
+
+    </style>
 </head>
 <body>
     <nav>
@@ -62,11 +103,9 @@
 
             <!-- Monthly Detected Emergencies -->
             <div class="monthly stats">
-                <div class="monthly-header">
+                <div id="monthly-header">
                     <h3>Monthly Detected Emergencies</h3>
-                    <select id="year-filter" onchange="updateMonthlyGraph()">
-                        <!-- Years will be populated by JavaScript -->
-                    </select>
+                    <select id="year-filter" onchange="updateMonthlyGraph()"></select>
                 </div>
                 <div class="chart-div">
                     <canvas id="monthlyChart"></canvas>
