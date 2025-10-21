@@ -86,6 +86,14 @@ emergency_detected = False
 esp32_serial = None
 esp32_port = "COM9"
 
+disc_port = 60123
+audio_port = 54321
+reset_port = 58080
+
+VALID_TOKENS = {
+    1: 4094951,
+}
+
 stop_event = threading.Event()
 
 class LaptopDiscoverServer:
@@ -107,9 +115,9 @@ class LaptopDiscoverServer:
     def discovery_listener(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(('0.0.0.0', 8080))
+        sock.bind(('0.0.0.0', disc_port))
 
-        print(f"Discovery server listening on {self.laptop_ip}:8080")
+        print(f"Discovery server listening on {self.laptop_ip}:{disc_port}")
 
         while self.running and not stop_event.is_set():
             try:
@@ -131,7 +139,7 @@ class LaptopDiscoverServer:
     def start(self):
         discovery_thread = threading.Thread(target=self.discovery_listener, daemon=True)
         discovery_thread.start()
-        print(f"Discovery server started on {self.laptop_ip}:8080.")
+        print(f"Discovery server started on {self.laptop_ip}:{disc_port}.")
 
         return discovery_thread
     
@@ -198,7 +206,7 @@ def receive_audio_data():
     db = Database()
     
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('0.0.0.0', 8081))
+    sock.bind(('0.0.0.0', audio_port))
     sock.settimeout(1.0)
 
     audio_chunks = {}
@@ -218,8 +226,25 @@ def receive_audio_data():
             room_id = int.from_bytes(data[0:4], 'little')
             timestamp = int.from_bytes(data[4:8], 'little')
             chunk_samples = int.from_bytes(data[8:12], 'little')
+            token = data[12:19].decode('utf-8')
+            
+            if room_id is None or timestamp is None or chunk_samples is None or token is None:
+                print(f"Incomplete data received from {addr}: Room {room_id}")
+                continue
 
-            audio_chunk = np.frombuffer(data[12:], dtype=np.int16)
+            if room_id not in [1, 2, 3]:
+                print(f"Unknown room ID from {addr}: Room {room_id}")
+                continue
+
+            if room_id not in VALID_TOKENS or VALID_TOKENS[room_id] != token:
+                print(f"Invalid token from Room {room_id}")
+                return
+            
+            if chunk_samples > 16000 or chunk_samples <= 0:
+                print(f"Invalid chunk size from Room {room_id}: {chunk_samples} samples")
+                continue
+
+            audio_chunk = np.frombuffer(data[19:], dtype=np.int16)
             print(f"Room {room_id}: Received {len(audio_chunk)} samples (Expected: {chunk_samples})")
 
             if room_id not in audio_chunks:
@@ -302,7 +327,7 @@ def receive_reset_signals():
     db = Database()
     
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('0.0.0.0', 8082))
+    sock.bind(('0.0.0.0', reset_port))
     sock.settimeout(1.0)
     print("Reset signal receiver is running...")
 
@@ -310,7 +335,6 @@ def receive_reset_signals():
         
         try:
             data, addr = sock.recvfrom(1024)
-            print(f"Raw reset packet from {addr}: {data}")
             try:
                 reset_data = json.loads(data.decode('utf-8'))
             except json.JSONDecodeError:
@@ -319,9 +343,8 @@ def receive_reset_signals():
 
             room_id = reset_data.get('roomID')
             action = reset_data.get('action')
-            print(f"Received reset data from {addr}: Room {room_id}, Action: {action}")
             if not room_id or not action:
-                print(f"Incomplete reset data received from {addr}: {reset_data}")
+                print(f"Incomplete reset data received from Room {room_id}: {reset_data}")
                 continue
 
             current_time = datetime.now().strftime("%H:%M %p")
@@ -330,21 +353,22 @@ def receive_reset_signals():
             if action == "reset":
                 operation = "Alert Acknowledged"
 
-                print(f"Received audio data from {addr}: Room {room_id}")
                 db.insert_history(action=operation, date=current_date, time=current_time, room_id=room_id)
                 
                 retry = 0
                 try:
                     while retry < 3:
-                        success_web, success_esp32 = asyncio.run(send_reset(room_id, operation))
-                        if success_web and success_esp32:
-                            print(f"Sent reset command from {room_id}")
+                        success_web = asyncio.run(send_reset_web(room_id, operation))
+                        success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
+                        if success_esp32 and success_web:
+                            print(f"Sent reset command from Room {room_id}")
                             break
                         else:
                             print("Failed to send reset command. Retrying...")
                             sleep(2)
                             retry += 1
-                            success_web, success_esp32 = asyncio.run(send_reset(room_id, operation))
+                            success_web = asyncio.run(send_reset_web(room_id, operation))
+                            success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
                             if retry == 3 and not success_web and not success_esp32:
                                 print("Failed to send reset command after 3 attempts.")
                 except Exception as e:
@@ -506,10 +530,11 @@ def trigger_alarm(room_id=None):
         try:
             retry = 0
             while retry < 3:
-                success_web = asyncio.run(send_alert_web(room_id, action))
                 success_esp32 = asyncio.run(send_alert_esp(room_id, action))
+                success_web = asyncio.run(send_alert_web(room_id, action))
+                
                 if success_esp32 and success_web:
-                    print(f"Sent emergency alert from {room_id}")
+                    print(f"Sent emergency alert from Room {room_id}")
                     break
                 else:
                     print("Failed to send alert. Retrying...")
@@ -551,11 +576,9 @@ async def send_alert_esp(room_id, action=None):
     success_esp32 = False
 
     if "Emergency Detected" in action:
-        # esp32
         try:
             if esp32_serial and esp32_serial.is_open:
                 command = f"ALERT: {room_id}\n"
-                print(command)
                 esp32_serial.write(command.encode())
 
                 responses = []
@@ -574,8 +597,7 @@ async def send_alert_esp(room_id, action=None):
     return success_esp32
 
 
-async def send_reset(room_id, action=None):
-    success_web = False
+async def send_reset_esp(room_id, action=None):
     success_esp32 = False
 
     if "Alert Acknowledged" in action:
@@ -584,16 +606,24 @@ async def send_reset(room_id, action=None):
                 command = f"RESET: {room_id}\n"
                 esp32_serial.write(command.encode())
                 
-                response = esp32_serial.readline().decode().strip()
-                if response:
-                    print(f"Received from ESP32: {response}")
+                responses = []
+                responses.append(esp32_serial.readline().decode().strip())
+                if responses:
+                    for response in responses:
+                        print(f"Received from ESP32: {response}")
 
                 success_esp32 = True
             else:
                 print("Serial port not open.")
         except Exception as e:
             print("Failed to send reset command to ESP32 receiver:", e)
+    
+    return success_esp32
 
+async def send_reset_web(room_id, action=None):
+    success_web = False
+
+    if "Alert Acknowledged" in action:
         try:
             payload_web = {
                 "room_id": room_id,
@@ -609,7 +639,7 @@ async def send_reset(room_id, action=None):
         except Exception as e:
             print("Failed to send reset command to Web Dashboard:", e)
     
-    return success_web, success_esp32
+    return success_web
     
 
 # main loop -----------------------------------------
@@ -636,9 +666,9 @@ if __name__ == "__main__":
     
     print("=" * 60)
     print(f"LAPTOP IP: {discovery_server.laptop_ip}")
-    print(f"Discovery server: Port 8080")
-    print(f"Audio receiver: Port 8081")
-    print(f"Reset signal: Port 8082")
+    print(f"Discovery server: Port {disc_port}")
+    print(f"Audio receiver: Port {audio_port}")
+    print(f"Reset signal: Port {reset_port}")
     print("=" * 60)
 
     try:
@@ -650,16 +680,28 @@ if __name__ == "__main__":
             #     inference(audio_data, audio_wav)
 
             # Main loop for dataset
-            while trigger < 4:
-                audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-                audio_wav = "wav name"
-                room_no = 1
+            while trigger < 8:
+                if trigger <= 3:
+                    audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+                    audio_wav = "wav name"
+                    room_no = 1
 
-                audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-                inference(audio_data, audio_wav, room_no)
+                    audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+                    inference(audio_data, audio_wav, room_no)
 
-                time.sleep(1)
-                print(f"Next audio... {trigger}")
+                    time.sleep(1)
+                    print(f"Next audio... {trigger}")
+
+                if trigger >= 4 and trigger < 8:
+                    audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+                    audio_wav = "wav name"
+                    room_no = 2
+
+                    audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+                    inference(audio_data, audio_wav, room_no)
+
+                    time.sleep(1)
+                    print(f"Next audio... {trigger}")
 
                 trigger += 1
 
