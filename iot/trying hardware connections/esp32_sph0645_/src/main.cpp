@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include <driver/i2s.h>
 
-#define I2S_WS 25
-#define I2S_SD 22
-#define I2S_SCK 26
+#define I2S_WS 25 //LRCL
+#define I2S_SD 22 //DOUT
+#define I2S_SCK 26 //BCLK
 
 void setupI2S() {
   i2s_config_t i2s_config = {

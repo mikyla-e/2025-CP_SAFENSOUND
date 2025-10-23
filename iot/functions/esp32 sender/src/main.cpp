@@ -160,31 +160,31 @@ void handleRoot() {
     <!DOCTYPE html>
     <html lang="en">
     <head>
-      <link rel="stylesheet" href="/captive_portal.css">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>SafeNSound ESP32 Setup</title>
     </head>
     <body>
-      <div class="container" id="configForm">
-        <div class="header-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                <path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/>
-            </svg>
-        </div>
-        
-        <h1>SafeNSound Configuration</h1>
-        <p>Configure your device to connect to WiFi and communicate with your system.</p>
-        
-        <form action="/configure" method="POST">
-          <h3>Settings</h3>
-          <input type="text" name="ssid" placeholder="WiFi Network Name" required>
-          <input type="password" name="password" placeholder="WiFi Password">
+        <div class="container" id="configForm">
+            <div class="header-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                    <path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/>
+                </svg>
+            </div>
             
-          <input type="text" name="laptop_ip" placeholder="Laptop IP Address">
+            <h1>SafeNSound Configuration</h1>
+            <p>Configure your device to connect to WiFi and communicate with your system.</p>
             
-          <button type="submit">Save</button>
-        </form>
-        
-        <div id="status"></div>
-      </div>
+            <form action="/configure" method="POST">
+                <h3>WiFi Settings</h3>
+                <input type="text" name="ssid" placeholder="WiFi Network Name '(SSID)'" required>
+                <input type="password" name="password" placeholder="WiFi Password">
+                
+                <button type="submit">Save</button>
+            </form>
+            
+            <div id="status"></div>
+        </div>     
     </body>
     </html>
   )"; // <--- Configuration Form
@@ -209,10 +209,15 @@ void handleConfigure() {
         <!DOCTYPE html>
         <html lang="en">
         <head>
-          <link rel="stylesheet" href="/captive_portal.css">
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Setup Successful</title>
         </head>
         <body>
+            <!-- Success Message -->
             <div class="container" id="successMessage">
+                <a class="close-btn" href="/" aria-label="Close and return">x</a>
+
                 <div class="header-icon" style="background-color: #4CAF50;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
                         <path d="M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-111 111-47-47c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l64 64c9.4 9.4 24.6 9.4 33.9 0L369 209z"/>
@@ -232,9 +237,12 @@ void handleConfigure() {
         <!DOCTYPE html>
         <html lang="en">
         <head>
-            <link rel="stylesheet" href="/captive_portal.css">    
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Setup Error</title>
         </head>
         <body>
+            <!-- Error Message -->
             <div class="container " id="errorMessage">
                 <div class="header-icon" style="background-color: #f44336;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
@@ -245,6 +253,7 @@ void handleConfigure() {
                 <p>Could not connect to WiFi. Please check your credentials and try again.</p>
                 <center><a href="/" class="link">Go Back</a></center>
             </div>
+
         </body>
         </html>
       )";
@@ -294,18 +303,50 @@ void handleCSS() {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
           padding: 20px;
       }
 
       /* ALL BOXES */
       .container {
           background: var(--primary);
-          padding: 30px;
+          padding: 40px;
           border-radius: 13px;
           box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
           width: 100%;
           max-width: 600px;
           margin-bottom: 20px;
+
+          position: relative;
+      }
+
+      /* Close / Exit X button */
+      .close-btn {
+          position: absolute;
+          top: 16px;
+          right: 16px;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: transparent;
+          border: 2px solid rgba(45, 51, 107, 0.12);
+          color: var(--second);
+          text-decoration: none;
+          font-weight: 700;
+          font-size: 1.1rem;
+          line-height: 1;
+          transition: all 0.18s ease;
+          z-index: 5;
+      }
+
+      .close-btn:hover {
+          background: var(--second);
+          color: white;
+          transform: translateY(-2px);
+          border-color: var(--second);
       }
 
       /* BELL ICON CIRCLE */
@@ -332,7 +373,7 @@ void handleCSS() {
       h1 {
           text-align: center;
           color: var(--second);
-          font-size: clamp(1.3rem, 3vw, 1.8rem);
+          font-size: clamp(1.5rem, 4vw, 2rem);
           font-weight: 600;
           margin-bottom: 10px;
       }
@@ -342,13 +383,14 @@ void handleCSS() {
           text-align: center;
           color: #666;
           margin-bottom: 25px;
-          font-size: clamp(0.9rem, 2vw, 1rem);
+          font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+          line-height: 1.5;
       }
 
       /* ... Settings */
       h3 {
           color: var(--second);
-          font-size: clamp(1rem, 2.5vw, 1.2rem);
+          font-size: clamp(1.1rem, 3vw, 1.3rem);
           margin: 20px 0 10px;
           font-weight: 600;
           opacity: 0.8;
@@ -357,18 +399,18 @@ void handleCSS() {
       /* INPUT FIELDS */
       input {
           width: 100%;
-          padding: 12px 15px;
-          margin: 8px 0;
+          padding: 14px 16px;
+          margin: 10px 0;
           border: 2px solid rgba(45, 51, 107, 0.2);
           border-radius: 10px;
           font-family: "DM Sans", sans-serif;
-          font-size: clamp(0.9rem, 2vw, 1rem);
+          font-size: clamp(0.95rem, 2.5vw, 1.05rem);
           transition: all 0.3s ease;
+          box-sizing: border-box;
       }
 
       input:focus {
           outline: none;
-          /* border-color: var(--second); */
           border-color: #2d336baf;
           box-shadow: 0 0 0 3px rgba(45, 51, 107, 0.1);
       }
@@ -381,14 +423,14 @@ void handleCSS() {
           width: 100%;
           background: var(--second);
           color: white;
-          padding: 14px 20px;
+          padding: 16px 20px;
           border: none;
           border-radius: 10px;
           cursor: pointer;
           font-family: "DM Sans", sans-serif;
-          font-size: clamp(1rem, 2.5vw, 1.1rem);
+          font-size: clamp(1.05rem, 3vw, 1.15rem);
           font-weight: 600;
-          margin-top: 20px;
+          margin-top: 25px;
           transition: all 0.3s ease;
           box-shadow: 0 4px 15px rgba(45, 51, 107, 0.3);
       }
@@ -407,7 +449,7 @@ void handleCSS() {
           padding: 15px;
           margin: 15px 0;
           border-radius: 10px;
-          font-size: clamp(0.9rem, 2vw, 1rem);
+          font-size: clamp(0.95rem, 2.5vw, 1.05rem);
           text-align: center;
       }
 
@@ -429,10 +471,11 @@ void handleCSS() {
           color: var(--second);
           text-decoration: none;
           font-weight: 600;
-          padding: 10px 20px;
+          padding: 12px 24px;
           border: 2px solid var(--second);
           border-radius: 10px;
           transition: all 0.3s ease;
+          font-size: clamp(0.95rem, 2.5vw, 1.05rem);
       }
 
       .link:hover {
@@ -444,37 +487,124 @@ void handleCSS() {
           display: none;
       }
 
-      /* Responsive design */
-      @media screen and (max-width: 768px) {
+      /* Responsive design for tablets and medium screens */
+      @media (max-width: 768px) and (min-width: 481px) {
           body {
-              padding: 15px;
-          }
-
-          .container {
               padding: 20px;
           }
 
-          nav {
-              height: 50px;
-              margin-bottom: 15px;
+          .container {
+              padding: 35px;
+              max-width: 500px;
+          }
+
+          .header-icon {
+              width: 55px;
+              height: 55px;
+          }
+
+          .header-icon svg {
+              width: 32px;
+              height: 32px;
           }
       }
 
-      @media screen and (max-width: 375px) {
+      /* Responsive design for phones (small to medium) */
+      @media (max-width: 480px) {
+          body {
+              padding: 0;
+              justify-content: flex-start;
+          }
+
           .container {
-              padding: 15px;
+              padding: 30px 25px;
+              max-width: 100%;
+              min-height: 100vh;
+              margin: 0;
+              border-radius: 0;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+          }
+
+          .close-btn {
+              top: 12px;
+              right: 12px;
+              width: 34px;
+              height: 34px;
+              font-size: 1rem;
+          }
+
+          .header-icon {
+              width: 55px;
+              height: 55px;
+              margin-bottom: 25px;
+          }
+
+          .header-icon svg {
+              width: 32px;
+              height: 32px;
+          }
+
+          input {
+              padding: 15px 16px;
+              margin: 12px 0;
+          }
+
+          button {
+              padding: 16px 20px;
+              margin-top: 30px;
+          }
+
+          h3 {
+              margin-top: 25px;
+          }
+      }
+
+      /* Extra small phones */
+      @media (max-width: 360px) {
+          .container {
+              padding: 25px 20px;
           }
 
           .header-icon {
               width: 50px;
               height: 50px;
+              margin-bottom: 20px;
           }
 
           .header-icon svg {
               width: 28px;
               height: 28px;
           }
+
+          input {
+              padding: 13px 14px;
+          }
+
+          button {
+              padding: 14px 18px;
+          }
       }
+
+      /* Large screens */
+      @media (min-width: 1024px) {
+          .container {
+              padding: 45px;
+              max-width: 650px;
+          }
+
+          .header-icon {
+              width: 70px;
+              height: 70px;
+              margin-bottom: 25px;
+          }
+
+          .header-icon svg {
+              width: 40px;
+              height: 40px;
+          }
+      }  
     )";
     server.send(200, "text/css", css);
   }
