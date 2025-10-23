@@ -9,9 +9,12 @@
 #include <WiFiUdp.h>
 #include "driver/gpio.h"
 
-const char* ssid_ap = "SafeNSound_ESP32"; //ssid
-const char* password_ap = ""; //password
-// const int port = 8080; //port
+const int disc_port = 60123;
+const int audio_port = 54321;
+const int reset_port = 58080;
+
+const char* ssid_ap = "SafeNSound_S"; //ssid
+const char* password_ap = "SafeCapstone25"; //password
 
 WebServer server(80);
 DNSServer dns;
@@ -20,12 +23,14 @@ WiFiUDP udp;
 String stored_ssid = "";
 String stored_password = "";
 String laptop_ip = ""; //lappy ip
+String auth_token = "";
 bool wifi_configured = false;
 
 #define SSID_ADDR 0
 #define PASS_ADDR 32
 #define IP_ADDR 64
 #define CONFIG_FLAG_ADDR 96
+#define TOKEN_ADDR 128
 
 typedef struct {
   int16_t audioData[16000];
@@ -40,48 +45,49 @@ const int room_id = 1;
 
 /////////////////////////////////////////////////////////
 
-bool discoverIP() {
-  WiFiUDP udp;
-  udp.begin(8080);
+// bool discoverIP() {
+//   WiFiUDP udp;
+//   udp.begin(disc_port);
 
-  IPAddress broadcastIP = WiFi.localIP();
-  broadcastIP[3] = 255;
+//   IPAddress broadcastIP = WiFi.localIP();
+//   broadcastIP[3] = 255;
 
-  udp.beginPacket(broadcastIP, 8080);
-  udp.print("DISCOVER_MAIN_DEVICE");
-  udp.endPacket();
+//   udp.beginPacket(broadcastIP, disc_port);
+//   udp.print("DISCOVER_MAIN_DEVICE");
+//   udp.endPacket();
 
-  unsigned long startTime = millis();
-  while (millis() - startTime < 5000) {
-    int packetSize = udp.parsePacket();
-    if (packetSize) {
-      String response = udp.readString();
-      response.trim();
+//   unsigned long startTime = millis();
+//   while (millis() - startTime < 5000) {
+//     int packetSize = udp.parsePacket();
+//     if (packetSize) {
+//       String response = udp.readString();
+//       response.trim();
 
-      if(response.startsWith("MAIN_DEVICE_HERE:")) {
-        laptop_ip = response.substring(17);
-        laptop_ip.trim();
-        Serial.println("Discovered Main Device IP: " + laptop_ip);
+//       if(response.startsWith("MAIN_DEVICE_HERE:")) {
+//         laptop_ip = response.substring(17);
+//         laptop_ip.trim();
+//         Serial.println("Discovered Main Device IP: " + laptop_ip);
 
-        EEPROM.writeString(IP_ADDR, laptop_ip);
-        EEPROM.commit();
+//         EEPROM.writeString(IP_ADDR, laptop_ip);
+//         EEPROM.commit();
 
-        udp.stop();
-        return true;
-      }
-    }
-    delay(100);
-  }
+//         udp.stop();
+//         return true;
+//       }
+//     }
+//     delay(100);
+//   }
 
-  udp.stop();
-  Serial.println("Failed to discover laptop IP.");
-  return false;
-}
+//   udp.stop();
+//   Serial.println("Failed to discover laptop IP.");
+//   return false;
+// }
 
 void saveWiFiCredentials() {
   EEPROM.writeString(SSID_ADDR, stored_ssid);
   EEPROM.writeString(PASS_ADDR, stored_password);
   EEPROM.writeString(IP_ADDR, laptop_ip);
+  EEPROM.writeString(TOKEN_ADDR, auth_token);
   EEPROM.writeBool(CONFIG_FLAG_ADDR, true);
   EEPROM.commit();
 
@@ -139,15 +145,15 @@ bool connectToWiFi() {
 
 ////////////////////////////////////////////////////////////
 
-void handleDiscoverIP() {
-  String discovered_ip = "";
-  if (discoverIP()) {
-    discovered_ip = laptop_ip;
-    server.send(200, "text/plain", discovered_ip);
-  } else {
-    server.send(500, "text/plain", "Discovery failed");
-  }
-}
+// void handleDiscoverIP() {
+//   String discovered_ip = "";
+//   if (discoverIP()) {
+//     discovered_ip = laptop_ip;
+//     server.send(200, "text/plain", discovered_ip);
+//   } else {
+//     server.send(500, "text/plain", "Discovery failed");
+//   }
+// }
 
 void handleRoot() {
   String html_root = R"(
@@ -191,6 +197,10 @@ void handleConfigure() {
     stored_ssid = server.arg("ssid");
     stored_password = server.arg("password");
     laptop_ip = server.arg("laptop_ip");
+
+    // if (auth_token.length() == 0 || auth_token == ""){
+    //   auth_token = String(random(1000000, 9999999));
+    // }
 
     saveWiFiCredentials();
 
@@ -237,7 +247,7 @@ void handleConfigure() {
             </div>
         </body>
         </html>
-      )"; // <--- NOT connected to wifi ui @Danisa hehe 
+      )";
       server.send(400, "text/html", html_failed);
     }
   }
@@ -483,7 +493,7 @@ void startCaptivePortal() {
   server.on("/configure", handleConfigure);
   server.on("/status", handleStatus);
   server.on("/captive_portal.css", handleCSS);
-  server.on("/discover_ip", handleDiscoverIP);
+  // server.on("/discover_ip", handleDiscoverIP);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -504,7 +514,13 @@ void setup() { // esp setup
   loadWiFiCredentials();
 
   if (wifi_configured && connectToWiFi()) {
+
+    // if (auth_token.length() == 0 || auth_token == ""){
+    //   auth_token = String(random(1000000, 9999999));
+    // }
+    
     Serial.println("Connected to saved WiFi.");
+    Serial.println("Room ID: " + room_id);
     Serial.println("Discovered Main Device IP: " + laptop_ip);
     // setupAudio();
     setupResetButton();
@@ -519,7 +535,7 @@ void setup() { // esp setup
 
 void sendData() {
   if (audioReady && WiFi.status() == WL_CONNECTED) {
-    // udp.beginPacket(laptop_ip.c_str(), 8081);
+    // udp.beginPacket(laptop_ip.c_str(), audio_port);
 
     // StaticJsonDocument<1024> jsonDoc;
     // jsonDoc["roomID"] = room_id;
@@ -537,9 +553,8 @@ void sendData() {
     // udp.print(sendAudioData);
 
     size_t maxPacketSize = 1400;
-    size_t headerSize = 12;
     // size_t audioSize = audioRecording.sampleCount * sizeof(int16_t);
-    size_t maxAudioSize = maxPacketSize - headerSize;
+    size_t maxAudioSize = maxPacketSize - 19; // 4+4+4+7 header
     size_t maxSamplesPerPacket = maxAudioSize / sizeof(int16_t);
 
     size_t totalSamples = audioRecording.sampleCount;
@@ -547,7 +562,7 @@ void sendData() {
 
     while (samplesSent < totalSamples) {
       size_t samplesToSend = min(maxSamplesPerPacket, totalSamples - samplesSent);
-      size_t packetSize = headerSize + samplesToSend * sizeof(int16_t);
+      size_t packetSize = 19 + samplesToSend * sizeof(int16_t);
 
       uint8_t* buffer = (uint8_t*)malloc(packetSize);
       if (!buffer) {
@@ -558,9 +573,10 @@ void sendData() {
       memcpy(buffer, &room_id, 4);
       memcpy(buffer + 4, &audioRecording.timestamp, 4);
       memcpy(buffer + 8, &samplesToSend, 4);
-      memcpy(buffer + headerSize, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
+      memcpy(buffer + 12, auth_token.c_str(), 7); // Add token
+      memcpy(buffer + 19, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
 
-      udp.beginPacket(laptop_ip.c_str(), 8081);
+      udp.beginPacket(laptop_ip.c_str(), audio_port);
       udp.write(buffer, packetSize);
       udp.endPacket();
       
@@ -568,7 +584,7 @@ void sendData() {
 
       samplesSent += samplesToSend;
           
-      delay(1);
+      delay(50);
     }
 
     Serial.println("✅ All packets sent");
@@ -602,7 +618,7 @@ void sendResetSignal() {
   }
   /////
   
-  udp.beginPacket(laptop_ip.c_str(), 8082);
+  udp.beginPacket(laptop_ip.c_str(), reset_port);
   
   JsonDocument jsonDoc;
   jsonDoc["roomID"] = room_id;
@@ -634,6 +650,6 @@ void loop() { //loops
       sendResetSignal();
     }
 
-    delay(10); 
+    delay(100); 
   }
 }
