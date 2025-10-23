@@ -6,11 +6,11 @@
     --background: linear-gradient(133deg, #F7F7F7 13.25%, #A9B5DF 205.83%);
 }
 
-/* * {
+* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-} */
+}
 
 body {
     font-family: "DM Sans", sans-serif;
@@ -20,17 +20,17 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    /* padding: 20px; */
+    padding: 20px;
 }
 
 /* ALL BOXES */
 .container {
     background: var(--primary);
-    padding: 30px;
+    padding: 40px;
     border-radius: 13px;
     box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
     width: 100%;
-    /* max-width: 90%; */
+    max-width: 600px;
     margin-bottom: 20px;
 }
 
@@ -58,7 +58,7 @@ body {
 h1 {
     text-align: center;
     color: var(--second);
-    font-size: clamp(1.3rem, 3vw, 1.8rem);
+    font-size: clamp(1.5rem, 4vw, 2rem);
     font-weight: 600;
     margin-bottom: 10px;
 }
@@ -68,13 +68,14 @@ p {
     text-align: center;
     color: #666;
     margin-bottom: 25px;
-    font-size: clamp(0.9rem, 2vw, 1rem);
+    font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+    line-height: 1.5;
 }
 
 /* ... Settings */
 h3 {
     color: var(--second);
-    font-size: clamp(1rem, 2.5vw, 1.2rem);
+    font-size: clamp(1.1rem, 3vw, 1.3rem);
     margin: 20px 0 10px;
     font-weight: 600;
     opacity: 0.8;
@@ -83,19 +84,18 @@ h3 {
 /* INPUT FIELDS */
 input {
     width: 100%;
-    padding: 12px 15px;
-    margin: 8px 0;
+    padding: 14px 16px;
+    margin: 10px 0;
     border: 2px solid rgba(45, 51, 107, 0.2);
     border-radius: 10px;
     font-family: "DM Sans", sans-serif;
-    font-size: clamp(0.9rem, 2vw, 1rem);
+    font-size: clamp(0.95rem, 2.5vw, 1.05rem);
     transition: all 0.3s ease;
     box-sizing: border-box;
 }
 
 input:focus {
     outline: none;
-    /* border-color: var(--second); */
     border-color: #2d336baf;
     box-shadow: 0 0 0 3px rgba(45, 51, 107, 0.1);
 }
@@ -108,14 +108,14 @@ button {
     width: 100%;
     background: var(--second);
     color: white;
-    padding: 14px 20px;
+    padding: 16px 20px;
     border: none;
     border-radius: 10px;
     cursor: pointer;
     font-family: "DM Sans", sans-serif;
-    font-size: clamp(1rem, 2.5vw, 1.1rem);
+    font-size: clamp(1.05rem, 3vw, 1.15rem);
     font-weight: 600;
-    margin-top: 20px;
+    margin-top: 25px;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(45, 51, 107, 0.3);
 }
@@ -134,7 +134,7 @@ button:active {
     padding: 15px;
     margin: 15px 0;
     border-radius: 10px;
-    font-size: clamp(0.9rem, 2vw, 1rem);
+    font-size: clamp(0.95rem, 2.5vw, 1.05rem);
     text-align: center;
 }
 
@@ -156,10 +156,11 @@ button:active {
     color: var(--second);
     text-decoration: none;
     font-weight: 600;
-    padding: 10px 20px;
+    padding: 12px 24px;
     border: 2px solid var(--second);
     border-radius: 10px;
     transition: all 0.3s ease;
+    font-size: clamp(0.95rem, 2.5vw, 1.05rem);
 }
 
 .link:hover {
@@ -171,50 +172,113 @@ button:active {
     display: none;
 }
 
-/* Responsive design */
-@media (min-width: 768px) {
-    .container {
+/* Responsive design for tablets and medium screens */
+@media (max-width: 768px) and (min-width: 481px) {
+    body {
         padding: 20px;
-        max-width: 600px;
+    }
+
+    .container {
+        padding: 35px;
+        max-width: 500px;
+    }
+
+    .header-icon {
+        width: 55px;
+        height: 55px;
+    }
+
+    .header-icon svg {
+        width: 32px;
+        height: 32px;
     }
 }
 
-@media (max-width: 375px) {
+/* Responsive design for phones (small to medium) */
+@media (max-width: 480px) {
     body {
-        padding: 0px;
+        padding: 0;
+        justify-content: flex-start;
     }
+
     .container {
-        padding: 15px;
+        padding: 30px 25px;
         max-width: 100%;
         min-height: 100vh;
         margin: 0;
         border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .header-icon {
+        width: 55px;
+        height: 55px;
+        margin-bottom: 25px;
+    }
+
+    .header-icon svg {
+        width: 32px;
+        height: 32px;
+    }
+
+    input {
+        padding: 15px 16px;
+        margin: 12px 0;
+    }
+
+    button {
+        padding: 16px 20px;
+        margin-top: 30px;
+    }
+
+    h3 {
+        margin-top: 25px;
+    }
+}
+
+/* Extra small phones */
+@media (max-width: 360px) {
+    .container {
+        padding: 25px 20px;
     }
 
     .header-icon {
         width: 50px;
         height: 50px;
+        margin-bottom: 20px;
     }
 
     .header-icon svg {
         width: 28px;
         height: 28px;
     }
+
+    input {
+        padding: 13px 14px;
+    }
+
+    button {
+        padding: 14px 18px;
+    }
 }
 
-@media (max-width: 500px) {
+/* Large screens */
+@media (min-width: 1024px) {
     .container {
-        max-width: 900px;
-    }
-}
-
-@media (max-width: 768px) {
-    body {
-        padding: 15px;
+        padding: 45px;
+        max-width: 650px;
     }
 
-    .container {
-        padding: 20px;
+    .header-icon {
+        width: 70px;
+        height: 70px;
+        margin-bottom: 25px;
     }
-}
 
+    .header-icon svg {
+        width: 40px;
+        height: 40px;
+    }
+}   
