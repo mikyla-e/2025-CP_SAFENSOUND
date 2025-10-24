@@ -797,7 +797,7 @@
             const rangeFilter = document.getElementById('top-range-filter');
             const selectedRange = rangeFilter.value;
             
-            let url = '/api/top_emergencies?';
+            let url = '/api/top_emergencies';
             
             if (selectedRange === 'custom') {
                 const startDate = document.getElementById('start-date').value;
@@ -808,11 +808,9 @@
                     return;
                 }
                 
-                url += `range=custom&start_date=${startDate}&end_date=${endDate}`;
+                url += `?range=custom&start_date=${startDate}&end_date=${endDate}`;
             } else if (selectedRange !== 'all') {
-                url += `range=${selectedRange}`;
-            } else {
-                url = '/api/top_emergencies';
+                url += `?range=${selectedRange}`;
             }
             
             try {
@@ -823,25 +821,27 @@
                 document.getElementById('total-emergencies').textContent = 
                     data.total.toString().padStart(3, '0');
                 
-                // Update room stats
-                const sortedRooms = Object.entries(data.rooms)
-                    .sort((a, b) => b[1].count - a[1].count);
-                
-                sortedRooms.forEach(([roomId, roomData]) => {
+                // Ensure all 3 rooms are displayed with current names
+                for (let roomId = 1; roomId <= 3; roomId++) {
                     const statElement = document.getElementById(`room-stat-${roomId}`);
                     if (statElement) {
-                        statElement.querySelector('.room-label').textContent = roomData.name;
+                        const roomInfo = data.rooms[roomId] || { name: roomData[roomId].name, count: 0 };
+                        statElement.querySelector('.room-label').textContent = roomInfo.name;
                         statElement.querySelector('.room-count').textContent = 
-                            roomData.count.toString().padStart(2, '0');
+                            roomInfo.count.toString().padStart(2, '0');
                     }
-                });
+                }
                 
-                // Create pie chart
+                // Create pie chart (only with rooms that have data)
                 const ctx = document.getElementById('topChart').getContext('2d');
                 
                 if (topChart) {
                     topChart.destroy();
                 }
+                
+                const sortedRooms = Object.entries(data.rooms)
+                    .filter(([_, roomData]) => roomData.count > 0)
+                    .sort((a, b) => b[1].count - a[1].count);
                 
                 const labels = sortedRooms.map(([_, roomData]) => roomData.name);
                 const values = sortedRooms.map(([_, roomData]) => roomData.count);
@@ -894,7 +894,6 @@
                 console.error('Error updating top chart:', error);
             }
         }
-
         // Initialize both charts on page load
         window.addEventListener('load', async function() {
             await initializeYearFilter();

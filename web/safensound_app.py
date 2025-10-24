@@ -192,7 +192,7 @@ async def get_available_years():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-# TOP EMERGENCY
+# TOP EMERGENCY COUNT
 @app.get("/api/top_emergencies")
 async def get_top_emergencies(year: str = None, range: str = None, start_date: str = None, end_date: str = None):
     try:

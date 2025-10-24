@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 class Database:
-    def __init__(self, db_name="dummysafensound.db"):
+    def __init__(self, db_name="safensound.db"):
         self.db_name = os.path.join(os.path.dirname(os.path.dirname(__file__)), db_name)
         print(f"Using database at: {self.db_name}")
         self.conn = sqlite3.connect(self.db_name)
@@ -129,45 +129,44 @@ class Database:
                 SELECT 
                     r.room_id,
                     r.room_name,
-                    COUNT(h.history_id) as count
+                    COUNT(CASE WHEN h.action = 'Emergency Detected' THEN 1 END) as count
                 FROM room r
-                LEFT JOIN history h ON r.room_id = h.room_id 
-                    AND h.action = 'Emergency Detected'
+                LEFT JOIN history h ON r.room_id = h.room_id
             '''
             
             conditions = []
             params = []
             
-            # Year filter
-            if year and year != 'all':
-                conditions.append("strftime('%Y', h.date) = ?")
-                params.append(str(year))
-            
-            # Date range filter
+            # Date range filter (primary filter - takes precedence over year)
             if date_range:
                 today = datetime.now().date()
                 
                 if date_range == 'this_year':
-                    conditions.append("strftime('%Y', h.date) = ?")
+                    conditions.append("(h.history_id IS NULL OR strftime('%Y', h.date) = ?)")
                     params.append(str(today.year))
                 
                 elif date_range == 'this_month':
-                    conditions.append("strftime('%Y-%m', h.date) = ?")
+                    conditions.append("(h.history_id IS NULL OR strftime('%Y-%m', h.date) = ?)")
                     params.append(today.strftime('%Y-%m'))
                 
                 elif date_range == 'last_30':
                     start = (today - timedelta(days=30)).strftime('%Y-%m-%d')
-                    conditions.append("h.date >= ?")
+                    conditions.append("(h.history_id IS NULL OR h.date >= ?)")
                     params.append(start)
                 
                 elif date_range == 'last_7':
                     start = (today - timedelta(days=7)).strftime('%Y-%m-%d')
-                    conditions.append("h.date >= ?")
+                    conditions.append("(h.history_id IS NULL OR h.date >= ?)")
                     params.append(start)
                 
                 elif date_range == 'custom' and start_date and end_date:
-                    conditions.append("h.date BETWEEN ? AND ?")
+                    conditions.append("(h.history_id IS NULL OR h.date BETWEEN ? AND ?)")
                     params.extend([start_date, end_date])
+            
+            # Year filter only applies if no date_range is specified
+            elif year and year != 'all':
+                conditions.append("(h.history_id IS NULL OR strftime('%Y', h.date) = ?)")
+                params.append(str(year))
             
             # Add conditions to query
             if conditions:
