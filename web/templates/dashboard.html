@@ -701,6 +701,9 @@
                 
                 document.getElementById('end-date').valueAsDate = today;
                 document.getElementById('start-date').valueAsDate = thirtyDaysAgo;
+                
+                // Update chart with default custom range
+                applyCustomRange();
             } else {
                 customInputs.classList.remove('show');
                 updateTopChart();
@@ -851,7 +854,7 @@
         // Initialize both charts on page load
         window.addEventListener('load', async function() {
             await initializeYearFilter();
-            await updateTopChart(); // This will load with default "Last 7 Days"
+            await updateTopChart(); 
         });
     </script>
 </body>
