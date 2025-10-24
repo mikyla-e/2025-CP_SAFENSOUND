@@ -178,7 +178,7 @@
         <header>
             <h2>Room #</h2>
             <!-- <i class="fa-solid fa-pen-to-square"></i> -->
-            <i class="fa-solid fa-pen">✎</i>
+            <i class="fa-solid fa-pen" onclick="renameCurrentRoom(event)">✎</i>
         </header>
         <p class="title">Alert History</p>
         <div class="table-div">
@@ -203,7 +203,7 @@
         <header>
             <div>
                 <h2>Room #</h2>
-                <i class="fa-solid fa-pen">✎</i>
+                <i class="fa-solid fa-pen" onclick="renameCurrentRoom(event)">✎</i>
             </div>
             <span class="fa-solspand fa-times popup-close" onclick="closePopup()">x</i>
         </header>
@@ -461,6 +461,50 @@
                             const mobileHeader = document.querySelector('.popup-aside header h2');
                             if (desktopHeader) desktopHeader.textContent = trimmedName;
                             if (mobileHeader) mobileHeader.textContent = trimmedName;
+                        }
+                    } else {
+                        alert('Failed to rename room');
+                    }
+                } catch (error) {
+                    console.error('Error renaming room:', error);
+                    alert('Error renaming room');
+                }
+            }
+        }
+
+        // RENAME ROOM USING PEN ICON
+        async function renameCurrentRoom(event) {
+            event.stopPropagation();
+            
+            const currentName = roomData[currentSelectedRoom].name;
+            const newName = prompt(`Enter new name for ${currentName}:`, currentName);
+            
+            if (newName !== null && newName.trim() !== '') {
+                const trimmedName = newName.trim();
+                
+                try {
+                    const response = await fetch(`/api/rooms/${currentSelectedRoom}/rename`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ new_name: trimmedName })
+                    });
+                    
+                    if (response.ok) {
+                        // Update the room name in the data
+                        roomData[currentSelectedRoom].name = trimmedName;
+                        
+                        // Update the room card name
+                        document.querySelector(`.room${currentSelectedRoom} h2`).textContent = trimmedName;
+                        
+                        // Update the aside header
+                        document.querySelector('aside header h2').textContent = trimmedName;
+                        
+                        // Update the popup header if it's open
+                        const popupHeader = document.querySelector('.popup-aside header h2');
+                        if (popupHeader) {
+                            popupHeader.textContent = trimmedName;
                         }
                     } else {
                         alert('Failed to rename room');
