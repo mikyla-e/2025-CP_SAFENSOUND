@@ -2,6 +2,8 @@
 :root{
     --primary: white;
     --second: #2D336B;
+    --second-light: #7886C7;
+    --second-very-light: #A9B5DF;
 }
 
 body {
@@ -16,7 +18,7 @@ body {
     grid-template-rows: auto 1fr;
 
     font-family: "DM Sans", sans-serif;
-    background: linear-gradient(133deg, #F7F7F7 13.25%, #A9B5DF 205.83%);
+    background: linear-gradient(133deg, #F7F7F7 13.25%, var(--second-very-light) 205.83%);
 }
 
 nav, main, aside,
@@ -95,7 +97,7 @@ main .rooms-div{
 /* all rooms */
 main .rooms{
     border-radius: 20px;
-    background-color: white;
+    background-color: var(--primary);
     box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
     /* width: 100%; */
     max-width: 50%;
@@ -267,7 +269,7 @@ main .stats-div .recent{
     min-height: fit-content;
     height: 100px;
 
-    background: linear-gradient(180deg, #7886C7 0%, var(--second) 181.85%);
+    background: linear-gradient(180deg, var(--second-light) 0%, var(--second) 181.85%);
     color: var(--primary);
 
     display: flex;
@@ -343,18 +345,174 @@ main .stats-div .monthly{
     padding: 20px;
     display: flex;
     flex-direction: column;
-    min-height: 0;
     overflow: hidden;
+
+    flex: 1;
 }
 
 /* top alarm count */
 main .stats-div .top{
     grid-area: top;
-    padding: 0;
+    padding: 20px;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+
+    flex: 1;
+
+    /* min-height: 100px;
+    height: 200px;
+    max-height: 500px; */
+}
+
+main .stats-div .top #top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+main .stats-div .top #top-header h3 {
+    margin: 0;
+    padding: 0;
+    font-size: clamp(1rem, 2.5vw, 1.2rem);
+    flex-shrink: 0;
+}
+
+main .stats-div .top #top-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+main .stats-div .top #top-filters select,
+main .stats-div .top #top-filters input[type="date"] {
+    background: #7886C7;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 12px;
+    font-family: "DM Sans", sans-serif;
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+main .stats-div .top #top-filters select:hover,
+main .stats-div .top #top-filters input[type="date"]:hover {
+    background: #6876B7;
+}
+
+main .stats-div .top #top-filters input[type="date"] {
+    color-scheme: dark;
+    padding: 4px 10px;
+}
+
+main .stats-div .top #top-filters select:focus,
+main .stats-div .top #top-filters input[type="date"]:focus {
+    background: linear-gradient(133deg, #2D336B 60%, #7886C7 120%);
+    color: var(--second-very-light);
+}
+
+main .stats-div .top #top-filters .date-inputs {
+    display: none;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+main .stats-div .top #top-filters .date-inputs.show {
+    display: flex;
+}
+
+main .stats-div .top #top-filters .date-inputs span {
+    color: #2D336B;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+main .stats-div .top .top-content {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 20px;
+    flex: 1;
     min-height: 0;
     overflow: hidden;
+
+    padding: 0;
+
+    border: 1px solid red;
+}
+
+main .stats-div .top .pie-chart-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+main .stats-div .top .pie-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+main .stats-div .top .total-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+main .stats-div .top .total-label {
+    display: block;
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 5px;
+}
+
+main .stats-div .top .total-value {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #2D336B;
+}
+
+main .stats-div .top .room-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+main .stats-div .top .room-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+main .stats-div .top .room-label {
+    font-size: 1rem;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+main .stats-div .top .room-count {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #2D336B;
+    min-width: 40px;
+    text-align: right;
+    flex-shrink: 0;
 }
 
 /* ================================ */
@@ -568,6 +726,17 @@ aside .table-div table tr:nth-child(odd),
         padding: 20px 30px;
         gap: 25px;
     }
+
+    /* main .stats-div {
+        height: calc(100vh - 200px); 
+        min-height: 100px;
+    } */
+    
+    /* main .stats-div .monthly,
+    main .stats-div .top {
+        min-height: 100px;
+    } */
+    
 }
 
 @media screen and (max-width: 1200px) {
@@ -592,6 +761,11 @@ aside .table-div table tr:nth-child(odd),
     main .stats-div{
         grid-template-columns: 1fr 50%;
     }
+
+    /* main .stats-div .monthly,
+    main .stats-div .top {
+        min-height: 100px;
+    } */
 }
 
 /* Tablets */
@@ -605,6 +779,7 @@ aside .table-div table tr:nth-child(odd),
         gap: 20px;
     }
 
+    /* ROOMS */
     main .rooms{
         border-radius: 15px;
         min-height: fit-content;
@@ -619,18 +794,6 @@ aside .table-div table tr:nth-child(odd),
         font-size: clamp(1rem,2rem,2rem);
     }
 
-    main .stats-div{
-        border-top: 2px solid rgba(184, 183, 183, 0.408);
-        padding-top: 10px;
-        grid-template-columns: 1fr;
-        grid-template-areas: 
-            "recent"
-            "top"
-            "monthly";
-
-        grid-template-rows: 100px 250px minmax(300px, 1fr); /* Change this line */
-    }
-
     /* room name */
     main .rooms .texts h2{
         font-size: clamp(.5rem, 2vw, 1rem);
@@ -642,10 +805,6 @@ aside .table-div table tr:nth-child(odd),
         font-size: clamp(0.5rem, 1.5vw, 1rem);
     }
 
-    main .stats-div .recent{
-        height: auto;
-    }
-
     /* "view history" */
     aside .title{
         font-size: clamp(0.7rem, 1.7vw, 1rem);
@@ -654,6 +813,81 @@ aside .table-div table tr:nth-child(odd),
     aside table th,
     aside table td {
         font-size: clamp(0.65rem, 1.3vw, 0.7rem);
+    }
+
+    /* STATS */
+    main .stats-div{
+        border-top: 2px solid rgba(184, 183, 183, 0.408);
+        padding-top: 10px;
+        grid-template-columns: 1fr;
+        grid-template-areas: 
+            "recent"
+            "top"
+            "monthly";
+
+        grid-template-rows: 100px minmax(25 0px, 1fr) minmax(300px, 1fr); /* Change this line */
+    }
+
+    main .stats-div .recent{
+        height: auto;
+    }
+
+    /* top */
+    main .stats-div .top #top-header {
+        padding: 15px 15px 8px 15px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    main .stats-div .top #top-filters {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    main .stats-div .top #top-filters select,
+    main .stats-div .top #top-filters input[type="date"] {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+    }
+
+    main .stats-div .top .top-content {
+        flex-direction: column;
+        padding: 15px;
+    }
+
+    main .stats-div .top .pie-chart-container {
+        width: 180px;
+        height: 180px;
+        max-width: 180px;
+        max-height: 180px;
+    }
+
+    main .stats-div .top .total-value {
+        font-size: 2.2rem;
+    }
+
+    main .stats-div .top .room-stats {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-around;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    main .stats-div .top .room-stat {
+        flex-direction: column;
+        gap: 5px;
+        text-align: center;
+        min-width: 70px;
+    }
+
+    main .stats-div .top .room-label {
+        font-size: 0.9rem;
+    }
+
+    main .stats-div .top .room-count {
+        font-size: 1.3rem;
     }
 }
 
@@ -704,6 +938,7 @@ aside .table-div table tr:nth-child(odd),
         font-size: clamp(0.5rem, 2vw, 1rem);
     }
 
+    /* STATS */
     main .stats-div{
         min-height: fit-content;
         height: 57%;
@@ -713,13 +948,31 @@ aside .table-div table tr:nth-child(odd),
             "recent top"
             "monthly top";
         grid-template-columns: 1fr 45%;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: auto minmax(250px, 1fr);
 
         gap: clamp(15px, 20px, 30px);
     }
 
     main .stats-div .recent{
         height: 100px;
+    }
+
+    /* top */
+    main .stats-div .top #top-header {
+        padding: 12px 12px 8px 12px;
+    }
+
+    main .stats-div .top #top-filters {
+        gap: 6px;
+    }
+
+    main .stats-div .top #top-filters .date-inputs {
+        width: 100%;
+    }
+
+    main .stats-div .top #top-filters .date-inputs input[type="date"] {
+        flex: 1;
+        min-width: 0;
     }
 }
 
@@ -785,20 +1038,6 @@ aside .table-div table tr:nth-child(odd),
         padding: clamp(10px, 2.5vw, 15px) clamp(13px, 3vw, 20px);
     }
 
-    main .stats-div{
-        grid-template-columns: 1fr;
-        grid-template-areas: 
-            "recent"
-            "top"
-            "monthly";
-
-        grid-template-rows: 100px 210px minmax(250px, 1fr); 
-    }
-
-    main .stats-div .recent{
-        height: auto;
-    }
-
     /* popup */
     .popup-aside {
         width: 90%;
@@ -814,6 +1053,100 @@ aside .table-div table tr:nth-child(odd),
         font-size: 0.75rem;
         padding: 8px 6px;
     }
+
+    /* STATS */
+    main .stats-div{
+        grid-template-columns: 1fr;
+        grid-template-areas: 
+            "recent"
+            "top"
+            "monthly";
+
+        grid-template-rows: 100px minmax(250px, 1fr) minmax(250px, 1fr); 
+    }
+
+    main .stats-div .recent{
+        height: auto;
+    }
+
+    /* top */
+    main .stats-div .top #top-header {
+        padding: 10px 10px 5px 10px;
+        gap: 8px;
+    }
+
+    main .stats-div .top #top-header h3 {
+        font-size: 1rem;
+    }
+
+    main .stats-div .top #top-filters {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        gap: 8px;
+    }
+
+    main .stats-div .top #top-filters select,
+    main .stats-div .top #top-filters input[type="date"] {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    main .stats-div .top #top-filters .date-inputs {
+        flex-direction: row;
+        align-items: center;
+        width: 100%;
+        gap: 5px;
+    }
+
+    main .stats-div .top #top-filters .date-inputs input[type="date"] {
+        flex: 1;
+    }
+
+    main .stats-div .top #top-filters .date-inputs span {
+        font-size: 0.75rem;
+        flex-shrink: 0;
+    }
+
+    main .stats-div .top .top-content {
+        padding: 10px;
+        gap: 15px;
+    }
+
+    main .stats-div .top .pie-chart-container {
+        width: 140px;
+        height: 140px;
+        max-width: 140px;
+        max-height: 140px;
+    }
+
+    main .stats-div .top .total-label {
+        font-size: 0.7rem;
+    }
+
+    main .stats-div .top .total-value {
+        font-size: 1.6rem;
+    }
+
+    main .stats-div .top .room-stats {
+        gap: 10px;
+        width: 100%;
+    }
+
+    main .stats-div .top .room-stat {
+        min-width: 60px;
+        flex: 1;
+    }
+
+    main .stats-div .top .room-label {
+        font-size: 0.75rem;
+    }
+
+    main .stats-div .top .room-count {
+        font-size: 1rem;
+    }
 }
 
 @media screen and (max-width: 376px) {
@@ -824,5 +1157,29 @@ aside .table-div table tr:nth-child(odd),
         border-radius: 0;
 
         box-sizing: border-box;
+    }
+
+    /* STATS */
+    main .stats-div .top .pie-chart-container {
+        width: 120px;
+        height: 120px;
+        max-width: 120px;
+        max-height: 120px;
+    }
+
+    main .stats-div .top .total-value {
+        font-size: 1.4rem;
+    }
+
+    main .stats-div .top .room-count {
+        font-size: 0.9rem;
+    }
+
+    main .stats-div .top #top-filters .date-inputs {
+        flex-wrap: wrap;
+    }
+
+    main .stats-div .top #top-filters .date-inputs input[type="date"] {
+        width: 100%;
     }
 }
