@@ -191,6 +191,15 @@ async def get_available_years():
         return years
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+# TOP EMERGENCY
+@app.get("/api/top_emergencies")
+async def get_top_emergencies(year: str = None, range: str = None, start_date: str = None, end_date: str = None):
+    try:
+        top_data = db.fetch_top_emergencies(year, range, start_date, end_date)
+        return top_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ALERT
 @app.post("/api/alert")

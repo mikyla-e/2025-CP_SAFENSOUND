@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
+        /* MONTHLY GRAPH HEADER */
         main .stats-div .monthly #monthly-header{
             display: flex;
             justify-content: space-between;
@@ -19,6 +20,7 @@
         main .stats-div .monthly #monthly-header h3{
             margin: 0;
             padding: 0;
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
         }
 
         main .stats-div .monthly #monthly-header select{
@@ -26,10 +28,16 @@
             color: #fff;
             border: none;
             border-radius: 5px;
-            padding: 3px 10px;
+            padding: 5px 12px;
             font-family: "DM Sans", sans-serif;
+            font-size: 0.85rem;
             outline: none;
             cursor: pointer; 
+            transition: all 0.2s ease;
+        }
+
+        main .stats-div .monthly #monthly-header select:hover {
+            background: #6876B7;
         }
 
         main .stats-div .monthly #monthly-header select:focus {
@@ -40,15 +48,358 @@
         main .stats-div .monthly .chart-div{
             width: 100%;
             height: 100%;
-            overflow-x: scroll;
+            overflow-x: auto;
+            overflow-y: hidden;
+            min-height: 0;
+            flex: 1; 
+            position: relative; 
         }
 
         main .stats-div .monthly .chart-div canvas{
-            width: 95%;
-            height: 100%;
+            width: 100% !important; 
+            height: 100% !important;
+            max-width: 100%; 
+            display: block; 
         }
 
+        /* TOP EMERGENCY COUNT */
+        main .stats-div .top #top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            padding: 20px 20px 10px 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        main .stats-div .top #top-header h3 {
+            margin: 0;
+            padding: 0;
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            flex-shrink: 0;
+        }
+
+        main .stats-div .top #top-filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        main .stats-div .top #top-filters select,
+        main .stats-div .top #top-filters input[type="date"] {
+            background: #7886C7;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 12px;
+            font-family: "DM Sans", sans-serif;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        main .stats-div .top #top-filters select:hover,
+        main .stats-div .top #top-filters input[type="date"]:hover {
+            background: #6876B7;
+        }
+
+        main .stats-div .top #top-filters input[type="date"] {
+            color-scheme: dark;
+            padding: 4px 10px;
+        }
+
+        main .stats-div .top #top-filters select:focus,
+        main .stats-div .top #top-filters input[type="date"]:focus {
+            background: linear-gradient(133deg, #2D336B 60%, #7886C7 120%);
+            color: #fff;
+        }
+
+        main .stats-div .top #top-filters .date-inputs {
+            display: none;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        main .stats-div .top #top-filters .date-inputs.show {
+            display: flex;
+        }
+
+        main .stats-div .top #top-filters .date-inputs span {
+            color: #2D336B;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        main .stats-div .top .top-content {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-around;
+            padding: 20px;
+            flex: 1;
+            gap: 20px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        main .stats-div .top .pie-chart-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            max-width: 200px;
+            max-height: 200px;
+            flex-shrink: 0;
+        }
+
+        main .stats-div .top .pie-chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        main .stats-div .top .total-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        main .stats-div .top .total-label {
+            display: block;
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        main .stats-div .top .total-value {
+            display: block;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2D336B;
+        }
+
+        main .stats-div .top .room-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-shrink: 1;
+            min-width: 0;
+        }
+
+        main .stats-div .top .room-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        main .stats-div .top .room-label {
+            font-size: 1rem;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        main .stats-div .top .room-count {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2D336B;
+            min-width: 40px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        @media screen and (max-width: 900px) {
+            main .stats-div .top #top-header {
+                padding: 15px 15px 8px 15px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            main .stats-div .top #top-filters {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            main .stats-div .top #top-filters select,
+            main .stats-div .top #top-filters input[type="date"] {
+                font-size: 0.8rem;
+                padding: 4px 10px;
+            }
+
+            main .stats-div .top .top-content {
+                flex-direction: column;
+                padding: 15px;
+            }
+
+            main .stats-div .top .pie-chart-container {
+                width: 180px;
+                height: 180px;
+                max-width: 180px;
+                max-height: 180px;
+            }
+
+            main .stats-div .top .total-value {
+                font-size: 2.2rem;
+            }
+
+            main .stats-div .top .room-stats {
+                width: 100%;
+                flex-direction: row;
+                justify-content: space-around;
+                gap: 15px;
+                flex-wrap: wrap;
+            }
+
+            main .stats-div .top .room-stat {
+                flex-direction: column;
+                gap: 5px;
+                text-align: center;
+                min-width: 70px;
+            }
+
+            main .stats-div .top .room-label {
+                font-size: 0.9rem;
+            }
+
+            main .stats-div .top .room-count {
+                font-size: 1.3rem;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            main .stats-div .top #top-header {
+                padding: 12px 12px 8px 12px;
+            }
+
+            main .stats-div .top #top-filters {
+                gap: 6px;
+            }
+
+            main .stats-div .top #top-filters .date-inputs {
+                width: 100%;
+            }
+
+            main .stats-div .top #top-filters .date-inputs input[type="date"] {
+                flex: 1;
+                min-width: 0;
+            }
+        }
+
+        @media screen and (max-width: 440px) {
+            main .stats-div .top #top-header {
+                padding: 10px 10px 5px 10px;
+                gap: 8px;
+            }
+
+            main .stats-div .top #top-header h3 {
+                font-size: 1rem;
+            }
+
+            main .stats-div .top #top-filters {
+                flex-direction: column;
+                align-items: stretch;
+                width: 100%;
+                gap: 8px;
+            }
+
+            main .stats-div .top #top-filters select,
+            main .stats-div .top #top-filters input[type="date"] {
+                font-size: 0.75rem;
+                padding: 6px 10px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            main .stats-div .top #top-filters .date-inputs {
+                flex-direction: row;
+                align-items: center;
+                width: 100%;
+                gap: 5px;
+            }
+
+            main .stats-div .top #top-filters .date-inputs input[type="date"] {
+                flex: 1;
+            }
+
+            main .stats-div .top #top-filters .date-inputs span {
+                font-size: 0.75rem;
+                flex-shrink: 0;
+            }
+
+            main .stats-div .top .top-content {
+                padding: 10px;
+                gap: 15px;
+            }
+
+            main .stats-div .top .pie-chart-container {
+                width: 140px;
+                height: 140px;
+                max-width: 140px;
+                max-height: 140px;
+            }
+
+            main .stats-div .top .total-label {
+                font-size: 0.7rem;
+            }
+
+            main .stats-div .top .total-value {
+                font-size: 1.6rem;
+            }
+
+            main .stats-div .top .room-stats {
+                gap: 10px;
+                width: 100%;
+            }
+
+            main .stats-div .top .room-stat {
+                min-width: 60px;
+                flex: 1;
+            }
+
+            main .stats-div .top .room-label {
+                font-size: 0.75rem;
+            }
+
+            main .stats-div .top .room-count {
+                font-size: 1rem;
+            }
+        }
+
+        @media screen and (max-width: 376px) {
+            main .stats-div .top .pie-chart-container {
+                width: 120px;
+                height: 120px;
+                max-width: 120px;
+                max-height: 120px;
+            }
+
+            main .stats-div .top .total-value {
+                font-size: 1.4rem;
+            }
+
+            main .stats-div .top .room-count {
+                font-size: 0.9rem;
+            }
+
+            main .stats-div .top #top-filters .date-inputs {
+                flex-wrap: wrap;
+            }
+
+            main .stats-div .top #top-filters .date-inputs input[type="date"] {
+                width: 100%;
+            }
+        }
     </style>
+</body>
+</html>
 </head>
 <body>
     <nav>
@@ -112,7 +463,50 @@
                 </div>
             </div>
 
-            <div class="top stats"> top</div>
+            <!-- Top Emergency Count -->
+            <div class="top stats">
+                <div id="top-header">
+                    <h3>Top Emergency Count</h3>
+                    <div id="top-filters">
+                        <select id="top-range-filter" onchange="handleRangeChange()">
+                            <option value="all">All Time</option>
+                            <option value="this_year">This Year</option>
+                            <option value="this_month">This Month</option>
+                            <option value="last_7" selected>Last 7 Days</option>
+                            <option value="last_30">Last 30 Days</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                        <div class="date-inputs" id="custom-date-inputs">
+                            <input type="date" id="start-date">
+                            <span>to</span>
+                            <input type="date" id="end-date">
+                        </div>
+                    </div>
+                </div>
+                <div class="top-content">
+                    <div class="pie-chart-container">
+                        <canvas id="topChart"></canvas>
+                        <div class="total-overlay">
+                            <span class="total-label">total</span>
+                            <span class="total-value" id="total-emergencies">000</span>
+                        </div>
+                    </div>
+                    <div class="room-stats">
+                        <div class="room-stat" id="room-stat-1">
+                            <span class="room-label">Room 1</span>
+                            <span class="room-count">00</span>
+                        </div>
+                        <div class="room-stat" id="room-stat-2">
+                            <span class="room-label">Room 2</span>
+                            <span class="room-count">00</span>
+                        </div>
+                        <div class="room-stat" id="room-stat-3">
+                            <span class="room-label">Room 3</span>
+                            <span class="room-count">00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -627,9 +1021,173 @@
             }
         }
 
-        // Initialize on page load
+        // TOP EMERGENCY COUNT PIE CHART
+        let topChart = null;
+
+        function handleRangeChange() {
+            const rangeFilter = document.getElementById('top-range-filter');
+            const customInputs = document.getElementById('custom-date-inputs');
+            
+            if (rangeFilter.value === 'custom') {
+                customInputs.classList.add('show');
+                // Set default dates
+                const today = new Date();
+                const thirtyDaysAgo = new Date(today);
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                
+                document.getElementById('end-date').valueAsDate = today;
+                document.getElementById('start-date').valueAsDate = thirtyDaysAgo;
+            } else {
+                customInputs.classList.remove('show');
+                updateTopChart();
+            }
+        }
+
+        async function applyCustomRange() {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('Start date must be before end date');
+                return;
+            }
+            
+            await updateTopChart();
+        }
+
+        // Add event listeners for Enter key on date inputs
+        document.addEventListener('DOMContentLoaded', function() {
+            const startDate = document.getElementById('start-date');
+            const endDate = document.getElementById('end-date');
+            
+            if (startDate && endDate) {
+                startDate.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') applyCustomRange();
+                });
+                endDate.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') applyCustomRange();
+                });
+                
+                // Auto-apply when both dates are selected
+                endDate.addEventListener('change', function() {
+                    if (startDate.value && endDate.value) {
+                        applyCustomRange();
+                    }
+                });
+            }
+        });
+
+        async function updateTopChart() {
+            const rangeFilter = document.getElementById('top-range-filter');
+            const selectedRange = rangeFilter.value;
+            
+            let url = '/api/top_emergencies?';
+            
+            if (selectedRange === 'custom') {
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                
+                if (!startDate || !endDate) {
+                    console.warn('Custom range selected but dates not set');
+                    return;
+                }
+                
+                url += `range=custom&start_date=${startDate}&end_date=${endDate}`;
+            } else if (selectedRange !== 'all') {
+                url += `range=${selectedRange}`;
+            } else {
+                url = '/api/top_emergencies';
+            }
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                // Update total
+                document.getElementById('total-emergencies').textContent = 
+                    data.total.toString().padStart(3, '0');
+                
+                // Update room stats
+                const sortedRooms = Object.entries(data.rooms)
+                    .sort((a, b) => b[1].count - a[1].count);
+                
+                sortedRooms.forEach(([roomId, roomData]) => {
+                    const statElement = document.getElementById(`room-stat-${roomId}`);
+                    if (statElement) {
+                        statElement.querySelector('.room-label').textContent = roomData.name;
+                        statElement.querySelector('.room-count').textContent = 
+                            roomData.count.toString().padStart(2, '0');
+                    }
+                });
+                
+                // Create pie chart
+                const ctx = document.getElementById('topChart').getContext('2d');
+                
+                if (topChart) {
+                    topChart.destroy();
+                }
+                
+                const labels = sortedRooms.map(([_, roomData]) => roomData.name);
+                const values = sortedRooms.map(([_, roomData]) => roomData.count);
+                const colors = ['#7886C7', '#A9B5DF', '#BFC9E8'];
+                
+                topChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: colors.slice(0, values.length),
+                            borderWidth: 0,
+                            cutout: '65%'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        aspectRatio: 1,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: '#2D336B',
+                                padding: 12,
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#7886C7',
+                                borderWidth: 1,
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 
+                                            ? ((context.parsed / total) * 100).toFixed(1) 
+                                            : 0;
+                                        return `${context.label}: ${context.parsed} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        layout: {
+                            padding: 0
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error updating top chart:', error);
+            }
+        }
+
+        // Initialize both charts on page load
         window.addEventListener('load', async function() {
             await initializeYearFilter();
+            await updateTopChart(); // This will load with default "Last 7 Days"
         });
     </script>
 </body>

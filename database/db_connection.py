@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 class Database:
-    def __init__(self, db_name="safensound.db"):
+    def __init__(self, db_name="dummysafensound.db"):
         self.db_name = os.path.join(os.path.dirname(os.path.dirname(__file__)), db_name)
         print(f"Using database at: {self.db_name}")
         self.conn = sqlite3.connect(self.db_name)
@@ -118,6 +118,81 @@ class Database:
                 ORDER BY year DESC
             ''')
             return [row[0] for row in cursor.fetchall()]
+        
+    # top emegency count
+    def fetch_top_emergencies(self, year=None, date_range=None, start_date=None, end_date=None):
+        """Fetch total emergency count per room with flexible filtering"""
+        from datetime import datetime, timedelta
+        
+        with self.conn:
+            query = '''
+                SELECT 
+                    r.room_id,
+                    r.room_name,
+                    COUNT(h.history_id) as count
+                FROM room r
+                LEFT JOIN history h ON r.room_id = h.room_id 
+                    AND h.action = 'Emergency Detected'
+            '''
+            
+            conditions = []
+            params = []
+            
+            # Year filter
+            if year and year != 'all':
+                conditions.append("strftime('%Y', h.date) = ?")
+                params.append(str(year))
+            
+            # Date range filter
+            if date_range:
+                today = datetime.now().date()
+                
+                if date_range == 'this_year':
+                    conditions.append("strftime('%Y', h.date) = ?")
+                    params.append(str(today.year))
+                
+                elif date_range == 'this_month':
+                    conditions.append("strftime('%Y-%m', h.date) = ?")
+                    params.append(today.strftime('%Y-%m'))
+                
+                elif date_range == 'last_30':
+                    start = (today - timedelta(days=30)).strftime('%Y-%m-%d')
+                    conditions.append("h.date >= ?")
+                    params.append(start)
+                
+                elif date_range == 'last_7':
+                    start = (today - timedelta(days=7)).strftime('%Y-%m-%d')
+                    conditions.append("h.date >= ?")
+                    params.append(start)
+                
+                elif date_range == 'custom' and start_date and end_date:
+                    conditions.append("h.date BETWEEN ? AND ?")
+                    params.extend([start_date, end_date])
+            
+            # Add conditions to query
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            
+            query += '''
+                GROUP BY r.room_id, r.room_name
+                ORDER BY count DESC
+            '''
+            
+            cursor = self.conn.execute(query, params)
+            results = cursor.fetchall()
+            
+            total = sum(row[2] for row in results)
+            room_data = {}
+            for room_id, room_name, count in results:
+                room_data[room_id] = {
+                    "name": room_name,
+                    "count": count
+                }
+            
+            return {
+                "total": total,
+                "rooms": room_data
+            }
 
     def close(self):
         self.conn.close()

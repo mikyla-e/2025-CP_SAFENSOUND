@@ -30,12 +30,33 @@ void setupI2S() {
 }
 
 bool checkMicConnection() {
-  uint8_t buffer[1024];
+  int32_t buffer[256];
   size_t bytes_read = 0;
-  i2s_read(I2S_NUM_0, &buffer, sizeof(buffer), &bytes_read, 100 / portTICK_PERIOD_MS);
-  for (size_t i = 0; i < bytes_read; i++) {
-    if (buffer[i] != 0) return true;
+  
+  delay(100);
+  
+  for (int attempt = 0; attempt < 3; attempt++) {
+    i2s_read(I2S_NUM_0, buffer, sizeof(buffer), &bytes_read, 1000 / portTICK_PERIOD_MS);
+    
+    if (bytes_read > 0) {
+      int32_t sum = 0;
+      int non_zero = 0;
+      
+      for (size_t i = 0; i < bytes_read / 4; i++) {
+        if (buffer[i] != 0) {
+          non_zero++;
+          sum += abs(buffer[i]);
+        }
+      }
+      
+      if (non_zero > 10) {
+        // Remove Serial.printf that corrupts audio data
+        return true;
+      }
+    }
+    delay(100);
   }
+  
   return false;
 }
 
@@ -43,24 +64,30 @@ void setup() {
   Serial.begin(115200);
   setupI2S();
 
+  // Wait for mic without printing during check
   while (!checkMicConnection()) {
-    Serial.println("Failed connection: SPH0645LM4H not detected! Retrying...");
     delay(1000);
   }
 
-  Serial.println("Start recording...");
+  // Small delay to ensure serial is ready
+  delay(500);
+  
+  // NO TEXT OUTPUT - go straight to recording
 }
 
 void loop() {
-  uint32_t buffer[256]; // 256 * 4 bytes = 1024 bytes
+  int32_t buffer[256];  // Use int32_t to match I2S config
   size_t bytes_read;
 
   unsigned long start = millis();
-  while (millis() - start < 15000) {
+  while (millis() - start < 10000) {
     i2s_read(I2S_NUM_0, buffer, sizeof(buffer), &bytes_read, portMAX_DELAY);
+    // Send only raw audio data
     Serial.write((uint8_t*)buffer, bytes_read);
   }
-  Serial.println("Recording finished. Save the output from Serial Monitor.");
 
-  while (1);
+  // Stop forever - no text output
+  while (1) {
+    delay(1000);
+  }
 }
