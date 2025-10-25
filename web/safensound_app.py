@@ -98,6 +98,10 @@ connected_websockets: List[WebSocket] = []
 async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_alias(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
 @app.get("/api/rooms")
 async def get_rooms():
     try:

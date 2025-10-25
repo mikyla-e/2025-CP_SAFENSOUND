@@ -33,6 +33,28 @@
             border-radius: 8px;
             box-shadow: 0 2px 12px rgba(44,51,107,0.06);
             padding: 0 0 32px 0;
+            position: relative;
+        }
+        .exit-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        .exit-btn:hover {
+            background: rgba(45, 51, 107, 0.1);
+            color: var(--second);
         }
         .report-header {
             border-bottom: 2px solid var(--border-light);
@@ -63,6 +85,7 @@
             display: flex;
             gap: 32px;
             flex-wrap: wrap;
+            align-items: flex-end;
         }
         .filter-group {
             display: flex;
@@ -92,21 +115,37 @@
         }
         .custom-date-range.show { display: flex; }
         .date-separator { color: var(--second-light); font-weight: 600; }
-        .apply-btn {
+        .button-group {
+            display: flex;
+            gap: 12px;
             margin-left: auto;
-            margin-top: 24px;
-            margin-right: 48px;
+        }
+        .apply-btn, .print-btn {
             padding: 8px 28px;
-            background: var(--second);
-            color: #fff;
             border: none;
             border-radius: 5px;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
         }
-        .apply-btn:hover { background: var(--second-light); }
+        .apply-btn {
+            background: var(--second);
+            color: #fff;
+        }
+        .apply-btn:hover { 
+            background: var(--second-light);
+        }
+        .print-btn {
+            background: var(--second-very-light);
+            color: var(--second);
+            border: 2px solid var(--second-very-light);
+        }
+        .print-btn:hover {
+            background: var(--second-light);
+            color: #fff;
+            border-color: var(--second-light);
+        }
         .metrics-row {
             display: flex;
             gap: 24px;
@@ -195,21 +234,6 @@
             color: var(--text-secondary);
             padding: 36px 0;
         }
-        .print-btn {
-            position: absolute;
-            top: 32px;
-            right: 48px;
-            background: var(--second);
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            font-size: 1rem;
-            font-weight: 600;
-            padding: 8px 24px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .print-btn:hover { background: var(--second-light); }
         
         @media print {
             body {
@@ -218,7 +242,12 @@
                 margin: 0;
                 font-size: 12pt;
             }
-            .print-btn, .filters-section, .apply-btn {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            .print-btn, .filters-section, .apply-btn, .exit-btn {
                 display: none !important;
             }
             .report-container {
@@ -230,124 +259,161 @@
                 max-width: 100%;
             }
             .report-header {
-                background: #fff !important;
+                background: #2D336B !important;
                 border-radius: 0;
-                padding: 24px 24px 12px 24px;
-                border-bottom: 2px solid #222;
+                padding: 20px 24px 12px 24px;
+                border-bottom: 3px solid #2D336B;
                 text-align: center;
             }
             .report-header h1 {
-                font-size: 1.5rem;
-                color: #222 !important;
+                font-size: 1.4rem;
+                color: #fff !important;
                 margin-bottom: 4px;
                 font-weight: bold;
                 text-transform: uppercase;
-                letter-spacing: 1px;
+                letter-spacing: 1.5px;
             }
             .report-header .subtitle {
-                font-size: 1rem;
-                color: #444 !important;
-                margin-bottom: 8px;
+                font-size: 0.9rem;
+                color: #E6EAF6 !important;
+                margin-bottom: 6px;
             }
             .report-meta {
                 display: block;
                 text-align: right;
-                color: #444 !important;
-                font-size: 0.95rem;
+                color: #E6EAF6 !important;
+                font-size: 0.85rem;
                 margin-top: 8px;
             }
             .metrics-row {
-                padding: 12px 24px 0 24px !important;
-                margin: 0 !important;
-                gap: 0;
-                border-bottom: 1px solid #bbb;
+                display: table;
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: separate;
+                border-spacing: 0 0;
+                margin: 16px 0 0 0 !important;
+                padding: 0 24px !important;
+                background: none !important;
             }
             .metric-box {
-                border: none;
-                background: none !important;
-                padding: 4px 12px;
+                display: table-cell;
+                vertical-align: top;
+                border: 2px solid #2D336B;
+                background: #f0f2f8 !important;
+                padding: 10px 12px;
                 min-width: 0;
                 align-items: flex-start;
-                margin-right: 24px;
-                display: inline-block;
-                width: auto;
+                margin: 0;
+                width: 25%;
+                border-radius: 0;
+                text-align: center;
             }
             .metric-label {
-                font-size: 0.95rem;
-                color: #444 !important;
-                font-weight: 600;
-                margin-bottom: 2px;
+                font-size: 0.82rem;
+                color: #2D336B !important;
+                font-weight: 700;
+                margin-bottom: 4px;
+                letter-spacing: 0.8px;
+                text-transform: uppercase;
             }
             .metric-value {
-                font-size: 1.2rem;
-                color: #222 !important;
-                font-weight: bold;
+                font-size: 1.3rem;
+                color: #2D336B !important;
+                font-weight: 900;
+                margin-top: 2px;
+                letter-spacing: 1px;
+            }
+            .metrics-row .metric-box:not(:last-child) {
+                border-right: 1px solid #7886C7;
             }
             .table-section {
                 margin: 16px 24px 0 24px !important;
-                page-break-inside: avoid;
+                page-break-inside: auto;
             }
             .table-title {
-                font-size: 1.1rem;
-                color: #222 !important;
+                font-size: 1.05rem;
+                color: #2D336B !important;
                 font-weight: bold;
                 margin-bottom: 6px;
                 text-align: left;
+                padding-left: 4px;
+                border-left: 4px solid #2D336B;
             }
             .table-meta {
-                font-size: 0.95rem;
-                color: #444 !important;
+                font-size: 0.85rem;
+                color: #555 !important;
                 margin-bottom: 6px;
                 text-align: left;
+                padding-left: 8px;
             }
             table {
                 background: #fff !important;
-                border: 1px solid #222;
+                border: 2px solid #2D336B;
                 width: 100%;
-                margin-bottom: 24px;
+                margin-bottom: 0;
             }
             thead {
-                background: #eee !important;
+                background: #2D336B !important;
             }
             th, td {
-                padding: 6px 8px;
-                border-bottom: 1px solid #bbb;
-                font-size: 0.98rem;
+                padding: 5px 10px;
+                border-bottom: 1px solid #ccc;
+                font-size: 0.88rem;
                 color: #222 !important;
             }
             th {
-                color: #222 !important;
-                font-weight: bold;
-                background: #eee !important;
+                color: #fff !important;
+                font-weight: 700;
+                background: #2D336B !important;
                 text-align: left;
-                font-size: 0.98rem;
-                letter-spacing: 0.5px;
+                font-size: 0.88rem;
+                letter-spacing: 0.8px;
+                text-transform: uppercase;
             }
-            .room-badge, .status-badge {
-                padding: 2px 8px;
-                font-size: 0.93rem;
-                background: #f5f5f5 !important;
-                color: #222 !important;
-                border-radius: 6px;
-                font-weight: 500;
+            tbody tr:nth-child(even) {
+                background: #f9fafb !important;
+            }
+            tbody tr:nth-child(odd) {
+                background: #fff !important;
+            }
+            .room-badge {
+                padding: 3px 10px;
+                font-size: 0.82rem;
+                background: #E6EAF6 !important;
+                color: #2D336B !important;
+                border-radius: 4px;
+                font-weight: 600;
+            }
+            .status-badge {
+                padding: 3px 10px;
+                font-size: 0.82rem;
+                background: #FFF4CE !important;
+                color: #8A6116 !important;
+                border-radius: 4px;
+                font-weight: 600;
             }
             .empty-state {
                 color: #888 !important;
-                padding: 24px 0;
+                padding: 12px 0;
             }
         }
+        
         @media (max-width: 700px) {
             .report-container, .report-header, .filters-section, .metrics-row, .table-section {
                 padding-left: 12px !important;
                 padding-right: 12px !important;
             }
             .metrics-row { flex-direction: column; gap: 12px; }
+            .button-group {
+                width: 100%;
+                margin-left: 0;
+            }
         }
     </style>
 </head>
 <body>
     <div class="report-container">
-        <button class="print-btn" onclick="printReport()">Print</button>
+        <button class="exit-btn" onclick="window.location.href='/dashboard'" title="Back to Dashboard">✕</button>
         <div class="report-header">
             <h1>SafeNSound Emergency Activity Report</h1>
             <div class="subtitle">A formal summary of emergency alerts and system activity</div>
@@ -378,7 +444,10 @@
                     <input type="date" id="end-date" class="filter-control">
                 </div>
             </div>
-            <button class="apply-btn" onclick="applyFilters()">Apply Filters</button>
+            <div class="button-group">
+                <button class="apply-btn" onclick="applyFilters()">Apply Filters</button>
+                <button class="print-btn" onclick="printReport()">Print Report</button>
+            </div>
         </div>
         <div class="metrics-row">
             <div class="metric-box" id="metric-room-1">
@@ -426,6 +495,7 @@
     </div>
     <script>
         let roomData = {};
+        
         async function initReport() {
             const now = new Date();
             document.getElementById('report-date').textContent = 'Generated ' + now.toLocaleDateString('en-US', {
