@@ -393,8 +393,8 @@ main .stats-div .top #top-filters {
 
 main .stats-div .top #top-filters select,
 main .stats-div .top #top-filters input[type="date"] {
-    background: #7886C7;
-    color: #fff;
+    background: var(--second-light);
+    color: var(--primary);
     border: none;
     border-radius: 5px;
     padding: 5px 12px;
@@ -417,7 +417,7 @@ main .stats-div .top #top-filters input[type="date"] {
 
 main .stats-div .top #top-filters select:focus,
 main .stats-div .top #top-filters input[type="date"]:focus {
-    background: linear-gradient(133deg, #2D336B 60%, #7886C7 120%);
+    background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%);
     color: var(--second-very-light);
 }
 
@@ -433,7 +433,7 @@ main .stats-div .top #top-filters .date-inputs.show {
 }
 
 main .stats-div .top #top-filters .date-inputs span {
-    color: #2D336B;
+    color: var(--second);
     font-size: 0.85rem;
     font-weight: 500;
 }
@@ -520,7 +520,7 @@ main .stats-div .top .room-label {
 main .stats-div .top .room-count {
     font-size: 1.5rem;
     font-weight: bold;
-    color: #2D336B;
+    color: var(--second);
     min-width: 40px;
     text-align: right;
     flex-shrink: 0;
