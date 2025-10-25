@@ -249,6 +249,8 @@ main .stats-div{
     grid-template-rows: auto 1fr;
 
     gap: 25px 35px;
+
+    border: 1px solid black;
 }
 
 /* all stats */
@@ -348,6 +350,9 @@ main .stats-div .monthly{
     overflow: hidden;
 
     flex: 1;
+
+    min-height: 100px;
+    height: fit-content;
 }
 
 /* top alarm count */
@@ -360,9 +365,10 @@ main .stats-div .top{
 
     flex: 1;
 
-    /* min-height: 100px;
-    height: 200px;
-    max-height: 500px; */
+    min-height: 100px;
+    height: fit-content;
+    /* max-height: 90%; */
+    
 }
 
 main .stats-div .top #top-header {
@@ -450,12 +456,18 @@ main .stats-div .top .top-content {
 main .stats-div .top .pie-chart-container {
     position: relative;
     flex-shrink: 0;
+
+    width: 50%;
+    height: 50%;
+
+    padding: 10px 0;
 }
 
 main .stats-div .top .pie-chart-container canvas {
     width: 100% !important;
     height: 100% !important;
     display: block;
+    box-sizing: border-box;
 }
 
 main .stats-div .top .total-overlay {
@@ -724,17 +736,6 @@ aside .table-div table tr:nth-child(odd),
         padding: 20px 30px;
         gap: 25px;
     }
-
-    /* main .stats-div {
-        height: calc(100vh - 200px); 
-        min-height: 100px;
-    } */
-    
-    /* main .stats-div .monthly,
-    main .stats-div .top {
-        min-height: 100px;
-    } */
-    
 }
 
 @media screen and (max-width: 1200px) {
@@ -755,15 +756,6 @@ aside .table-div table tr:nth-child(odd),
     main .rooms i{
         font-size: 2.5rem;
     }
-
-    main .stats-div{
-        grid-template-columns: 1fr 50%;
-    }
-
-    /* main .stats-div .monthly,
-    main .stats-div .top {
-        min-height: 100px;
-    } */
 }
 
 /* Tablets */
