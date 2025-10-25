@@ -249,5 +249,103 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"WebSocket error: {e}")
         manager.disconnect(websocket)
 
+# ========================================================
+# DASHBOARD PRINT
+@app.get("/report", response_class=HTMLResponse)
+async def report_page(request: Request):
+    return templates.TemplateResponse("statistics_report.html", {"request": request})
+
+@app.get("/api/report_data")
+async def get_report_data(
+    room: int = None,
+    range: str = None,
+    start_date: str = None,
+    end_date: str = None
+):
+    """Fetch filtered emergency data for the report"""
+    from datetime import datetime, timedelta
+    
+    try:
+        conn = db.conn
+        query = """
+            SELECT h.action, h.date, h.time, h.room_id, r.room_name
+            FROM history h
+            JOIN room r ON h.room_id = r.room_id
+            WHERE h.action = 'Emergency Detected'
+        """
+        
+        conditions = []
+        params = []
+        
+        # Room filter
+        if room:
+            conditions.append("h.room_id = ?")
+            params.append(room)
+        
+        # Date range filter
+        if range:
+            today = datetime.now().date()
+            
+            if range == 'this_year':
+                conditions.append("strftime('%Y', h.date) = ?")
+                params.append(str(today.year))
+            
+            elif range == 'this_month':
+                conditions.append("strftime('%Y-%m', h.date) = ?")
+                params.append(today.strftime('%Y-%m'))
+            
+            elif range == 'last_30':
+                start = (today - timedelta(days=30)).strftime('%Y-%m-%d')
+                conditions.append("h.date >= ?")
+                params.append(start)
+            
+            elif range == 'last_7':
+                start = (today - timedelta(days=7)).strftime('%Y-%m-%d')
+                conditions.append("h.date >= ?")
+                params.append(start)
+            
+            elif range == 'custom' and start_date and end_date:
+                conditions.append("h.date BETWEEN ? AND ?")
+                params.extend([start_date, end_date])
+        
+        # Add conditions to query
+        if conditions:
+            query += " AND " + " AND ".join(conditions)
+        
+        query += " ORDER BY h.date DESC, h.time DESC"
+        
+        cursor = conn.execute(query, params)
+        rows = cursor.fetchall()
+        
+        # Format data
+        emergencies = []
+        by_room = {1: 0, 2: 0, 3: 0}
+        
+        for row in rows:
+            action, date_str, time_str, room_id, room_name = row
+            
+            # Format date as MM/DD/YY
+            formatted_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%m/%d/%y")
+            
+            emergencies.append({
+                "action": action,
+                "date": formatted_date,
+                "time": time_str,
+                "room_id": room_id,
+                "room_name": room_name
+            })
+            
+            by_room[room_id] = by_room.get(room_id, 0) + 1
+        
+        return {
+            "total": len(emergencies),
+            "emergencies": emergencies,
+            "by_room": by_room
+        }
+    
+    except Exception as e:
+        print(f"Error fetching report data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     uvicorn.run("safensound_app:app", host="0.0.0.0", port=8000, reload=True, log_level="info")

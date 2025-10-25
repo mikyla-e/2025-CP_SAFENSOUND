@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeNSound - Emergency Report</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
+        :root {
+            --primary: #fff;
+            --second: #2D336B;
+            --second-light: #7886C7;
+            --second-very-light: #A9B5DF;
+            --text-primary: #222;
+            --text-secondary: #555;
+            --border-light: #E0E3ED;
+            --bg-light: #F7F8FA;
+            --accent: #E6EAF6;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'DM Sans', Arial, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+        }
+        .report-container {
+            max-width: 1100px;
+            margin: 40px auto 40px auto;
+            background: var(--primary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(44,51,107,0.06);
+            padding: 0 0 32px 0;
+        }
+        .report-header {
+            border-bottom: 2px solid var(--border-light);
+            padding: 32px 48px 24px 48px;
+            background: var(--accent);
+            border-radius: 8px 8px 0 0;
+        }
+        .report-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--second);
+            margin-bottom: 8px;
+        }
+        .report-header .subtitle {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+        }
+        .report-meta {
+            display: flex;
+            justify-content: flex-end;
+            gap: 32px;
+            font-size: 0.98rem;
+            color: var(--text-secondary);
+            margin-top: 18px;
+        }
+        .filters-section {
+            padding: 24px 48px 0 48px;
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 180px;
+        }
+        .filter-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--second);
+            letter-spacing: 0.5px;
+        }
+        .filter-control {
+            padding: 8px 12px;
+            border: 1px solid var(--border-light);
+            border-radius: 5px;
+            font-size: 1rem;
+            background: #fff;
+            color: var(--text-primary);
+        }
+        .custom-date-range {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .custom-date-range.show { display: flex; }
+        .date-separator { color: var(--second-light); font-weight: 600; }
+        .apply-btn {
+            margin-left: auto;
+            margin-top: 24px;
+            margin-right: 48px;
+            padding: 8px 28px;
+            background: var(--second);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .apply-btn:hover { background: var(--second-light); }
+        .metrics-row {
+            display: flex;
+            gap: 24px;
+            padding: 32px 48px 0 48px;
+            flex-wrap: wrap;
+        }
+        .metric-box {
+            flex: 1 1 180px;
+            background: var(--accent);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 18px 24px;
+            min-width: 160px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .metric-label {
+            font-size: 0.95rem;
+            color: var(--second-light);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--second);
+        }
+        .table-section {
+            margin: 32px 48px 0 48px;
+        }
+        .table-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--second);
+            margin-bottom: 12px;
+        }
+        .table-meta {
+            font-size: 0.97rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        thead {
+            background: var(--accent);
+        }
+        th, td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 1rem;
+        }
+        th {
+            color: var(--second);
+            font-weight: 600;
+            text-align: left;
+            font-size: 0.98rem;
+            letter-spacing: 0.5px;
+        }
+        td {
+            color: var(--text-primary);
+        }
+        .room-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            background: var(--second-very-light);
+            color: var(--second);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            background: #FFF4CE;
+            color: #8A6116;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        .empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 36px 0;
+        }
+        .print-btn {
+            position: absolute;
+            top: 32px;
+            right: 48px;
+            background: var(--second);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 8px 24px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .print-btn:hover { background: var(--second-light); }
+        
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+                margin: 0;
+                font-size: 12pt;
+            }
+            .print-btn, .filters-section, .apply-btn {
+                display: none !important;
+            }
+            .report-container {
+                box-shadow: none;
+                border-radius: 0;
+                border: none;
+                margin: 0;
+                padding: 0;
+                max-width: 100%;
+            }
+            .report-header {
+                background: #fff !important;
+                border-radius: 0;
+                padding: 24px 24px 12px 24px;
+                border-bottom: 2px solid #222;
+                text-align: center;
+            }
+            .report-header h1 {
+                font-size: 1.5rem;
+                color: #222 !important;
+                margin-bottom: 4px;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            .report-header .subtitle {
+                font-size: 1rem;
+                color: #444 !important;
+                margin-bottom: 8px;
+            }
+            .report-meta {
+                display: block;
+                text-align: right;
+                color: #444 !important;
+                font-size: 0.95rem;
+                margin-top: 8px;
+            }
+            .metrics-row {
+                padding: 12px 24px 0 24px !important;
+                margin: 0 !important;
+                gap: 0;
+                border-bottom: 1px solid #bbb;
+            }
+            .metric-box {
+                border: none;
+                background: none !important;
+                padding: 4px 12px;
+                min-width: 0;
+                align-items: flex-start;
+                margin-right: 24px;
+                display: inline-block;
+                width: auto;
+            }
+            .metric-label {
+                font-size: 0.95rem;
+                color: #444 !important;
+                font-weight: 600;
+                margin-bottom: 2px;
+            }
+            .metric-value {
+                font-size: 1.2rem;
+                color: #222 !important;
+                font-weight: bold;
+            }
+            .table-section {
+                margin: 16px 24px 0 24px !important;
+                page-break-inside: avoid;
+            }
+            .table-title {
+                font-size: 1.1rem;
+                color: #222 !important;
+                font-weight: bold;
+                margin-bottom: 6px;
+                text-align: left;
+            }
+            .table-meta {
+                font-size: 0.95rem;
+                color: #444 !important;
+                margin-bottom: 6px;
+                text-align: left;
+            }
+            table {
+                background: #fff !important;
+                border: 1px solid #222;
+                width: 100%;
+                margin-bottom: 24px;
+            }
+            thead {
+                background: #eee !important;
+            }
+            th, td {
+                padding: 6px 8px;
+                border-bottom: 1px solid #bbb;
+                font-size: 0.98rem;
+                color: #222 !important;
+            }
+            th {
+                color: #222 !important;
+                font-weight: bold;
+                background: #eee !important;
+                text-align: left;
+                font-size: 0.98rem;
+                letter-spacing: 0.5px;
+            }
+            .room-badge, .status-badge {
+                padding: 2px 8px;
+                font-size: 0.93rem;
+                background: #f5f5f5 !important;
+                color: #222 !important;
+                border-radius: 6px;
+                font-weight: 500;
+            }
+            .empty-state {
+                color: #888 !important;
+                padding: 24px 0;
+            }
+        }
+        @media (max-width: 700px) {
+            .report-container, .report-header, .filters-section, .metrics-row, .table-section {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+            .metrics-row { flex-direction: column; gap: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <button class="print-btn" onclick="printReport()">Print</button>
+        <div class="report-header">
+            <h1>SafeNSound Emergency Activity Report</h1>
+            <div class="subtitle">A formal summary of emergency alerts and system activity</div>
+            <div class="report-meta">
+                <span id="report-date">—</span>
+            </div>
+        </div>
+        <div class="filters-section">
+            <div class="filter-group">
+                <label class="filter-label">Room</label>
+                <select id="room-filter" class="filter-control">
+                    <option value="all">All Rooms</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Date Range</label>
+                <select id="date-filter" class="filter-control" onchange="handleDateRangeChange()">
+                    <option value="all">All Time</option>
+                    <option value="this_year">This Year</option>
+                    <option value="this_month">This Month</option>
+                    <option value="last_7">Last 7 Days</option>
+                    <option value="last_30" selected>Last 30 Days</option>
+                    <option value="custom">Custom Range</option>
+                </select>
+                <div class="custom-date-range" id="custom-dates">
+                    <input type="date" id="start-date" class="filter-control">
+                    <span class="date-separator">to</span>
+                    <input type="date" id="end-date" class="filter-control">
+                </div>
+            </div>
+            <button class="apply-btn" onclick="applyFilters()">Apply Filters</button>
+        </div>
+        <div class="metrics-row">
+            <div class="metric-box" id="metric-room-1">
+                <div class="metric-label">Room 1</div>
+                <div class="metric-value">0</div>
+            </div>
+            <div class="metric-box" id="metric-room-2">
+                <div class="metric-label">Room 2</div>
+                <div class="metric-value">0</div>
+            </div>
+            <div class="metric-box" id="metric-room-3">
+                <div class="metric-label">Room 3</div>
+                <div class="metric-value">0</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-label">Total Emergencies</div>
+                <div class="metric-value" id="total-count">0</div>
+            </div>
+        </div>
+        <div class="table-section">
+            <div class="table-title">Emergency Records</div>
+            <div class="table-meta">
+                <span id="selected-room">All Rooms</span> | 
+                <span id="selected-range">Last 30 Days</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Room</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="report-body">
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            Loading emergency records...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        let roomData = {};
+        async function initReport() {
+            const now = new Date();
+            document.getElementById('report-date').textContent = 'Generated ' + now.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            try {
+                const response = await fetch('/api/rooms');
+                const rooms = await response.json();
+                roomData = rooms;
+                const roomFilter = document.getElementById('room-filter');
+                for (const [roomId, roomInfo] of Object.entries(rooms)) {
+                    const option = document.createElement('option');
+                    option.value = roomId;
+                    option.textContent = roomInfo.name;
+                    roomFilter.appendChild(option);
+                    const metricCard = document.getElementById(`metric-room-${roomId}`);
+                    if (metricCard) {
+                        metricCard.querySelector('.metric-label').textContent = roomInfo.name;
+                    }
+                }
+                await applyFilters();
+            } catch (error) {
+                console.error('Error initializing report:', error);
+            }
+        }
+        function handleDateRangeChange() {
+            const dateFilter = document.getElementById('date-filter');
+            const customDates = document.getElementById('custom-dates');
+            if (dateFilter.value === 'custom') {
+                customDates.classList.add('show');
+                const today = new Date();
+                const thirtyDaysAgo = new Date(today);
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                document.getElementById('end-date').valueAsDate = today;
+                document.getElementById('start-date').valueAsDate = thirtyDaysAgo;
+            } else {
+                customDates.classList.remove('show');
+            }
+        }
+        async function applyFilters() {
+            const roomFilter = document.getElementById('room-filter').value;
+            const dateFilter = document.getElementById('date-filter').value;
+            let url = '/api/report_data?';
+            if (roomFilter !== 'all') {
+                url += `room=${roomFilter}&`;
+            }
+            if (dateFilter === 'custom') {
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                if (!startDate || !endDate) {
+                    alert('Please select both start and end dates');
+                    return;
+                }
+                if (new Date(startDate) > new Date(endDate)) {
+                    alert('Start date must be before end date');
+                    return;
+                }
+                url += `range=custom&start_date=${startDate}&end_date=${endDate}`;
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                document.getElementById('selected-range').textContent = 
+                    `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+            } else if (dateFilter !== 'all') {
+                url += `range=${dateFilter}`;
+                const rangeText = {
+                    'this_year': 'This Year',
+                    'this_month': 'This Month',
+                    'last_7': 'Last 7 Days',
+                    'last_30': 'Last 30 Days'
+                };
+                document.getElementById('selected-range').textContent = rangeText[dateFilter];
+            } else {
+                document.getElementById('selected-range').textContent = 'All Time';
+            }
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (roomFilter === 'all') {
+                    document.getElementById('selected-room').textContent = 'All Rooms';
+                } else {
+                    document.getElementById('selected-room').textContent = roomData[roomFilter].name;
+                }
+                document.getElementById('total-count').textContent = data.total;
+                for (let i = 1; i <= 3; i++) {
+                    const metricCard = document.getElementById(`metric-room-${i}`);
+                    const count = data.by_room[i] || 0;
+                    if (metricCard) {
+                        metricCard.querySelector('.metric-value').textContent = count;
+                    }
+                }
+                const tbody = document.getElementById('report-body');
+                tbody.innerHTML = '';
+                if (data.emergencies.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                No emergency records found for the selected criteria
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    data.emergencies.forEach((emergency, index) => {
+                        const row = tbody.insertRow();
+                        row.insertCell(0).textContent = index + 1;
+                        const roomCell = row.insertCell(1);
+                        roomCell.innerHTML = `<span class="room-badge">${emergency.room_name}</span>`;
+                        const statusCell = row.insertCell(2);
+                        statusCell.innerHTML = `<span class="status-badge">${emergency.action}</span>`;
+                        row.insertCell(3).textContent = emergency.date;
+                        row.insertCell(4).textContent = emergency.time;
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching report data:', error);
+                const tbody = document.getElementById('report-body');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            Error loading report data
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        function printReport() {
+            window.print();
+        }
+        window.addEventListener('load', initReport);
+    </script>
+</body>
+</html>

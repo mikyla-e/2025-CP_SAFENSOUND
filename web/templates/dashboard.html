@@ -66,6 +66,53 @@
 
             box-sizing: border-box;
         }
+
+        /* ========================================= */
+        /* FLOATING PRINT BUTTON */
+.print-button {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(45, 51, 107, 0.3);
+    transition: all 0.3s ease;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.print-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(45, 51, 107, 0.4);
+    background: linear-gradient(133deg, var(--second-light) 60%, var(--second) 120%);
+}
+
+.print-button:active {
+    transform: scale(0.95);
+}
+
+@media screen and (max-width: 768px) {
+    .print-button {
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+    }
+
+    .print-button svg {
+        width: 24px;
+        height: 24px;
+    }
+}
     </style>
 </body>
 </html>
@@ -228,6 +275,12 @@
             <button onclick="nextPage('.popup-aside')" id="popup-next">Next</button>
         </div>
     </div>
+
+    <a href="/report" class="print-button" title="Generate Report">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" width="28" height="28">
+            <path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zM432 248a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/>
+        </svg>
+    </a>
 
     <script>
         // REAL-TIME DATE AND TIME
