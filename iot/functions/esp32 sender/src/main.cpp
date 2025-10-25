@@ -178,7 +178,11 @@ void handleRoot() {
             <form action="/configure" method="POST">
                 <h3>WiFi Settings</h3>
                 <input type="text" name="ssid" placeholder="WiFi Network Name '(SSID)'" required>
+                
                 <input type="password" name="password" placeholder="WiFi Password">
+
+                <h3>Laptop Settings</h3>
+                <input type="text" name="laptop_ip" placeholder="Laptop IP Address" required>
                 
                 <button type="submit">Save</button>
             </form>
