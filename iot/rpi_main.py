@@ -90,9 +90,9 @@ disc_port = 60123
 audio_port = 54321
 reset_port = 58080
 
-VALID_TOKENS = {
-    1: 4094951,
-}
+# VALID_TOKENS = {
+#     1: 7152113,
+# }
 
 stop_event = threading.Event()
 
@@ -226,9 +226,13 @@ def receive_audio_data():
             room_id = int.from_bytes(data[0:4], 'little')
             timestamp = int.from_bytes(data[4:8], 'little')
             chunk_samples = int.from_bytes(data[8:12], 'little')
-            token = data[12:19].decode('utf-8')
+            # token = data[12:19].decode('utf-8')
             
-            if room_id is None or timestamp is None or chunk_samples is None or token is None:
+            # if room_id is None or timestamp is None or chunk_samples is None or token is None:
+            #     print(f"Incomplete data received from {addr}: Room {room_id}")
+            #     continue
+
+            if room_id is None or timestamp is None or chunk_samples is None:
                 print(f"Incomplete data received from {addr}: Room {room_id}")
                 continue
 
@@ -236,9 +240,9 @@ def receive_audio_data():
                 print(f"Unknown room ID from {addr}: Room {room_id}")
                 continue
 
-            if room_id not in VALID_TOKENS or VALID_TOKENS[room_id] != token:
-                print(f"Invalid token from Room {room_id}")
-                return
+            # if room_id not in VALID_TOKENS or VALID_TOKENS[room_id] != token:
+            #     print(f"Invalid token from Room {room_id}")
+            #     return
             
             if chunk_samples > 16000 or chunk_samples <= 0:
                 print(f"Invalid chunk size from Room {room_id}: {chunk_samples} samples")
@@ -672,45 +676,57 @@ if __name__ == "__main__":
     print("=" * 60)
 
     try:
-        trigger = 0
-        while True:
-            # Main loop for laptop recording
-            # audio_data, audio_wav = get_audio_local()
-            # if audio_data is not None and audio_wav is not None:
-            #     inference(audio_data, audio_wav)
+        asyncio.run(main_loop())
+        # trigger = 0
+        # while True:
+        #     # Main loop for laptop recording
+        #     # audio_data, audio_wav = get_audio_local()
+        #     # if audio_data is not None and audio_wav is not None:
+        #     #     inference(audio_data, audio_wav)
 
-            # Main loop for dataset
-            while trigger < 8:
-                if trigger <= 3:
-                    audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-                    audio_wav = "wav name"
-                    room_no = 1
+        #     # Main loop for dataset
+        #     while trigger < 12:
+        #         if trigger <= 3:
+        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+        #             audio_wav = "wav name"
+        #             room_no = 3
 
-                    audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-                    inference(audio_data, audio_wav, room_no)
+        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+        #             inference(audio_data, audio_wav, room_no)
 
-                    time.sleep(1)
-                    print(f"Next audio... {trigger}")
+        #             time.sleep(1)
+        #             print(f"Next audio... {trigger}")
 
-                if trigger >= 4 and trigger < 8:
-                    audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-                    audio_wav = "wav name"
-                    room_no = 2
+        #         if trigger >= 4 and trigger < 8:
+        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+        #             audio_wav = "wav name"
+        #             room_no = 1
 
-                    audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-                    inference(audio_data, audio_wav, room_no)
+        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+        #             inference(audio_data, audio_wav, room_no)
 
-                    time.sleep(1)
-                    print(f"Next audio... {trigger}")
+        #             time.sleep(1)
+        #             print(f"Next audio... {trigger}")
 
-                trigger += 1
+        #         if trigger >= 8 and trigger < 12:
+        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+        #             audio_wav = "wav name"
+        #             room_no = 2
 
-            else:
-                audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
+        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+        #             inference(audio_data, audio_wav, room_no)
 
-                audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-                inference(audio_data, audio_wav, room_no)
-                time.sleep(1)
+        #             time.sleep(1)
+        #             print(f"Next audio... {trigger}")
+
+        #         trigger += 1
+
+        #     else:
+        #         audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
+
+        #         audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+        #         inference(audio_data, audio_wav, room_no)
+        #         time.sleep(1)
     except KeyboardInterrupt:
         print("\nExiting...")
         stop_event.set()
