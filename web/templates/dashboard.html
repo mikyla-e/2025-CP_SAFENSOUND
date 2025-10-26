@@ -856,9 +856,28 @@
                 const response = await fetch(`/api/monthly_emergencies/${selectedYear}`);
                 const data = await response.json();
                 
+                console.log('Raw monthly data received:', data);
+                
                 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                const values = Object.values(data);
+                
+                // The data should already be an array of 12 values [count_jan, count_feb, ..., count_dec]
+                let values;
+                if (Array.isArray(data)) {
+                    values = data;
+                } else {
+                    // Fallback: convert object to array
+                    values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                    for (const [month, count] of Object.entries(data)) {
+                        const monthIndex = parseInt(month) - 1; // month is 1-12, array is 0-11
+                        if (monthIndex >= 0 && monthIndex < 12) {
+                            values[monthIndex] = count;
+                        }
+                    }
+                }
+                
+                console.log('Processed values for chart:', values);
+                console.log('October (index 9) value:', values[9]);
                 
                 const ctx = document.getElementById('monthlyChart').getContext('2d');
                 
@@ -872,10 +891,10 @@
                     data: {
                         labels: months,
                         datasets: [{
-                            label: 'Moonthly Detected Emergencies',
+                            label: 'Monthly Detected Emergencies',
                             data: values,
                             borderColor: '#7886C7',
-                            backgroundColor: 'rgba(120, 134, 199, 0.1)',
+                            backgroundColor: 'rgba(120, 134, 199, 0.3)',
                             tension: 0.4,
                             fill: true,
                             pointBackgroundColor: '#2D336B',
@@ -888,7 +907,6 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        // aspectRatio: 3,
                         plugins: {
                             filler: {
                                 propagate: false
@@ -909,6 +927,9 @@
                                 callbacks: {
                                     label: function(context) {
                                         return `Emergencies: ${context.parsed.y}`;
+                                    },
+                                    title: function(context) {
+                                        return `${context[0].label} ${selectedYear}`;
                                     }
                                 }
                             }
@@ -922,7 +943,8 @@
                                 beginAtZero: true,
                                 ticks: {
                                     stepSize: 1,
-                                    color: '#666'
+                                    color: '#666',
+                                    precision: 0
                                 },
                                 grid: {
                                     color: 'rgba(0, 0, 0, 0.05)'
@@ -939,6 +961,8 @@
                         }
                     }
                 });
+                
+                console.log('Chart created successfully');
             } catch (error) {
                 console.error('Error updating monthly graph:', error);
             }
