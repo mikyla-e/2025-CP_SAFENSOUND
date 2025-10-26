@@ -210,26 +210,38 @@ async def get_top_emergencies(year: str = None, range: str = None, start_date: s
 async def handle_alert(data: AlertData):
     try:
         current_time = datetime.now().strftime("%H:%M %p")
-        current_date = datetime.now().strftime("%m/%d/%y")
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        formatted_date = datetime.now().strftime("%m/%d/%y")
 
-        if data.action == "Alert Acknowledged":
-            room_status[data.room_id] = 0
-        elif data.action == "Emergency Detected":
+        if data.action == "Emergency Detected":
+            # Set status to 1 (emergency active) - bell will blink
             room_status[data.room_id] = 1
+            
+        elif data.action == "Alert Acknowledged":
+            # Set status to 0 (normal) - bell will stop blinking
+            room_status[data.room_id] = 0
+            
         else:
             raise HTTPException(status_code=400, detail="Invalid action.")
 
+        # Save to database
+        db.insert_history(data.action, current_date, current_time, data.room_id)
+        
+        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Status: {room_status[data.room_id]}")
+
+        # Broadcast to all connected WebSocket clients
         await manager.broadcast({
             "type": "alert_update",
             "room_id": data.room_id,
             "status": room_status[data.room_id],
             "action": data.action,
-            "date": current_date,
+            "date": formatted_date,
             "time": current_time
         })
         
         return {"success": True, "message": "Alert processed successfully."}
     except Exception as e:
+        print(f"Error processing alert: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get("/api/status")
@@ -240,15 +252,29 @@ async def get_status():
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        await websocket.send_text(json.dumps({
-            "type": "initial_status",
-            "room_status": room_status
-        }))
+        # Send initial status
+        await websocket.send_json({
+            "type": "status_update",
+            "status": room_status
+        })
+        print(f"Sent initial status to client: {room_status}")
+        
+        # Keep connection alive and listen for messages
         while True:
-            data = await websocket.receive_text()
-            print(f"Received message from client: {data}")
+            try:
+                # Wait for messages from client (if any)
+                data = await websocket.receive_text()
+                print(f"Received from client: {data}")
+            except WebSocketDisconnect:
+                print("Client disconnected")
+                break
+            except Exception as e:
+                print(f"Error in WebSocket loop: {e}")
+                break
+                
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+        print("WebSocket disconnected normally")
     except Exception as e:
         print(f"WebSocket error: {e}")
         manager.disconnect(websocket)

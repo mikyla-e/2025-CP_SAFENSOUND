@@ -159,10 +159,11 @@ main .rooms .logo {
     font-style: normal;
 }
 
-/* alert blinking */
+/* Alert blinking animation */
 @keyframes alertBlink {
     0% {
         background-color: var(--second);
+        transform: translateX(-50%) scale(1);
     }
     50% {
         background-color: #dc3545;
@@ -170,13 +171,19 @@ main .rooms .logo {
     }
     100% {
         background-color: var(--second);
+        transform: translateX(-50%) scale(1);
     }
 }
 
-/* apply blinking to alert icons */
-.alert-active i,
+/* Apply blinking animation when alert is active (status = 1) */
 .alert-active .logo {
-    animation: alertBlink .5s infinite;
+    animation: alertBlink 0.5s infinite;
+}
+
+/* Stop animation only when acknowledged (status = 2) or normal (status = 0) */
+.room:not(.alert-active) .logo {
+    animation: none;
+    background-color: var(--second);
 }
 
 /* texts */
