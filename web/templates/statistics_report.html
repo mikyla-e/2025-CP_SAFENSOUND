@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SafeNSound - Emergency Report</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
+        @font-face {
+            font-family: 'DM Sans';
+            src: url('/static/fonts/DM_Sans/DMSans_18pt-Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
         :root {
             --primary: #fff;
             --second: #2D336B;
@@ -19,7 +25,7 @@
         }
         * { box-sizing: border-box; }
         body {
-            font-family: 'DM Sans', Arial, sans-serif;
+            font-family: 'DM Sans', sans-serif;
             background: var(--bg-light);
             color: var(--text-primary);
             margin: 0;
