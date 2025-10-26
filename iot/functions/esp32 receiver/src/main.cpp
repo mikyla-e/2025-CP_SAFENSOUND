@@ -122,14 +122,20 @@ void loop() {
 
       if (led1Active) {
         digitalWrite(LED_PIN_1, lowState ? HIGH : LOW);
+      } else {
+        digitalWrite(LED_PIN_1, LOW);
       }
 
       if (led2Active) {
         digitalWrite(LED_PIN_2, lowState ? HIGH : LOW);
+      } else {
+        digitalWrite(LED_PIN_2, LOW);
       }
       
       if (led3Active) {
         digitalWrite(LED_PIN_3, lowState ? HIGH : LOW);
+      } else {
+        digitalWrite(LED_PIN_3, LOW);
       }
     }
   } else {
