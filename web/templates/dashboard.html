@@ -295,10 +295,11 @@
                 year: '2-digit'
             });
             
-            // Format time as HH:MM AM/PM
+            // Format time as HH:MM:SS AM/PM
             const time = now.toLocaleTimeString('en-US', {
                 hour: '2-digit',
                 minute: '2-digit',
+                second: '2-digit',
                 hour12: true
             });
             

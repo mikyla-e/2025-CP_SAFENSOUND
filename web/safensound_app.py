@@ -209,7 +209,8 @@ async def get_top_emergencies(year: str = None, range: str = None, start_date: s
 @app.post("/api/alert")
 async def handle_alert(data: AlertData):
     try:
-        current_time = datetime.now().strftime("%H:%M %p")
+        # Change time format to include seconds
+        current_time = datetime.now().strftime("%H:%M:%S %p")
         current_date = datetime.now().strftime("%Y-%m-%d")
         formatted_date = datetime.now().strftime("%m/%d/%y")
 
