@@ -163,6 +163,8 @@ void handleRoot() {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>SafeNSound ESP32 Setup</title>
+
+        <link rel="stylesheet" href="/captive_portal.css">
     </head>
     <body>
         <div class="container" id="configForm">
@@ -216,6 +218,8 @@ void handleConfigure() {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Setup Successful</title>
+
+            <link rel="stylesheet" href="/captive_portal.css">
         </head>
         <body>
             <!-- Success Message -->
@@ -244,6 +248,8 @@ void handleConfigure() {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Setup Error</title>
+
+            <link rel="stylesheet" href="/captive_portal.css">
         </head>
         <body>
             <!-- Error Message -->
@@ -286,332 +292,337 @@ void handleNotFound() {
 
 void handleCSS() {
   String css = R"(
-      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+    @font-face {
+      font-family: 'DM Sans';
+      src: url('/static/fonts/DM_Sans/DMSans_18pt-Regular.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
 
-      :root {
-          --primary: white;
-          --second: #2D336B;
-          --background: linear-gradient(133deg, #F7F7F7 13.25%, #A9B5DF 205.83%);
-      }
+    :root {
+      --primary: white;
+      --second: #2D336B;
+      --background: linear-gradient(133deg, #F7F7F7 13.25%, #A9B5DF 205.83%);
+    }
 
-      * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-      }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
+    body {
+      font-family: "DM Sans", sans-serif;
+      background: var(--background);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* ALL BOXES */
+    .container {
+      background: var(--primary);
+      padding: 40px;
+      border-radius: 13px;
+      box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 20px;
+
+      position: relative;
+    }
+
+    /* Close / Exit X button */
+    .close-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: transparent;
+      border: 2px solid rgba(45, 51, 107, 0.12);
+      color: var(--second);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1.1rem;
+      line-height: 1;
+      transition: all 0.18s ease;
+      z-index: 5;
+    }
+
+    .close-btn:hover {
+      background: var(--second);
+      color: white;
+      transform: translateY(-2px);
+      border-color: var(--second);
+    }
+
+    /* BELL ICON CIRCLE */
+    .header-icon {
+      width: 60px;
+      height: 60px;
+      background-color: var(--second);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      position: relative;
+    }
+
+    /* BELL ICON */
+    .header-icon svg {
+      width: 35px;
+      height: 35px;
+      fill: white;
+    }
+
+    /* SafeNSound Configuration */
+    h1 {
+      text-align: center;
+      color: var(--second);
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    /* Configure your device... */
+    p {
+      text-align: center;
+      color: #666;
+      margin-bottom: 25px;
+      font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+      line-height: 1.5;
+    }
+
+    /* ... Settings */
+    h3 {
+      color: var(--second);
+      font-size: clamp(1.1rem, 3vw, 1.3rem);
+      margin: 20px 0 10px;
+      font-weight: 600;
+      opacity: 0.8;
+    }
+
+    /* INPUT FIELDS */
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      margin: 10px 0;
+      border: 2px solid rgba(45, 51, 107, 0.2);
+      border-radius: 10px;
+      font-family: "DM Sans", sans-serif;
+      font-size: clamp(0.95rem, 2.5vw, 1.05rem);
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #2d336baf;
+      box-shadow: 0 0 0 3px rgba(45, 51, 107, 0.1);
+    }
+
+    input::placeholder {
+      color: #999;
+    }
+
+    button {
+      width: 100%;
+      background: var(--second);
+      color: white;
+      padding: 16px 20px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: "DM Sans", sans-serif;
+      font-size: clamp(1.05rem, 3vw, 1.15rem);
+      font-weight: 600;
+      margin-top: 25px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(45, 51, 107, 0.3);
+    }
+
+    button:hover {
+      background: #1f2449;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(45, 51, 107, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .status {
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 10px;
+      font-size: clamp(0.95rem, 2.5vw, 1.05rem);
+      text-align: center;
+    }
+
+    .success {
+      background: rgba(76, 175, 80, 0.1);
+      color: #2e7d32;
+      border: 2px solid rgba(76, 175, 80, 0.3);
+    }
+
+    .error {
+      background: rgba(244, 67, 54, 0.1);
+      color: #c62828;
+      border: 2px solid rgba(244, 67, 54, 0.3);
+    }
+
+    .link {
+      display: inline-block;
+      margin-top: 15px;
+      color: var(--second);
+      text-decoration: none;
+      font-weight: 600;
+      padding: 12px 24px;
+      border: 2px solid var(--second);
+      border-radius: 10px;
+      transition: all 0.3s ease;
+      font-size: clamp(0.95rem, 2.5vw, 1.05rem);
+    }
+
+    .link:hover {
+      background: var(--second);
+      color: white;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Responsive design for tablets and medium screens */
+    @media (max-width: 768px) and (min-width: 481px) {
       body {
-          font-family: "DM Sans", sans-serif;
-          background: var(--background);
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 20px;
+        padding: 20px;
       }
 
-      /* ALL BOXES */
       .container {
-          background: var(--primary);
-          padding: 40px;
-          border-radius: 13px;
-          box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
-          width: 100%;
-          max-width: 600px;
-          margin-bottom: 20px;
-
-          position: relative;
+        padding: 35px;
+        max-width: 500px;
       }
 
-      /* Close / Exit X button */
-      .close-btn {
-          position: absolute;
-          top: 16px;
-          right: 16px;
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          background: transparent;
-          border: 2px solid rgba(45, 51, 107, 0.12);
-          color: var(--second);
-          text-decoration: none;
-          font-weight: 700;
-          font-size: 1.1rem;
-          line-height: 1;
-          transition: all 0.18s ease;
-          z-index: 5;
-      }
-
-      .close-btn:hover {
-          background: var(--second);
-          color: white;
-          transform: translateY(-2px);
-          border-color: var(--second);
-      }
-
-      /* BELL ICON CIRCLE */
       .header-icon {
-          width: 60px;
-          height: 60px;
-          background-color: var(--second);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 20px;
-          position: relative;
+        width: 55px;
+        height: 55px;
       }
 
-      /* BELL ICON */
       .header-icon svg {
-          width: 35px;
-          height: 35px;
-          fill: white;
+        width: 32px;
+        height: 32px;
+      } 
+    }
+
+    /* Responsive design for phones (small to medium) */
+    @media (max-width: 480px) {
+      body {
+        padding: 0;
+        justify-content: flex-start;
       }
 
-      /* SafeNSound Configuration */
-      h1 {
-          text-align: center;
-          color: var(--second);
-          font-size: clamp(1.5rem, 4vw, 2rem);
-          font-weight: 600;
-          margin-bottom: 10px;
+      .container {
+        padding: 30px 25px;
+        max-width: 100%;
+        min-height: 100vh;
+        margin: 0;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
       }
 
-      /* Configure your device... */
-      p {
-          text-align: center;
-          color: #666;
-          margin-bottom: 25px;
-          font-size: clamp(0.95rem, 2.5vw, 1.1rem);
-          line-height: 1.5;
+      .close-btn {
+        top: 12px;
+        right: 12px;
+        width: 34px;
+        height: 34px;
+        font-size: 1rem;
       }
 
-      /* ... Settings */
-      h3 {
-          color: var(--second);
-          font-size: clamp(1.1rem, 3vw, 1.3rem);
-          margin: 20px 0 10px;
-          font-weight: 600;
-          opacity: 0.8;
+      .header-icon {
+        width: 55px;
+        height: 55px;
+        margin-bottom: 25px;
       }
 
-      /* INPUT FIELDS */
+      .header-icon svg {
+        width: 32px;
+        height: 32px;
+      }
+
       input {
-          width: 100%;
-          padding: 14px 16px;
-          margin: 10px 0;
-          border: 2px solid rgba(45, 51, 107, 0.2);
-          border-radius: 10px;
-          font-family: "DM Sans", sans-serif;
-          font-size: clamp(0.95rem, 2.5vw, 1.05rem);
-          transition: all 0.3s ease;
-          box-sizing: border-box;
-      }
-
-      input:focus {
-          outline: none;
-          border-color: #2d336baf;
-          box-shadow: 0 0 0 3px rgba(45, 51, 107, 0.1);
-      }
-
-      input::placeholder {
-          color: #999;
+        padding: 15px 16px;
+        margin: 12px 0;
       }
 
       button {
-          width: 100%;
-          background: var(--second);
-          color: white;
-          padding: 16px 20px;
-          border: none;
-          border-radius: 10px;
-          cursor: pointer;
-          font-family: "DM Sans", sans-serif;
-          font-size: clamp(1.05rem, 3vw, 1.15rem);
-          font-weight: 600;
-          margin-top: 25px;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 15px rgba(45, 51, 107, 0.3);
+        padding: 16px 20px;
+        margin-top: 30px;
       }
 
-      button:hover {
-          background: #1f2449;
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(45, 51, 107, 0.4);
+      h3 {
+        margin-top: 25px;
+      }
+    }
+
+    /* Extra small phones */
+    @media (max-width: 360px) {
+      .container {
+        padding: 25px 20px;
       }
 
-      button:active {
-          transform: translateY(0);
+      .header-icon {
+        width: 50px;
+        height: 50px;
+        margin-bottom: 20px;
       }
 
-      .status {
-          padding: 15px;
-          margin: 15px 0;
-          border-radius: 10px;
-          font-size: clamp(0.95rem, 2.5vw, 1.05rem);
-          text-align: center;
+      .header-icon svg {
+        width: 28px;
+        height: 28px;
       }
 
-      .success {
-          background: rgba(76, 175, 80, 0.1);
-          color: #2e7d32;
-          border: 2px solid rgba(76, 175, 80, 0.3);
+      input {
+        padding: 13px 14px;
       }
 
-      .error {
-          background: rgba(244, 67, 54, 0.1);
-          color: #c62828;
-          border: 2px solid rgba(244, 67, 54, 0.3);
+      button {
+        padding: 14px 18px;
+      }
+    }
+
+    /* Large screens */
+    @media (min-width: 1024px) {
+      .container {
+        padding: 45px;
+        max-width: 650px;
       }
 
-      .link {
-          display: inline-block;
-          margin-top: 15px;
-          color: var(--second);
-          text-decoration: none;
-          font-weight: 600;
-          padding: 12px 24px;
-          border: 2px solid var(--second);
-          border-radius: 10px;
-          transition: all 0.3s ease;
-          font-size: clamp(0.95rem, 2.5vw, 1.05rem);
+      .header-icon {
+        width: 70px;
+        height: 70px;
+        margin-bottom: 25px;
       }
 
-      .link:hover {
-          background: var(--second);
-          color: white;
+      .header-icon svg {
+        width: 40px;
+        height: 40px;
       }
-
-      .hidden {
-          display: none;
-      }
-
-      /* Responsive design for tablets and medium screens */
-      @media (max-width: 768px) and (min-width: 481px) {
-          body {
-              padding: 20px;
-          }
-
-          .container {
-              padding: 35px;
-              max-width: 500px;
-          }
-
-          .header-icon {
-              width: 55px;
-              height: 55px;
-          }
-
-          .header-icon svg {
-              width: 32px;
-              height: 32px;
-          }
-      }
-
-      /* Responsive design for phones (small to medium) */
-      @media (max-width: 480px) {
-          body {
-              padding: 0;
-              justify-content: flex-start;
-          }
-
-          .container {
-              padding: 30px 25px;
-              max-width: 100%;
-              min-height: 100vh;
-              margin: 0;
-              border-radius: 0;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-          }
-
-          .close-btn {
-              top: 12px;
-              right: 12px;
-              width: 34px;
-              height: 34px;
-              font-size: 1rem;
-          }
-
-          .header-icon {
-              width: 55px;
-              height: 55px;
-              margin-bottom: 25px;
-          }
-
-          .header-icon svg {
-              width: 32px;
-              height: 32px;
-          }
-
-          input {
-              padding: 15px 16px;
-              margin: 12px 0;
-          }
-
-          button {
-              padding: 16px 20px;
-              margin-top: 30px;
-          }
-
-          h3 {
-              margin-top: 25px;
-          }
-      }
-
-      /* Extra small phones */
-      @media (max-width: 360px) {
-          .container {
-              padding: 25px 20px;
-          }
-
-          .header-icon {
-              width: 50px;
-              height: 50px;
-              margin-bottom: 20px;
-          }
-
-          .header-icon svg {
-              width: 28px;
-              height: 28px;
-          }
-
-          input {
-              padding: 13px 14px;
-          }
-
-          button {
-              padding: 14px 18px;
-          }
-      }
-
-      /* Large screens */
-      @media (min-width: 1024px) {
-          .container {
-              padding: 45px;
-              max-width: 650px;
-          }
-
-          .header-icon {
-              width: 70px;
-              height: 70px;
-              margin-bottom: 25px;
-          }
-
-          .header-icon svg {
-              width: 40px;
-              height: 40px;
-          }
-      }  
-    )";
-    server.send(200, "text/css", css);
-  }
+    } 
+  )";
+  server.send(200, "text/css", css);
+}
 
 /////////////////////////////////////////////////////////
 
