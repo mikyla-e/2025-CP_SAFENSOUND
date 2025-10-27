@@ -363,7 +363,7 @@ main .stats-div .monthly{
 
     min-height: 100px;
     /* height: fit-content; */
-    
+    max-height: 500px;
 }
 
 /* top alarm count */
@@ -378,8 +378,7 @@ main .stats-div .top{
 
     min-height: 100px;
     /* height: fit-content; */
-    /* max-height: 90%; */
-    
+    max-height: 500px;    
 }
 
 main .stats-div .top #top-header {
@@ -829,7 +828,7 @@ aside .table-div table tr:nth-child(odd),
             "top"
             "monthly";
 
-        grid-template-rows: 100px minmax(25 0px, 1fr) minmax(300px, 1fr); /* Change this line */
+        grid-template-rows: 100px minmax(25 0px, 1fr) minmax(300px, 1fr); 
     }
 
     main .stats-div .recent{
