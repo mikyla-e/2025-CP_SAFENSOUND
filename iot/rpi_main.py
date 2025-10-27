@@ -325,13 +325,8 @@ def receive_reset_signals():
                 print(f"Incomplete reset data received from Room {room_id}: {reset_data}")
                 continue
 
-            current_time = datetime.now().strftime("%I:%M %p")
-            current_date = datetime.now().strftime("%m/%d/%y")
-
             if action == "reset":
                 operation = "Alert Acknowledged"
-
-                db.insert_history(action=operation, date=current_date, time=current_time, room_id=room_id)
                 
                 retry = 0
                 try:
@@ -460,7 +455,7 @@ def inference(audio, wav_name, room_id=None):
         alarming_count += 1
         print("ALARMING sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
 
-        if alarming_count >= 4:
+        if alarming_count >= 3:
             emergency_detected = True
             trigger_alarm(room_id)
         
@@ -482,7 +477,7 @@ def inference(audio, wav_name, room_id=None):
     elif predicted_class == 0:
         print("No emergency detected.")
         nonemergency_count += 1
-        if nonemergency_count >= 6:
+        if nonemergency_count >= 10:
             alarming_count = 0
             emergency_count = 0
             nonemergency_count = 0
@@ -501,10 +496,7 @@ def trigger_alarm(room_id=None):
     if (emergency_detected == True):
         print(f"\nALARM TRIGGERED")
         action = "Emergency Detected"
-        current_time = datetime.now().strftime("%I:%M %p")
-        current_date = datetime.now().strftime("%m/%d/%y")
 
-        db.insert_history(action=action, date=current_date, time=current_time, room_id=room_id)
         try:
             retry = 0
             while retry < 3:
@@ -650,57 +642,57 @@ if __name__ == "__main__":
     print("=" * 60)
 
     try:
-        asyncio.run(main_loop())
-        # trigger = 0
-        # while True:
-        #     # Main loop for laptop recording
-        #     # audio_data, audio_wav = get_audio_local()
-        #     # if audio_data is not None and audio_wav is not None:
-        #     #     inference(audio_data, audio_wav)
+        # asyncio.run(main_loop())
+        trigger = 0
+        while True:
+            # Main loop for laptop recording
+            # audio_data, audio_wav = get_audio_local()
+            # if audio_data is not None and audio_wav is not None:
+            #     inference(audio_data, audio_wav)
 
-        #     # Main loop for dataset
-        #     while trigger < 12:
-        #         if trigger <= 3:
-        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-        #             audio_wav = "wav name"
-        #             room_no = 3
+            # Main loop for dataset
+            while trigger < 4:
+                if trigger <= 3:
+                    audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+                    audio_wav = "wav name"
+                    room_no = 1
 
-        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #             inference(audio_data, audio_wav, room_no)
+                    audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+                    inference(audio_data, audio_wav, room_no)
 
-        #             time.sleep(1)
-        #             print(f"Next audio... {trigger}")
+                    time.sleep(1)
+                    print(f"Next audio... {trigger}")
 
-        #         if trigger >= 4 and trigger < 8:
-        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-        #             audio_wav = "wav name"
-        #             room_no = 1
+                if trigger >= 4 and trigger <= 6:
+                    audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+                    audio_wav = "wav name"
+                    room_no = 3
 
-        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #             inference(audio_data, audio_wav, room_no)
+                    audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+                    inference(audio_data, audio_wav, room_no)
 
-        #             time.sleep(1)
-        #             print(f"Next audio... {trigger}")
+                    time.sleep(1)
+                    print(f"Next audio... {trigger}")
 
-        #         if trigger >= 8 and trigger < 12:
-        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-        #             audio_wav = "wav name"
-        #             room_no = 2
+                if trigger >= 7 and trigger <= 9:
+                    audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+                    audio_wav = "wav name"
+                    room_no = 2
 
-        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #             inference(audio_data, audio_wav, room_no)
+                    audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+                    inference(audio_data, audio_wav, room_no)
 
-        #             time.sleep(1)
-        #             print(f"Next audio... {trigger}")
+                    time.sleep(1)
+                    print(f"Next audio... {trigger}")
 
-        #         trigger += 1
+                trigger += 1
 
-        #     else:
-        #         audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
+            else:
+                audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
 
-        #         audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #         inference(audio_data, audio_wav, room_no)
-        #         time.sleep(1)
+                audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+                inference(audio_data, audio_wav, room_no)
+                time.sleep(1)
     except KeyboardInterrupt:
         print("\nExiting...")
         stop_event.set()

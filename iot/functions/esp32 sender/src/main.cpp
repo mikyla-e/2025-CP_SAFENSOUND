@@ -810,8 +810,8 @@ void loop() { //loops
     dns.processNextRequest();
     server.handleClient();
   } else {
-    processAudioRecording();
-    sendData();
+    // processAudioRecording();
+    // sendData();
     if (processResetButton()) {
       sendResetSignal();
     }

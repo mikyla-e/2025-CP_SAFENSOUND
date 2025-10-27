@@ -209,8 +209,7 @@ async def get_top_emergencies(year: str = None, range: str = None, start_date: s
 @app.post("/api/alert")
 async def handle_alert(data: AlertData):
     try:
-        # Change time format to include seconds
-        current_time = datetime.now().strftime("%H:%M:%S %p")
+        current_time = datetime.now().strftime("%I:%M:%S %p")
         current_date = datetime.now().strftime("%Y-%m-%d")
         formatted_date = datetime.now().strftime("%m/%d/%y")
 
@@ -225,12 +224,10 @@ async def handle_alert(data: AlertData):
         else:
             raise HTTPException(status_code=400, detail="Invalid action.")
 
-        # Save to database
         db.insert_history(data.action, current_date, current_time, data.room_id)
         
         print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Status: {room_status[data.room_id]}")
 
-        # Broadcast to all connected WebSocket clients
         await manager.broadcast({
             "type": "alert_update",
             "room_id": data.room_id,

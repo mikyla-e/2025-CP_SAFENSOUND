@@ -53,10 +53,6 @@ class Database:
 
     #insert data
     def insert_history(self, action, date, time, room_id):
-        date = datetime.now().strftime("%Y-%m-%d")
-        # Change time format to include seconds
-        time = datetime.now().strftime("%H:%M:%S %p")
-
         with self.conn:
             self.conn.execute('''
                 INSERT INTO history (action, date, time, room_id)
