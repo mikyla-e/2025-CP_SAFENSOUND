@@ -4,6 +4,7 @@
 
 # copium sa counterfeit ESP32
 /records
+/iot/test_mic_esp32
 
 # caches
 /database/__pycache__
