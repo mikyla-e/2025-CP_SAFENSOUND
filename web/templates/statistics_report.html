@@ -194,6 +194,11 @@
             color: var(--text-secondary);
             margin-bottom: 8px;
         }
+        .table-div {
+            overflow-x: auto;
+            max-width: 100%;
+            /* -webkit-overflow-scrolling: touch; */
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -414,6 +419,9 @@
                 width: 100%;
                 margin-left: 0;
             }
+            .table-section {
+                margin: 32px 10px 0 10px;
+            }
         }
     </style>
 </head>
@@ -479,24 +487,26 @@
                 <span id="selected-room">All Rooms</span> | 
                 <span id="selected-range">Last 30 Days</span>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>No.</th>
-                        <th>Room</th>
-                        <!-- <th>Status</th> -->
-                        <th>Date</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
-                <tbody id="report-body">
-                    <tr>
-                        <td colspan="4" class="empty-state">
-                            Loading emergency records...
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="table-div">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Room</th>
+                            <!-- <th>Status</th> -->
+                            <th>Date</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-body">
+                        <tr>
+                            <td colspan="4" class="empty-state">
+                                Loading emergency records...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     <script>
