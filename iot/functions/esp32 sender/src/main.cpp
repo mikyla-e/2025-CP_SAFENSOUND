@@ -45,44 +45,6 @@ const int room_id = 1;
 
 /////////////////////////////////////////////////////////
 
-// bool discoverIP() {
-//   WiFiUDP udp;
-//   udp.begin(disc_port);
-
-//   IPAddress broadcastIP = WiFi.localIP();
-//   broadcastIP[3] = 255;
-
-//   udp.beginPacket(broadcastIP, disc_port);
-//   udp.print("DISCOVER_MAIN_DEVICE");
-//   udp.endPacket();
-
-//   unsigned long startTime = millis();
-//   while (millis() - startTime < 5000) {
-//     int packetSize = udp.parsePacket();
-//     if (packetSize) {
-//       String response = udp.readString();
-//       response.trim();
-
-//       if(response.startsWith("MAIN_DEVICE_HERE:")) {
-//         laptop_ip = response.substring(17);
-//         laptop_ip.trim();
-//         Serial.println("Discovered Main Device IP: " + laptop_ip);
-
-//         EEPROM.writeString(IP_ADDR, laptop_ip);
-//         EEPROM.commit();
-
-//         udp.stop();
-//         return true;
-//       }
-//     }
-//     delay(100);
-//   }
-
-//   udp.stop();
-//   Serial.println("Failed to discover laptop IP.");
-//   return false;
-// }
-
 void saveWiFiCredentials() {
   EEPROM.writeString(SSID_ADDR, stored_ssid);
   EEPROM.writeString(PASS_ADDR, stored_password);
@@ -654,7 +616,7 @@ void setup() { // esp setup
   Serial.begin(115200);
   EEPROM.begin(512);
 
-  delay(1000);
+  delay(500);
 
   esp_chip_info_t chip_info;
   esp_chip_info(&chip_info);
@@ -752,7 +714,7 @@ void sendData() {
 
       samplesSent += samplesToSend;
           
-      delay(5);
+      // delay(0);
     }
 
     Serial.println("All packets sent");
@@ -810,8 +772,8 @@ void loop() { //loops
     dns.processNextRequest();
     server.handleClient();
   } else {
-    // processAudioRecording();
-    // sendData();
+    processAudioRecording();
+    sendData();
     if (processResetButton()) {
       sendResetSignal();
     }
