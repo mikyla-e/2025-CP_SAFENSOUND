@@ -421,8 +421,8 @@
     <div class="report-container">
         <button class="exit-btn" onclick="window.location.href='/dashboard'" title="Back to Dashboard">✕</button>
         <div class="report-header">
-            <h1>SafeNSound Emergency Activity Report</h1>
-            <div class="subtitle">A formal summary of emergency alerts and system activity</div>
+            <h1>SafeNSound Emergency Report</h1>
+            <div class="subtitle">A formal summary of emergency alerts</div>
             <div class="report-meta">
                 <span id="report-date">—</span>
             </div>
@@ -484,14 +484,14 @@
                     <tr>
                         <th>No.</th>
                         <th>Room</th>
-                        <th>Status</th>
+                        <!-- <th>Status</th> -->
                         <th>Date</th>
                         <th>Time</th>
                     </tr>
                 </thead>
                 <tbody id="report-body">
                     <tr>
-                        <td colspan="5" class="empty-state">
+                        <td colspan="4" class="empty-state">
                             Loading emergency records...
                         </td>
                     </tr>
@@ -599,7 +599,7 @@
                 if (data.emergencies.length === 0) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="5" class="empty-state">
+                            <td colspan="4" class="empty-state">
                                 No emergency records found for the selected criteria
                             </td>
                         </tr>
@@ -610,10 +610,10 @@
                         row.insertCell(0).textContent = index + 1;
                         const roomCell = row.insertCell(1);
                         roomCell.innerHTML = `<span class="room-badge">${emergency.room_name}</span>`;
-                        const statusCell = row.insertCell(2);
-                        statusCell.innerHTML = `<span class="status-badge">${emergency.action}</span>`;
-                        row.insertCell(3).textContent = emergency.date;
-                        row.insertCell(4).textContent = emergency.time;
+                        // const statusCell = row.insertCell(2);
+                        // statusCell.innerHTML = `<span class="status-badge">${emergency.action}</span>`;
+                        row.insertCell(2).textContent = emergency.date;
+                        row.insertCell(3).textContent = emergency.time;
                     });
                 }
             } catch (error) {
@@ -621,7 +621,7 @@
                 const tbody = document.getElementById('report-body');
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="empty-state">
+                        <td colspan="4" class="empty-state">
                             Error loading report data
                         </td>
                     </tr>
