@@ -73,10 +73,6 @@ audio_wav = None
 audio_duration = 5 #seconds
 sample_rate = 16000
 
-loudness_threshold = 6000 
-loud_threshold_ms = 1000 #1 second
-loud_duration_ms = 0
-
 alarming_count = 0
 emergency_count = 0
 nonemergency_count = 0
@@ -249,7 +245,7 @@ def receive_audio_data():
                 continue
 
             audio_chunk = np.frombuffer(data[12:], dtype=np.int16)
-            print(f"Room {room_id}: Received {len(audio_chunk)} samples (Expected: {chunk_samples})")
+            # print(f"Room {room_id}: Received {len(audio_chunk)} samples (Expected: {chunk_samples})")
 
             if room_id not in audio_chunks:
                 audio_chunks[room_id] = []
@@ -258,10 +254,10 @@ def receive_audio_data():
             audio_chunks[room_id].append(audio_chunk)
             total_samples = sum(len(chunk) for chunk in audio_chunks[room_id])
 
-            print(f"Room {room_id}: Total samples received so far: {total_samples}/{EXPECTED_TOTAL_SAMPLES}")
+            # print(f"Room {room_id}: Total samples received so far: {total_samples}/{EXPECTED_TOTAL_SAMPLES}")
 
             if total_samples >= EXPECTED_TOTAL_SAMPLES:
-                print(f"Received complete audio data: {total_samples} samples from Room {room_id}")
+                # print(f"Received complete audio data: {total_samples} samples from Room {room_id}")
                 full_audio = np.concatenate(audio_chunks[room_id])[:EXPECTED_TOTAL_SAMPLES]
                 
                 # Save the audio as a WAV file
@@ -282,8 +278,8 @@ def receive_audio_data():
 
             last_packet_time = time.time()
 
-            elapsed = last_packet_time - chunk_timestamps[room_id]
-            print(f"Elapsed to receive 80k samples: {elapsed:.2f}s (expected ~5s at 16kHz)")
+            # elapsed = last_packet_time - chunk_timestamps[room_id]
+            # print(f"Elapsed to receive 80k samples: {elapsed:.2f}s (expected ~5s at 16kHz)")
 
             for room_id in list(chunk_timestamps.keys()):
                 if last_packet_time - chunk_timestamps[room_id] > 10:
@@ -307,7 +303,6 @@ def receive_reset_signals():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', reset_port))
     sock.settimeout(1.0)
-    print("Reset signal receiver is running...")
 
     while not stop_event.is_set():
         
@@ -368,7 +363,7 @@ def save_wav(filename, audio_data, sample_rate):
             wav_file.setframerate(sample_rate)
             wav_file.writeframes(audio_data.tobytes())
 
-        print(f"Audio saved: {filename}")
+        print(f"\nAudio saved: {filename}")
         return True
     except Exception as e:
         print(f"Failed to save WAV: {e}")
@@ -376,42 +371,92 @@ def save_wav(filename, audio_data, sample_rate):
     
 
 # audio processing and inference --------------------
+
+loudness_threshold = 6000 
+loud_threshold_ms = 5000 #5 seconds
+loud_duration_ms = 0
+
 def process_audio(audio_data_int16, room_id=None, timestamp=None):
     global loud_duration_ms
-    
-    num_samples = len(audio_data_int16)
-    duration_ms = (num_samples / sample_rate) * 1000
+    # Noise gate before inference
+    y_i16 = np.asarray(audio_data_int16, dtype=np.int16)
+    y = y_i16.astype(np.float32) / 32768.0
+
+    # Remove DC offset
+    y = y - np.mean(y)
+
+    # Short-time RMS (50% overlap)
+    frame_length = 1024
+    hop_length = 512
+    rms = lb.feature.rms(y=y, frame_length=frame_length, hop_length=hop_length, center=False)[0]
+    rms_db = 20.0 * np.log10(np.maximum(rms, 1e-6))
+
+    # Adaptive threshold: noise floor + margin
+    noise_floor = np.percentile(rms_db, 30)
+    margin_db = 8.0
+    active = rms_db > (noise_floor + margin_db)
+
+    # Require sustained activity
+    active_ms = active.sum() * (hop_length / sample_rate) * 1000.0
+    print(f"Activity={active_ms:.0f} ms, floor={noise_floor:.1f} dBFS, peak={rms_db.max():.1f} dBFS")
 
     try:
-        audio_data = np.array(audio_data_int16, dtype=np.int16)
-        avg_amplitude = np.mean(np.abs(audio_data))
-        
-        print(f"Loudness: {avg_amplitude}, Duration: {duration_ms}ms\n")
-
-        if avg_amplitude > loudness_threshold:
-            loud_duration_ms += duration_ms
+        if active_ms >= 800:  # tune: 500–1500 ms
+            inference(y_i16, f"Room{room_id}_{timestamp}", room_id)
+            return True
         else:
-            loud_duration_ms = 0
-            
-        if loud_duration_ms >= loud_threshold_ms:
-            loud_duration_ms = 0
-            inference(audio_data, f"Room{room_id}_{timestamp}", room_id)
-            
-        return True
-        
+            print("Skipping inference (background).")
+            return False
     except Exception as e:
         print(f"Error processing audio: {e}")
 
         return False
 
+    # num_samples = len(audio_data_int16)
+    # duration_ms = (num_samples / sample_rate) * 1000
+
+    # try:
+    #     audio_data = np.array(audio_data_int16, dtype=np.int16)
+    #     avg_amplitude = np.mean(np.abs(audio_data))
+        
+    #     print(f"Loudness: {avg_amplitude}, Duration: {duration_ms}ms\n")
+
+    #     if avg_amplitude > loudness_threshold:
+    #         loud_duration_ms += duration_ms
+    #     else:
+    #         loud_duration_ms = 0
+            
+    #     if loud_duration_ms >= loud_threshold_ms:
+    #         loud_duration_ms = 0
+    #         print(f"Loud sound detected for {loud_threshold_ms}ms. Proceeding to inference...")
+    #         inference(audio_data.flatten(), f"Room{room_id}_{timestamp}", room_id)
+            
+    #     return True
+        
+    # except Exception as e:
+    #     print(f"Error processing audio: {e}")
+
+    #     return False
+
 def extract_features(audio, sample_rate, max_len=160):
-    mfcc = lb.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=20, hop_length=512)
-    
-    zcr = lb.feature.zero_crossing_rate(audio)
-    spectral_centroid = lb.feature.spectral_centroid(y=audio, sr=sample_rate)
-    spectral_rolloff = lb.feature.spectral_rolloff(y=audio, sr=sample_rate)
-    rms = lb.feature.rms(y=audio)
-    
+
+    def _to_float32(y):
+        arr = np.asarray(y)
+        if arr.dtype == np.int16:
+            return arr.astype(np.float32) / 32768.0
+        if arr.dtype == np.int32:
+            return arr.astype(np.float32) / 2147483648.0
+        return arr.astype(np.float32, copy=False)
+
+    y = _to_float32(audio).squeeze()
+
+    mfcc = lb.feature.mfcc(y=y, sr=sample_rate, n_mfcc=20, hop_length=512)
+
+    zcr = lb.feature.zero_crossing_rate(y)
+    spectral_centroid = lb.feature.spectral_centroid(y=y, sr=sample_rate)
+    spectral_rolloff = lb.feature.spectral_rolloff(y=y, sr=sample_rate)
+    rms = lb.feature.rms(y=y)
+
     features = [mfcc, spectral_centroid, spectral_rolloff, zcr, rms]
     extracted_features = []
 
@@ -436,6 +481,7 @@ def extract_features(audio, sample_rate, max_len=160):
 def inference(audio, wav_name, room_id=None):
     global emergency_count, alarming_count, nonemergency_count, emergency_detected
 
+    print(f"\nProcessing audio for inference: {wav_name}")
     # extracting
     audio_features = extract_features(audio, sample_rate)
 
@@ -449,7 +495,7 @@ def inference(audio, wav_name, room_id=None):
     # alarming sound = 4 times before emergency is confirmed
     # emergency sound = 2 times after emergency is confirmed
 
-    print(f"\nPrediction for {wav_name}: ")
+    print(f"\nPrediction for {wav_name}: {predicted_class}")
 
     if predicted_class == 1:
         alarming_count += 1
@@ -642,57 +688,57 @@ if __name__ == "__main__":
     print("=" * 60)
 
     try:
-        # asyncio.run(main_loop())
-        trigger = 0
-        while True:
-            # Main loop for laptop recording
-            # audio_data, audio_wav = get_audio_local()
-            # if audio_data is not None and audio_wav is not None:
-            #     inference(audio_data, audio_wav)
+        asyncio.run(main_loop())
+        # trigger = 0
+        # while True:
+        #     # Main loop for laptop recording
+        #     # audio_data, audio_wav = get_audio_local()
+        #     # if audio_data is not None and audio_wav is not None:
+        #     #     inference(audio_data, audio_wav)
 
-            # Main loop for dataset
-            while trigger < 4:
-                if trigger <= 3:
-                    audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-                    audio_wav = "wav name"
-                    room_no = 1
+        #     # Main loop for dataset
+        #     while trigger < 4:
+        #         if trigger <= 3:
+        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+        #             audio_wav = "wav name"
+        #             room_no = 1
 
-                    audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-                    inference(audio_data, audio_wav, room_no)
+        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+        #             inference(audio_data, audio_wav, room_no)
 
-                    time.sleep(1)
-                    print(f"Next audio... {trigger}")
+        #             time.sleep(1)
+        #             print(f"Next audio... {trigger}")
 
-                if trigger >= 4 and trigger <= 6:
-                    audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-                    audio_wav = "wav name"
-                    room_no = 3
+        #         if trigger >= 4 and trigger <= 6:
+        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+        #             audio_wav = "wav name"
+        #             room_no = 3
 
-                    audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-                    inference(audio_data, audio_wav, room_no)
+        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+        #             inference(audio_data, audio_wav, room_no)
 
-                    time.sleep(1)
-                    print(f"Next audio... {trigger}")
+        #             time.sleep(1)
+        #             print(f"Next audio... {trigger}")
 
-                if trigger >= 7 and trigger <= 9:
-                    audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-                    audio_wav = "wav name"
-                    room_no = 2
+        #         if trigger >= 7 and trigger <= 9:
+        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+        #             audio_wav = "wav name"
+        #             room_no = 2
 
-                    audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-                    inference(audio_data, audio_wav, room_no)
+        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+        #             inference(audio_data, audio_wav, room_no)
 
-                    time.sleep(1)
-                    print(f"Next audio... {trigger}")
+        #             time.sleep(1)
+        #             print(f"Next audio... {trigger}")
 
-                trigger += 1
+        #         trigger += 1
 
-            else:
-                audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
+        #     else:
+        #         audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
 
-                audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-                inference(audio_data, audio_wav, room_no)
-                time.sleep(1)
+        #         audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+        #         inference(audio_data, audio_wav, room_no)
+        #         time.sleep(1)
     except KeyboardInterrupt:
         print("\nExiting...")
         stop_event.set()

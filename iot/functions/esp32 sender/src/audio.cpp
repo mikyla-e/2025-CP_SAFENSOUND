@@ -26,24 +26,6 @@
 
 extern void prepareAudio(int16_t* audio, size_t sampleCount);
 
-// i2s_config_t cfg = {
-//     .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
-//     .sample_rate = SAMPLE_RATE,
-//     .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
-//     .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-//     .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-//     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-//     .dma_buf_count = 8,
-//     .dma_buf_len = 1024,
-//     .use_apll = true
-// };
-
-// i2s_pin_config_t pins = {
-//     .bck_io_num = I2S_SCK,
-//     .ws_io_num = I2S_WS,
-//     .data_out_num = I2S_PIN_NO_CHANGE,
-//     .data_in_num = I2S_SD
-// };
 
 void testMicrophoneHardware() {
     Serial.println("\n=== MICROPHONE HARDWARE TEST ===");
@@ -56,7 +38,7 @@ void testMicrophoneHardware() {
     }
     Serial.println();
     
-    delay(5000);
+    delay(50);
 }
 
 void printI2SRegisters() {
@@ -80,19 +62,16 @@ void printI2SRegisters() {
 void checkClocksWhileReading() {
     Serial.println("\n=== REAL-TIME CLOCK CHECK ===");
     
-    // Create a task that continuously reads
     int32_t samples[1024];
     size_t bytes_read;
     
     Serial.println("Starting continuous read...");
     
     for(int attempt = 0; attempt < 10; attempt++) {
-        // Start a read (this should activate clocks)
         unsigned long start = micros();
         esp_err_t err = i2s_read(I2S_PORT, samples, sizeof(samples), &bytes_read, 100);
         unsigned long duration = micros() - start;
         
-        // Check pins immediately while read might still be active
         int sck_high = 0, sck_low = 0;
         for(int i = 0; i < 100; i++) {
             if (gpio_get_level((gpio_num_t)I2S_SCK)) sck_high++;
@@ -104,7 +83,7 @@ void checkClocksWhileReading() {
                      attempt, esp_err_to_name(err), bytes_read, duration, 
                      sck_high, sck_low, samples[0]);
         
-        delay(100);
+        delay(10);
     }
 }
 
@@ -131,6 +110,7 @@ void setupAudio(){
 	};
 
     esp_err_t err;
+
 	err = i2s_driver_install(I2S_PORT, &cfg, 0, NULL);
 	if (err != ESP_OK) {Serial.println(esp_err_to_name(err));};
 	err = i2s_set_pin(I2S_PORT, &pins);
