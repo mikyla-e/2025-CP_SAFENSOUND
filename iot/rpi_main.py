@@ -248,7 +248,7 @@ def receive_audio_data():
                 print(f"Invalid chunk size from Room {room_id}: {chunk_samples} samples")
                 continue
 
-            audio_chunk = np.frombuffer(data[19:], dtype=np.int16)
+            audio_chunk = np.frombuffer(data[12:], dtype=np.int16)
             print(f"Room {room_id}: Received {len(audio_chunk)} samples (Expected: {chunk_samples})")
 
             if room_id not in audio_chunks:
@@ -261,7 +261,7 @@ def receive_audio_data():
             print(f"Room {room_id}: Total samples received so far: {total_samples}/{EXPECTED_TOTAL_SAMPLES}")
 
             if total_samples >= EXPECTED_TOTAL_SAMPLES:
-                print(f"✅ Received complete audio data: {total_samples} samples from Room {room_id}")
+                print(f"Received complete audio data: {total_samples} samples from Room {room_id}")
                 full_audio = np.concatenate(audio_chunks[room_id])[:EXPECTED_TOTAL_SAMPLES]
                 
                 # Save the audio as a WAV file
@@ -277,46 +277,20 @@ def receive_audio_data():
                 thread.start()
 
                 # Reset buffer for the next transmission
-                del audio_chunks[rid]
-                del chunk_timestamps[rid]
+                del audio_chunks[room_id]
+                del chunk_timestamps[room_id]
 
             last_packet_time = time.time()
-            for rid in list(chunk_timestamps.keys()):
-                if last_packet_time - chunk_timestamps[rid] > 40:
-                    print(f"⏱️ Timeout: Discarding incomplete recording from room {rid}")
-                    del audio_chunks[rid]
-                    del chunk_timestamps[rid]
-                    
 
-            # print("Audio data receiver is running...")
+            elapsed = last_packet_time - chunk_timestamps[room_id]
+            print(f"Elapsed to receive 80k samples: {elapsed:.2f}s (expected ~5s at 16kHz)")
 
-            # data, addr = sock.recvfrom(4096)
-            # if not data:
-            #     continue
-            # try:
-            #     audio_data = json.loads(data.decode('utf-8'))
-            # except json.JSONDecodeError as e:
-            #     print(f"Invalid JSON received from {addr}: {data[:100]}... Error: {e}")
-            #     continue
+            for room_id in list(chunk_timestamps.keys()):
+                if last_packet_time - chunk_timestamps[room_id] > 10:
+                    print(f"Timeout: Discarding incomplete recording from room {room_id}")
+                    del audio_chunks[room_id]
+                    del chunk_timestamps[room_id]
 
-            # room_id = audio_data.get('roomID')
-            # timestamp = audio_data.get('timestamp')
-            # audio_samples = audio_data.get('audioData')
-
-            # if not room_id or not timestamp or not audio_samples:
-            #     print(f"Incomplete data received from {addr}: {audio_data}")
-            #     continue
-            # if len(audio_samples) == 0:
-            #     print(f"No audio samples received from {addr}")
-            #     continue
-
-            # print(f"Received audio data {len(audio_samples)} from {addr}: Room {room_id}")
-
-            # thread = threading.Thread(
-            #     target=process_audio,
-            #     args=(audio_samples, room_id, timestamp)
-            # )
-            # thread.start()
         except socket.timeout:
             continue
         except Exception as e:
@@ -351,7 +325,7 @@ def receive_reset_signals():
                 print(f"Incomplete reset data received from Room {room_id}: {reset_data}")
                 continue
 
-            current_time = datetime.now().strftime("%H:%M %p")
+            current_time = datetime.now().strftime("%I:%M %p")
             current_date = datetime.now().strftime("%m/%d/%y")
 
             if action == "reset":
@@ -399,10 +373,10 @@ def save_wav(filename, audio_data, sample_rate):
             wav_file.setframerate(sample_rate)
             wav_file.writeframes(audio_data.tobytes())
 
-        print(f"✅ Audio saved: {filename}")
+        print(f"Audio saved: {filename}")
         return True
     except Exception as e:
-        print(f"❌ Failed to save WAV: {e}")
+        print(f"Failed to save WAV: {e}")
         return False
     
 
@@ -527,7 +501,7 @@ def trigger_alarm(room_id=None):
     if (emergency_detected == True):
         print(f"\nALARM TRIGGERED")
         action = "Emergency Detected"
-        current_time = datetime.now().strftime("%H:%M %p")
+        current_time = datetime.now().strftime("%I:%M %p")
         current_date = datetime.now().strftime("%m/%d/%y")
 
         db.insert_history(action=action, date=current_date, time=current_time, room_id=room_id)

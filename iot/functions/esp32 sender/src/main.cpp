@@ -684,10 +684,13 @@ void setup() { // esp setup
     Serial.println("Laptop IP: " + laptop_ip);
     // Serial.println("Auth Token: " + auth_token);
 
-    udp.begin(audio_port);
-    testMicrophoneHardware();
-    setupAudio();
-    checkClocksWhileReading();
+  udp.begin(audio_port);
+  // Optional hardware sanity check
+  // testMicrophoneHardware();
+  // Initialize I2S once here (auto-probe picks the working combo)
+  setupAudio();
+  // Optional: deep diagnostics
+  // checkClocksWhileReading();
     setupResetButton();
   } else {
     Serial.println("Failed to connect to saved WiFi. Starting captive portal.");
@@ -718,8 +721,6 @@ void sendData() {
     // udp.print(sendAudioData);
 
     size_t maxPacketSize = 1400;
-    // size_t audioSize = audioRecording.sampleCount * sizeof(int16_t);
-    // size_t maxAudioSize = maxPacketSize - 19; // 4+4+4+7 header
     size_t maxAudioSize = maxPacketSize - 12;
     size_t maxSamplesPerPacket = maxAudioSize / sizeof(int16_t);
 
@@ -728,11 +729,11 @@ void sendData() {
 
     while (samplesSent < totalSamples) {
       size_t samplesToSend = min(maxSamplesPerPacket, totalSamples - samplesSent);
-      size_t packetSize = 19 + samplesToSend * sizeof(int16_t);
+      size_t packetSize = 12 + samplesToSend * sizeof(int16_t);
 
       uint8_t* buffer = (uint8_t*)malloc(packetSize);
       if (!buffer) {
-        Serial.println("❌ Failed to allocate buffer");
+        Serial.println("Failed to allocate buffer");
         return;
       }
 
@@ -751,10 +752,10 @@ void sendData() {
 
       samplesSent += samplesToSend;
           
-      delay(50);
+      delay(5);
     }
 
-    Serial.println("✅ All packets sent");
+    Serial.println("All packets sent");
     audioReady = false;
   }
 }
@@ -776,11 +777,11 @@ void prepareAudio(int16_t* audio, size_t sampleCount) { //prepare audio data to 
 
 void sendResetSignal() {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("❌ WiFi not connected!");
+    Serial.println("WiFi not connected!");
     return;
   }
   if (laptop_ip.length() == 0 || laptop_ip == "0.0.0.0") {
-    Serial.println("❌ Invalid laptop IP!");
+    Serial.println("Invalid laptop IP!");
     return;
   }
   /////
@@ -809,14 +810,12 @@ void loop() { //loops
     dns.processNextRequest();
     server.handleClient();
   } else {
-    Serial.println("Processing audio...");
     processAudioRecording();
     sendData();
     if (processResetButton()) {
-      Serial.println("Reset button pressed.");
       sendResetSignal();
     }
 
-    delay(100); 
+    delay(1); 
   }
 }
