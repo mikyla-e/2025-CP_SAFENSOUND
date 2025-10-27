@@ -92,6 +92,13 @@ templates = Jinja2Templates(directory=templates_dir)
 
 db = Database()
 
+# no zero starting hour
+def strip_leading_zero_hour(t: str) -> str:
+    try:
+        return t[1:] if t and t.startswith('0') else t
+    except Exception:
+        return t
+
 connected_websockets: List[WebSocket] = []
 
 @app.get("/", response_class=HTMLResponse)
@@ -134,7 +141,7 @@ async def get_recent_emergency():
             return {
                 "action": row[0],
                 "date": formatted_date,
-                "time": row[2],
+                "time": strip_leading_zero_hour(row[2]),
                 "room_id": row[3]
             }
         else:
@@ -154,7 +161,7 @@ async def get_history(room_id: int):
             formatted_history.append({
                 "action": record[1],
                 "date": formatted_date,
-                "time": record[3]
+                "time": strip_leading_zero_hour(record[3])            
             })
         return formatted_history
     except Exception as e:
@@ -234,7 +241,7 @@ async def handle_alert(data: AlertData):
             "status": room_status[data.room_id],
             "action": data.action,
             "date": formatted_date,
-            "time": current_time
+            "time": strip_leading_zero_hour(current_time)
         })
         
         return {"success": True, "message": "Alert processed successfully."}
@@ -358,7 +365,7 @@ async def get_report_data(
             emergencies.append({
                 "action": action,
                 "date": formatted_date,
-                "time": time_str,
+                "time": strip_leading_zero_hour(time_str),
                 "room_id": room_id,
                 "room_name": room_name
             })
