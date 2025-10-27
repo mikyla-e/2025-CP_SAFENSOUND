@@ -98,8 +98,10 @@ void setupAudio(){
 		.communication_format = I2S_COMM_FORMAT_STAND_I2S,
 		.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
 		.dma_buf_count = 8,
-		.dma_buf_len = 1024,
-		.use_apll = true
+		.dma_buf_len = 256,
+		.use_apll = true,
+        .tx_desc_auto_clear = true,
+        .fixed_mclk = SAMPLE_RATE * 256
 	};
 
 	i2s_pin_config_t pins = {
@@ -113,12 +115,14 @@ void setupAudio(){
 
 	err = i2s_driver_install(I2S_PORT, &cfg, 0, NULL);
 	if (err != ESP_OK) {Serial.println(esp_err_to_name(err));};
+
 	err = i2s_set_pin(I2S_PORT, &pins);
 	if (err != ESP_OK) {Serial.println(esp_err_to_name(err));};
+
 	err = i2s_set_clk(I2S_PORT, SAMPLE_RATE, I2S_BITS_PER_SAMPLE_32BIT, I2S_CHANNEL_MONO);
 	if (err != ESP_OK) {Serial.println(esp_err_to_name(err));};
+
 	i2s_zero_dma_buffer(I2S_PORT);
-	
     i2s_start(I2S_PORT);
 
     printI2SRegisters();
@@ -144,26 +148,32 @@ void processAudioRecording(){
     esp_err_t result = i2s_read(I2S_PORT, audio, sizeof(audio), &bytes_read, portMAX_DELAY);
     if (result == ESP_OK && bytes_read > 0) {
         int samples_read = bytes_read / sizeof(int32_t);
-    
-        for (int i = 0; i < samples_read && samples_collected < CHUNK_SAMPLES; i++) {
-            const int SHIFT = 14;
-            int32_t s32 = audio[i] >> SHIFT;
+        int idx = 0;
 
-            if (s32 > 32767) s32 = 32767;
-            if (s32 < -32768) s32 = -32768;
+        while (idx < samples_read) {
+            int space = CHUNK_SAMPLES - (int)samples_collected;
+            int to_copy = min(space, samples_read - idx);
 
-            audio_buffer[samples_collected++] = (int16_t)s32;
-        }
+            for (int i = 0; i < to_copy; ++i) {
+                const int SHIFT = 14;
+                int32_t s32 = audio[idx + i] >> SHIFT;
+                if (s32 > 32767) s32 = 32767;
+                if (s32 < -32768) s32 = -32768;
+                audio_buffer[samples_collected + i] = (int16_t)s32;
+            }
 
-        if (samples_collected >= CHUNK_SAMPLES) {
-            prepareAudio(audio_buffer, CHUNK_SAMPLES);
-            
-            samples_sent += samples_collected;
-            samples_collected = 0;
-            
-            if (samples_sent >= SAMPLE_RATE * AUDIO_DURATION) {
-                Serial.println("Full 5-second recording sent in chunks.");
-                samples_sent = 0;
+            samples_collected += to_copy;
+            idx += to_copy;
+
+            if (samples_collected == CHUNK_SAMPLES) {
+                prepareAudio(audio_buffer, CHUNK_SAMPLES);
+                samples_sent += samples_collected;
+                samples_collected = 0;
+
+                if (samples_sent >= SAMPLE_RATE * AUDIO_DURATION) {
+                    Serial.println("Full 5-second recording sent in chunks.");
+                    samples_sent = 0;
+                }
             }
         }
     }
