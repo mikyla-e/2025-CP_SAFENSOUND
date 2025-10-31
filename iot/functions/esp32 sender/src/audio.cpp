@@ -26,21 +26,6 @@
 
 extern void prepareAudio(int16_t* audio, size_t sampleCount);
 
-
-void testMicrophoneHardware() {
-    Serial.println("\n=== MICROPHONE HARDWARE TEST ===");
-    
-    pinMode(I2S_SD, INPUT);
-    Serial.print("SD pin reads: ");
-    for(int i = 0; i < 20; i++) {
-        Serial.print(digitalRead(I2S_SD));
-        delay(10);
-    }
-    Serial.println();
-    
-    delay(50);
-}
-
 void printI2SRegisters() {
     Serial.println("\n=== I2S Register Dump ===");
     
@@ -57,34 +42,6 @@ void printI2SRegisters() {
     bool rx_start = (*I2S_CONF_REG) & (1 << 11);
     bool tx_start = (*I2S_CONF_REG) & (1 << 10);
     Serial.printf("RX_START bit: %d, TX_START bit: %d\n", rx_start, tx_start);
-}
-
-void checkClocksWhileReading() {
-    Serial.println("\n=== REAL-TIME CLOCK CHECK ===");
-    
-    int32_t samples[1024];
-    size_t bytes_read;
-    
-    Serial.println("Starting continuous read...");
-    
-    for(int attempt = 0; attempt < 10; attempt++) {
-        unsigned long start = micros();
-        esp_err_t err = i2s_read(I2S_PORT, samples, sizeof(samples), &bytes_read, 100);
-        unsigned long duration = micros() - start;
-        
-        int sck_high = 0, sck_low = 0;
-        for(int i = 0; i < 100; i++) {
-            if (gpio_get_level((gpio_num_t)I2S_SCK)) sck_high++;
-            else sck_low++;
-            delayMicroseconds(1);
-        }
-        
-        Serial.printf("Attempt %d: read=%s bytes=%u time=%luus SCK high=%d low=%d sample[0]=0x%08X\n",
-                     attempt, esp_err_to_name(err), bytes_read, duration, 
-                     sck_high, sck_low, samples[0]);
-        
-        delay(10);
-    }
 }
 
 void setupAudio(){
@@ -125,8 +82,8 @@ void setupAudio(){
 	i2s_zero_dma_buffer(I2S_PORT);
     i2s_start(I2S_PORT);
 
-    printI2SRegisters();
-    Serial.println("\n7. Forcing initial read...");
+    // printI2SRegisters();
+    Serial.println("\nForcing initial read...");
     int32_t dummy[256];
     size_t bytes_read;
     for(int i = 0; i < 5; i++) {

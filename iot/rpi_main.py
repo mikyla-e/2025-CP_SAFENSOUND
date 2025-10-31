@@ -245,7 +245,7 @@ def receive_audio_data():
                 continue
 
             audio_chunk = np.frombuffer(data[12:], dtype=np.int16)
-            print(f"Room {room_id}: Received {len(audio_chunk)} samples (Expected: {chunk_samples})")
+            # print(f"Room {room_id}: Received {len(audio_chunk)} samples (Expected: {chunk_samples})")
 
             if room_id not in audio_chunks:
                 audio_chunks[room_id] = []
@@ -254,10 +254,10 @@ def receive_audio_data():
             audio_chunks[room_id].append(audio_chunk)
             total_samples = sum(len(chunk) for chunk in audio_chunks[room_id])
 
-            print(f"Room {room_id}: Total samples received so far: {total_samples}/{EXPECTED_TOTAL_SAMPLES}")
+            # print(f"Room {room_id}: Total samples received so far: {total_samples}/{EXPECTED_TOTAL_SAMPLES}")
 
             if total_samples >= EXPECTED_TOTAL_SAMPLES:
-                print(f"Received complete audio data: {total_samples} samples from Room {room_id}")
+                # print(f"Received complete audio data: {total_samples} samples from Room {room_id}")
                 full_audio = np.concatenate(audio_chunks[room_id])[:EXPECTED_TOTAL_SAMPLES]
                 
                 # Save the audio as a WAV file
@@ -278,8 +278,8 @@ def receive_audio_data():
 
             last_packet_time = time.time()
 
-            elapsed = last_packet_time - chunk_timestamps[room_id]
-            print(f"Elapsed to receive 80k samples: {elapsed:.2f}s (expected ~5s at 16kHz)")
+            # elapsed = last_packet_time - chunk_timestamps[room_id]
+            # print(f"Elapsed to receive 80k samples: {elapsed:.2f}s (expected ~5s at 16kHz)")
 
             for room_id in list(chunk_timestamps.keys()):
                 if last_packet_time - chunk_timestamps[room_id] > 10:
@@ -682,9 +682,6 @@ if __name__ == "__main__":
     
     print("=" * 60)
     print(f"LAPTOP IP: {discovery_server.laptop_ip}")
-    print(f"Discovery server: Port {disc_port}")
-    print(f"Audio receiver: Port {audio_port}")
-    print(f"Reset signal: Port {reset_port}")
     print("=" * 60)
 
     print("System is running.\n")
