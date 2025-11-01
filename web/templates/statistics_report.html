@@ -13,11 +13,11 @@
         }
 
         :root {
-            --primary: #fff;
-            --second: #2D336B;
-            --second-light: #7886C7;
-            --second-very-light: #A9B5DF;
-            --text-primary: #222;
+            --primary: white;
+            --second: #002C47;
+            --second-light: #015382;
+            --second-very-light: #2d8ec2;
+            --text-primary: #0D1A22;
             --text-secondary: #555;
             --border-light: #E0E3ED;
             --bg-light: #F7F8FA;
@@ -225,20 +225,11 @@
         .room-badge {
             display: inline-block;
             padding: 3px 12px;
-            background: var(--second-very-light);
+            background: #2d8ec2a9;
             color: var(--second);
-            border-radius: 12px;
+            border-radius: 7px;
             font-size: 0.95rem;
             font-weight: 600;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 3px 12px;
-            background: #FFF4CE;
-            color: #8A6116;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            font-weight: 500;
         }
         .empty-state {
             text-align: center;
@@ -270,10 +261,10 @@
                 max-width: 100%;
             }
             .report-header {
-                background: #2D336B !important;
+                background: var(--second) !important;
                 border-radius: 0;
                 padding: 20px 24px 12px 24px;
-                border-bottom: 3px solid #2D336B;
+                border-bottom: 3px solid var(--second);
                 text-align: center;
             }
             .report-header h1 {
@@ -286,13 +277,13 @@
             }
             .report-header .subtitle {
                 font-size: 0.9rem;
-                color: #E6EAF6 !important;
+                color: var(--accent) !important;
                 margin-bottom: 6px;
             }
             .report-meta {
                 display: block;
                 text-align: right;
-                color: #E6EAF6 !important;
+                color: var(--accent) !important;
                 font-size: 0.85rem;
                 margin-top: 8px;
             }
@@ -329,13 +320,13 @@
             }
             .metric-value {
                 font-size: 1.3rem;
-                color: #2D336B !important;
+                color: var(--second) !important;
                 font-weight: 900;
                 margin-top: 2px;
                 letter-spacing: 1px;
             }
             .metrics-row .metric-box:not(:last-child) {
-                border-right: 1px solid #7886C7;
+                border-right: 1px solid var(--second-light);
             }
             .table-section {
                 margin: 16px 24px 0 24px !important;
@@ -343,12 +334,12 @@
             }
             .table-title {
                 font-size: 1.05rem;
-                color: #2D336B !important;
+                color: var(--second) !important;
                 font-weight: bold;
                 margin-bottom: 6px;
                 text-align: left;
                 padding-left: 4px;
-                border-left: 4px solid #2D336B;
+                border-left: 4px solid var(--second);
             }
             .table-meta {
                 font-size: 0.85rem;
@@ -359,12 +350,12 @@
             }
             table {
                 background: #fff !important;
-                border: 2px solid #2D336B;
+                border: 2px solid var(--second);
                 width: 100%;
                 margin-bottom: 0;
             }
             thead {
-                background: #2D336B !important;
+                background: var(--second) !important;
             }
             th, td {
                 padding: 5px 10px;
@@ -375,14 +366,14 @@
             th {
                 color: #fff !important;
                 font-weight: 700;
-                background: #2D336B !important;
+                background: var(--second) !important;
                 text-align: left;
                 font-size: 0.88rem;
                 letter-spacing: 0.8px;
                 text-transform: uppercase;
             }
             tbody tr:nth-child(even) {
-                background: #f9fafb !important;
+                background: var(--bg-light) !important;
             }
             tbody tr:nth-child(odd) {
                 background: #fff !important;
@@ -390,16 +381,8 @@
             .room-badge {
                 padding: 3px 10px;
                 font-size: 0.82rem;
-                background: #E6EAF6 !important;
-                color: #2D336B !important;
-                border-radius: 4px;
-                font-weight: 600;
-            }
-            .status-badge {
-                padding: 3px 10px;
-                font-size: 0.82rem;
-                background: #FFF4CE !important;
-                color: #8A6116 !important;
+                background: var(--accent) !important;
+                color: var(--second) !important;
                 border-radius: 4px;
                 font-weight: 600;
             }

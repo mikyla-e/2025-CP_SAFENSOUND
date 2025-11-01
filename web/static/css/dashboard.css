@@ -7,10 +7,20 @@
 
 :root{
     --primary: white;
+    --second: #002C47;
+    --second-light: #015382;
+    --second-very-light: #2d8ec2;
+
+    --red: #B52E34;
+    --text: #0D1A22;
+}
+
+/* :root{
+    --primary: white;
     --second: #2D336B;
     --second-light: #7886C7;
     --second-very-light: #A9B5DF;
-}
+} */
 
 body {
     margin: 0;
@@ -24,7 +34,11 @@ body {
     grid-template-rows: auto 1fr;
 
     font-family: "DM Sans", sans-serif;
-    background: linear-gradient(133deg, #F7F7F7 13.25%, var(--second-very-light) 205.83%);
+    background: linear-gradient(134deg, #F9F8F9 12.76%, #002C47 279.95%);
+}
+
+h1, h2, h3, h4, h5, p{
+    color: var(--text);
 }
 
 nav, main, aside,
@@ -49,7 +63,7 @@ nav{
 
 /* "Dashboard" */
 nav h1{
-    font-weight: 400;
+    font-weight: bold;
     font-size: clamp(1.5rem, 4vw, 2rem);
 }
 
@@ -130,22 +144,6 @@ main .rooms{
 }
 
 /* logo of room */
-main .rooms i {
-    font-size: clamp(2rem, 5vw, 3rem);
-    color: white;
-    background-color: var(--second);
-
-    position: absolute;
-    top: -30px;
-    left: 50%;
-    transform: translateX(-50%);
-
-    border-radius: 50%;
-    padding: clamp(15px, 3vw, 20px) clamp(18px, 3.5vw, 25px);
-
-    font-style: normal;
-}
-
 /* bell */
 main .rooms .logo {
     /* font-size: clamp(1rem, 3vw, 2rem); */
@@ -172,7 +170,7 @@ main .rooms .logo {
         transform: translateX(-50%) scale(1);
     }
     50% {
-        background-color: #dc3545;
+        background-color: var(--red);
         transform: translateX(-50%) scale(1.1);
     }
     100% {
@@ -267,7 +265,7 @@ main .stats-div{
 /* all stats */
 main .stats-div .stats{
     border-radius: 15px;
-    background-color: white;
+    background-color: var(--primary);
     box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
     min-height: 120px;
 
@@ -283,7 +281,7 @@ main .stats-div .recent{
     /* height: 100px; */
 
     background: linear-gradient(180deg, var(--second-light) 0%, var(--second) 181.85%);
-    color: var(--primary);
+    color: var(--primary); 
 
     display: flex;
     justify-content: center;
@@ -311,6 +309,8 @@ main .stats-div .recent p{
     margin: 0;
     font-size: clamp(0.85rem, 2vw, 1rem);
     white-space: nowrap;
+
+    color: white;
 }
 
 /* date and time */
@@ -323,6 +323,8 @@ main .stats-div .recent h2{
     word-wrap: break-word;
     overflow-wrap: break-word;
     line-height: 1.3;
+
+    color: white;
 
     /* text-align: center; */
     /* border: 1px solid black; */
@@ -420,7 +422,7 @@ main .stats-div .top #top-filters input[type="date"] {
 
 main .stats-div .top #top-filters select:hover,
 main .stats-div .top #top-filters input[type="date"]:hover {
-    background: #6876B7;
+    background: var(--second);
 }
 
 main .stats-div .top #top-filters input[type="date"] {
@@ -504,7 +506,7 @@ main .stats-div .top .total-value {
     display: block;
     font-size: 2.5rem;
     font-weight: bold;
-    color: #2D336B;
+    color: var(--text);
 }
 
 main .stats-div .top .room-stats {
@@ -533,7 +535,7 @@ main .stats-div .top .room-label {
 main .stats-div .top .room-count {
     font-size: 1.5rem;
     font-weight: bold;
-    color: var(--second);
+    color: var(--red);
     min-width: 40px;
     text-align: right;
     flex-shrink: 0;
@@ -653,7 +655,7 @@ aside .table-div table,
     width: 100%;
 
     border-collapse: collapse;
-    background: white;
+    background: var(--primary);
     border-radius: 5px;
     overflow: hidden;
 }
@@ -674,7 +676,7 @@ aside .title,
 /* table header */
 aside table th,
 .popup-aside table th{
-    background-color: rgba(136, 143, 167, 0.42);
+    background-color: #002c472a;
     padding: 7px 10px;
     font-size: clamp(0.8rem, 1.8vw, 0.9rem);
 }
@@ -702,8 +704,8 @@ aside .table-div table tr:nth-child(odd),
 }
 
 .pagination-controls button {
-    background: linear-gradient(133deg, var(--second) 60%, #A9B5DF 120%);
-    color: #fff;
+    background: linear-gradient(133deg, var(--second) 60%, var(--second-very-light) 120%);
+    color: var(--primary);
     border: none;
     border-radius: 5px;
     padding: 7px 22px;

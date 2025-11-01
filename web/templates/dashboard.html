@@ -28,8 +28,8 @@
         }
 
         main .stats-div .monthly #monthly-header select{
-            background: #7886C7;
-            color: #fff;
+            background: var(--second-light);
+            color: var(--primary);
             border: none;
             border-radius: 5px;
             padding: 5px 12px;
@@ -41,12 +41,12 @@
         }
 
         main .stats-div .monthly #monthly-header select:hover {
-            background: #6876B7;
+            background: var(--second);
         }
 
         main .stats-div .monthly #monthly-header select:focus {
-            background: linear-gradient(133deg, #2D336B 60%, #7886C7 120%);
-            color: #fff;
+            background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%);
+            color: var(--second-very-light);
         }
 
         main .stats-div .monthly .chart-div{
@@ -77,7 +77,7 @@
             width: 60px;
             height: 60px;
             background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%);
-            color: white;
+            color: var(--primary);
             border: none;
             border-radius: 50%;
             font-size: 1.5rem;
@@ -925,11 +925,11 @@
                         datasets: [{
                             label: 'Monthly Detected Emergencies',
                             data: values,
-                            borderColor: '#7886C7',
-                            backgroundColor: 'rgba(120, 134, 199, 0.3)',
+                            borderColor: '#015382', //second-light
+                            backgroundColor: 'rgba(136, 143, 167, 0.20)',
                             tension: 0.4,
                             fill: true,
-                            pointBackgroundColor: '#2D336B',
+                            pointBackgroundColor: '#002C47', //second
                             pointBorderColor: '#fff',
                             pointBorderWidth: 2,
                             pointRadius: 5,
@@ -948,11 +948,11 @@
                                 display: false
                             },
                             tooltip: {
-                                backgroundColor: '#2D336B',
+                                backgroundColor: '#002C47', //second
                                 padding: 12,
                                 titleColor: '#fff',
                                 bodyColor: '#fff',
-                                borderColor: '#7886C7',
+                                borderColor: '#015382', //second-light
                                 borderWidth: 1,
                                 displayColors: false,
                                 intersect: false,
@@ -1117,7 +1117,7 @@
                 
                 const labels = sortedRooms.map(([_, roomData]) => roomData.name);
                 const values = sortedRooms.map(([_, roomData]) => roomData.count);
-                const colors = ['#7886C7', '#A9B5DF', '#BFC9E8'];
+                const colors = ['#015382', '#2d8ec2', '#002C47']; //second-light, second-very-light, --
                 
                 topChart = new Chart(ctx, {
                     type: 'doughnut',
@@ -1139,11 +1139,11 @@
                                 display: false
                             },
                             tooltip: {
-                                backgroundColor: '#2D336B',
+                                backgroundColor: '#002C47', //second
                                 padding: 12,
                                 titleColor: '#fff',
                                 bodyColor: '#fff',
-                                borderColor: '#7886C7',
+                                borderColor: '#015382', //second-light
                                 borderWidth: 1,
                                 displayColors: true,
                                 callbacks: {
