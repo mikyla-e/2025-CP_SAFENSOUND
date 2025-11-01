@@ -7,8 +7,11 @@
 
 :root {
     --primary: white;
-    --second: #2D336B;
+    --second-dark: #002942;
+    --second: #002C47;
     --background: linear-gradient(133deg, #F7F7F7 13.25%, #A9B5DF 205.83%);
+
+    --red: #B52E34;
 }
 
 * {
@@ -132,7 +135,7 @@ input {
 
 input:focus {
     outline: none;
-    border-color: #2d336baf;
+    border-color: #002C47af;
     box-shadow: 0 0 0 3px rgba(45, 51, 107, 0.1);
 }
 
@@ -157,7 +160,7 @@ button {
 }
 
 button:hover {
-    background: #1f2449;
+    background: var(--second-dark);
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(45, 51, 107, 0.4);
 }
@@ -182,8 +185,8 @@ button:active {
 
 .error {
     background: rgba(244, 67, 54, 0.1);
-    color: #c62828;
-    border: 2px solid rgba(244, 67, 54, 0.3);
+    color: var(--red);
+    border: 2px solid #b52e3530;
 }
 
 .link {
