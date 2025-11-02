@@ -3,8 +3,6 @@
 
 #include <Arduino.h>
 
-void testMicrophoneHardware();
-void checkClocksWhileReading();
 void setupAudio();
 void processAudioRecording();
 

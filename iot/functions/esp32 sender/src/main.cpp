@@ -24,7 +24,7 @@ const uint16_t timeoutMs = 4000;
 
 String stored_ssid = "";
 String stored_password = "";
-String laptop_ip = ""; //lappy ip
+String laptop_ip = "";
 String auth_token = "";
 bool wifi_configured = false;
 
@@ -51,7 +51,6 @@ void saveWiFiCredentials() {
   EEPROM.writeString(SSID_ADDR, stored_ssid);
   EEPROM.writeString(PASS_ADDR, stored_password);
   EEPROM.writeString(IP_ADDR, laptop_ip);
-  // EEPROM.writeString(TOKEN_ADDR, auth_token);
   EEPROM.writeBool(CONFIG_FLAG_ADDR, true);
   EEPROM.commit();
 
@@ -153,11 +152,6 @@ void handleConfigure() {
   if (server.hasArg("ssid")) {
     stored_ssid = server.arg("ssid");
     stored_password = server.arg("password");
-    // laptop_ip = server.arg("laptop_ip");
-
-    // if (auth_token.length() == 0 || auth_token == ""){
-    //   auth_token = String(random(1000000, 9999999));
-    // }
 
     saveWiFiCredentials();
 
@@ -229,7 +223,6 @@ void handleStatus() {
   doc["wifi_ip"] = WiFi.localIP().toString();
   doc["ap_ip"] = WiFi.softAPIP().toString();
   doc["room_id"] = room_id;
-  // doc["laptop_ip"] = laptop_ip;
 
   String jsonResponse;
   serializeJson(doc, jsonResponse);
@@ -660,32 +653,12 @@ void setup() { // esp setup
 
   delay(500);
 
-  // esp_chip_info_t chip_info;
-  // esp_chip_info(&chip_info);
-  
-  // Serial.println("\n=== ESP32 CHIP INFO ===");
-  // Serial.printf("Chip model: ESP32\n");
-  // Serial.printf("Cores: %d\n", chip_info.cores);
-  // Serial.printf("Revision: %d\n", chip_info.revision);
-  // Serial.printf("Features: WiFi%s%s\n",
-  //               (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
-  //               (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
-  // Serial.printf("Flash: %dMB %s\n", 
-  //               spi_flash_get_chip_size() / (1024 * 1024),
-  //               (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
-  
-
   loadWiFiCredentials();
 
   if (wifi_configured && connectToWiFi()) {
-
-    // if (auth_token.length() == 0 || auth_token == ""){
-    //   auth_token = String(random(1000000, 9999999));
-    // }
     
     Serial.println("Connected to saved WiFi.");
     Serial.println("Room ID: " + String(room_id));
-    // Serial.println("Auth Token: " + auth_token);
 
     delay(500);
     if (laptop_ip.length() == 0 || laptop_ip == "0.0.0.0") {
@@ -736,8 +709,6 @@ void sendData() {
       memcpy(buffer + 4, &audioRecording.timestamp, 4);
       memcpy(buffer + 8, &samplesToSend, 4);
       memcpy(buffer + 12, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
-      // memcpy(buffer + 12, auth_token.c_str(), 7); // Add token
-      // memcpy(buffer + 19, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
 
       udp.beginPacket(laptop_ip.c_str(), audio_port);
       udp.write(buffer, packetSize);
@@ -779,7 +750,6 @@ void sendResetSignal() {
     Serial.println("Invalid laptop IP!");
     return;
   }
-  /////
   
   udp.beginPacket(laptop_ip.c_str(), reset_port);
   

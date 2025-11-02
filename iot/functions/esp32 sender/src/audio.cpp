@@ -7,7 +7,6 @@
 #include "driver/gpio.h"
 #include "driver/periph_ctrl.h"
 
-
 #define I2S_PORT I2S_NUM_0
 #define I2S_SCK 26 //BCLK
 #define I2S_WS 25 //LRCLK
@@ -26,26 +25,26 @@
 
 extern void prepareAudio(int16_t* audio, size_t sampleCount);
 
-void printI2SRegisters() {
-    Serial.println("\n=== I2S Register Dump ===");
+// void printI2SRegisters() {
+//     Serial.println("\n=== I2S Register Dump ===");
     
-    volatile uint32_t* I2S_CONF_REG = (volatile uint32_t*)0x3FF4F008;
-    volatile uint32_t* I2S_CLKM_CONF_REG = (volatile uint32_t*)0x3FF4F0AC;
-    volatile uint32_t* I2S_SAMPLE_RATE_CONF_REG = (volatile uint32_t*)0x3FF4F0B0;
-    volatile uint32_t* I2S_FIFO_CONF_REG = (volatile uint32_t*)0x3FF4F018;
+//     volatile uint32_t* I2S_CONF_REG = (volatile uint32_t*)0x3FF4F008;
+//     volatile uint32_t* I2S_CLKM_CONF_REG = (volatile uint32_t*)0x3FF4F0AC;
+//     volatile uint32_t* I2S_SAMPLE_RATE_CONF_REG = (volatile uint32_t*)0x3FF4F0B0;
+//     volatile uint32_t* I2S_FIFO_CONF_REG = (volatile uint32_t*)0x3FF4F018;
     
-    Serial.printf("I2S_CONF_REG: 0x%08X\n", *I2S_CONF_REG);
-    Serial.printf("I2S_CLKM_CONF_REG: 0x%08X\n", *I2S_CLKM_CONF_REG);
-    Serial.printf("I2S_SAMPLE_RATE_CONF_REG: 0x%08X\n", *I2S_SAMPLE_RATE_CONF_REG);
-    Serial.printf("I2S_FIFO_CONF_REG: 0x%08X\n", *I2S_FIFO_CONF_REG);
+//     Serial.printf("I2S_CONF_REG: 0x%08X\n", *I2S_CONF_REG);
+//     Serial.printf("I2S_CLKM_CONF_REG: 0x%08X\n", *I2S_CLKM_CONF_REG);
+//     Serial.printf("I2S_SAMPLE_RATE_CONF_REG: 0x%08X\n", *I2S_SAMPLE_RATE_CONF_REG);
+//     Serial.printf("I2S_FIFO_CONF_REG: 0x%08X\n", *I2S_FIFO_CONF_REG);
     
-    bool rx_start = (*I2S_CONF_REG) & (1 << 11);
-    bool tx_start = (*I2S_CONF_REG) & (1 << 10);
-    Serial.printf("RX_START bit: %d, TX_START bit: %d\n", rx_start, tx_start);
-}
+//     bool rx_start = (*I2S_CONF_REG) & (1 << 11);
+//     bool tx_start = (*I2S_CONF_REG) & (1 << 10);
+//     Serial.printf("RX_START bit: %d, TX_START bit: %d\n", rx_start, tx_start);
+// }
 
 void setupAudio(){
-    Serial.println("\n=== I2S MICROPHONE INITIALIZATION ===");
+    // Serial.println("\n=== I2S MICROPHONE INITIALIZATION ===");
     
     i2s_config_t cfg = {
 		.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
@@ -83,15 +82,15 @@ void setupAudio(){
     i2s_start(I2S_PORT);
 
     // printI2SRegisters();
-    Serial.println("\nForcing initial read...");
-    int32_t dummy[256];
-    size_t bytes_read;
-    for(int i = 0; i < 5; i++) {
-        esp_err_t result = i2s_read(I2S_PORT, dummy, sizeof(dummy), &bytes_read, 1000);
-        Serial.printf("Read %d: %s, %u bytes, first sample: 0x%08X\n", 
-                     i, esp_err_to_name(result), bytes_read, dummy[0]);
-        delay(100);
-    }
+    // Serial.println("\nForcing initial read...");
+    // int32_t dummy[256];
+    // size_t bytes_read;
+    // for(int i = 0; i < 5; i++) {
+    //     esp_err_t result = i2s_read(I2S_PORT, dummy, sizeof(dummy), &bytes_read, 1000);
+    //     Serial.printf("Read %d: %s, %u bytes, first sample: 0x%08X\n", 
+    //                  i, esp_err_to_name(result), bytes_read, dummy[0]);
+    //     delay(100);
+    // }
 }
 
 void processAudioRecording(){

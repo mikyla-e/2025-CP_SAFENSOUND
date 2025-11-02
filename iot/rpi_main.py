@@ -5,7 +5,6 @@ import time
 from time import sleep
 from datetime import datetime
 import json
-import struct
 import wave
 import traceback
 
@@ -13,7 +12,6 @@ import traceback
 import socket
 import paho.mqtt.client as mqtt
 import threading
-import requests
 import serial
 import aiohttp
 import asyncio
@@ -32,7 +30,6 @@ import numpy as np
 # from tensorflow.keras.utils import to_categorical
 
 import librosa as lb
-import librosa.display as ld
 import sounddevice as sd
 import soundfile as sf
 
@@ -65,7 +62,7 @@ db = Database()
 print("Database connected successfully.")
 
 # ml model
-model = joblib.load("ml/mfcc/mfcc_rf_model.joblib")
+model = joblib.load("ml/ml models/mfcc_rf_model.joblib")
 print("Model loaded successfully.")
 
 audio_data = None
@@ -78,7 +75,6 @@ emergency_count = 0
 nonemergency_count = 0
 emergency_detected = False
 
-# esp32_receiver_ip = None
 esp32_serial = None
 esp32_port = "COM9"
 
@@ -86,9 +82,6 @@ disc_port = 60123
 audio_port = 54321
 reset_port = 58080
 
-# VALID_TOKENS = {
-#     1: 7152113,
-# }
 
 stop_event = threading.Event()
 
@@ -173,7 +166,6 @@ def init_esp32_serial():
 
 # audio recording and receiving --------------------
 def get_audio_local():
-    # get audio from microphone
     date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     try:
@@ -222,11 +214,6 @@ def receive_audio_data():
             room_id = int.from_bytes(data[0:4], 'little')
             timestamp = int.from_bytes(data[4:8], 'little')
             chunk_samples = int.from_bytes(data[8:12], 'little')
-            # token = data[12:19].decode('utf-8')
-            
-            # if room_id is None or timestamp is None or chunk_samples is None or token is None:
-            #     print(f"Incomplete data received from {addr}: Room {room_id}")
-            #     continue
 
             if room_id is None or timestamp is None or chunk_samples is None:
                 print(f"Incomplete data received from {addr}: Room {room_id}")
@@ -235,17 +222,12 @@ def receive_audio_data():
             if room_id not in [1, 2, 3]:
                 print(f"Unknown room ID from {addr}: Room {room_id}")
                 continue
-
-            # if room_id not in VALID_TOKENS or VALID_TOKENS[room_id] != token:
-            #     print(f"Invalid token from Room {room_id}")
-            #     return
             
             if chunk_samples > 16000 or chunk_samples <= 0:
                 print(f"Invalid chunk size from Room {room_id}: {chunk_samples} samples")
                 continue
 
             audio_chunk = np.frombuffer(data[12:], dtype=np.int16)
-            # print(f"Room {room_id}: Received {len(audio_chunk)} samples (Expected: {chunk_samples})")
 
             if room_id not in audio_chunks:
                 audio_chunks[room_id] = []
@@ -254,32 +236,23 @@ def receive_audio_data():
             audio_chunks[room_id].append(audio_chunk)
             total_samples = sum(len(chunk) for chunk in audio_chunks[room_id])
 
-            # print(f"Room {room_id}: Total samples received so far: {total_samples}/{EXPECTED_TOTAL_SAMPLES}")
-
             if total_samples >= EXPECTED_TOTAL_SAMPLES:
-                # print(f"Received complete audio data: {total_samples} samples from Room {room_id}")
                 full_audio = np.concatenate(audio_chunks[room_id])[:EXPECTED_TOTAL_SAMPLES]
                 
-                # Save the audio as a WAV file
                 datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
                 wav_filename = f"recorded_audio/Room{room_id}_{datetime_str}.wav"
-                save_wav(wav_filename, full_audio, sample_rate)
+                save_wav(wav_filename, full_audio, sample_rate) #saving audio for testing
 
-                # Process the audio
                 thread = threading.Thread(
                     target=process_audio,
                     args=(full_audio, room_id, timestamp)
                 )
                 thread.start()
 
-                # Reset buffer for the next transmission
                 del audio_chunks[room_id]
                 del chunk_timestamps[room_id]
 
             last_packet_time = time.time()
-
-            # elapsed = last_packet_time - chunk_timestamps[room_id]
-            # print(f"Elapsed to receive 80k samples: {elapsed:.2f}s (expected ~5s at 16kHz)")
 
             for room_id in list(chunk_timestamps.keys()):
                 if last_packet_time - chunk_timestamps[room_id] > 10:
@@ -350,7 +323,6 @@ def receive_reset_signals():
     print("Reset signal receiver stopped.")
 
 def save_wav(filename, audio_data, sample_rate):
-    """Save int16 audio data as WAV file"""
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
     if not isinstance(audio_data, np.ndarray):
@@ -482,14 +454,8 @@ def inference(audio, wav_name, room_id=None):
     global emergency_count, alarming_count, nonemergency_count, emergency_detected
 
     print(f"\nProcessing audio for inference: {wav_name}")
-    # extracting
     audio_features = extract_features(audio, sample_rate)
-
-    # predicting
     prediction = model.predict(audio_features.reshape(1, -1))
-
-
-    # alarm and emergency logic
     predicted_class = prediction[0]
 
     # alarming sound = 3 times before emergency is confirmed
@@ -532,7 +498,6 @@ def inference(audio, wav_name, room_id=None):
 
 # alarm triggering -----------------------------------
 def trigger_alarm(room_id=None):
-    # trigger alarm if emergency was detected
     global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_esp32
 
     alarming_count = 0
