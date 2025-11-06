@@ -6,11 +6,10 @@ from time import sleep
 from datetime import datetime
 import json
 import wave
-import traceback
 
 # --- networking ---
 import socket
-import paho.mqtt.client as mqtt
+# import paho.mqtt.client as mqtt
 import threading
 import serial
 import aiohttp
@@ -190,9 +189,6 @@ def get_audio_local():
 
 
 def receive_audio_data():
-    from database.db_connection import Database
-    db = Database()
-    
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', audio_port))
     sock.settimeout(1.0)
@@ -239,9 +235,9 @@ def receive_audio_data():
             if total_samples >= EXPECTED_TOTAL_SAMPLES:
                 full_audio = np.concatenate(audio_chunks[room_id])[:EXPECTED_TOTAL_SAMPLES]
                 
-                datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-                wav_filename = f"recorded_audio/Room{room_id}_{datetime_str}.wav"
-                save_wav(wav_filename, full_audio, sample_rate) #saving audio for testing
+                # datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                # wav_filename = f"recorded_audio/Room{room_id}_{datetime_str}.wav"
+                # save_wav(wav_filename, full_audio, sample_rate) #saving audio for testing
 
                 thread = threading.Thread(
                     target=process_audio,
@@ -264,15 +260,11 @@ def receive_audio_data():
             continue
         except Exception as e:
             print(f"Audio Data - UDP error: {e}")
-            traceback.print_exc()
 
     sock.close()
     print("Audio data receiver stopped.")
 
 def receive_reset_signals():
-    from database.db_connection import Database
-    db = Database()
-    
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', reset_port))
     sock.settimeout(1.0)
@@ -330,8 +322,8 @@ def save_wav(filename, audio_data, sample_rate):
 
     try:
         with wave.open(filename, 'w') as wav_file:
-            wav_file.setnchannels(1)  # Mono
-            wav_file.setsampwidth(2)  # 2 bytes = 16-bit
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
             wav_file.setframerate(sample_rate)
             wav_file.writeframes(audio_data.tobytes())
 
@@ -350,16 +342,13 @@ loud_duration_ms = 0
 
 def process_audio(audio_data_int16, room_id=None, timestamp=None):
     global loud_duration_ms
-    # Noise gate before inference
+    frame_length = 1024
+    hop_length = 200
+    
     y_i16 = np.asarray(audio_data_int16, dtype=np.int16)
     y = y_i16.astype(np.float32) / 32768.0
-
-    # Remove DC offset
     y = y - np.mean(y)
 
-    # Short-time RMS (50% overlap)
-    frame_length = 1024
-    hop_length = 512
     rms = lb.feature.rms(y=y, frame_length=frame_length, hop_length=hop_length, center=False)[0]
     rms_db = 20.0 * np.log10(np.maximum(rms, 1e-6))
 
@@ -370,12 +359,16 @@ def process_audio(audio_data_int16, room_id=None, timestamp=None):
 
     # Require sustained activity
     active_ms = active.sum() * (hop_length / sample_rate) * 1000.0
-    print(f"Activity={active_ms:.0f} ms, floor={noise_floor:.1f} dBFS, peak={rms_db.max():.1f} dBFS")
+    # print(f"Activity={active_ms:.0f} ms, floor={noise_floor:.1f} dBFS, peak={rms_db.max():.1f} dBFS")
+    print(f"Activity={active_ms:.0f} ms")
 
     try:
-        if active_ms >= 800:  # tune: 500–1500 ms
+        if active_ms >= 800:
             inference(y_i16, f"Room{room_id}_{timestamp}", room_id)
             return True
+        # if active_ms >= 4500:
+        #     trigger_alarm(room_id)
+        #     return True
         else:
             print("Skipping inference (background).")
             return False
@@ -384,35 +377,14 @@ def process_audio(audio_data_int16, room_id=None, timestamp=None):
 
         return False
 
-    # num_samples = len(audio_data_int16)
-    # duration_ms = (num_samples / sample_rate) * 1000
 
-    # try:
-    #     audio_data = np.array(audio_data_int16, dtype=np.int16)
-    #     avg_amplitude = np.mean(np.abs(audio_data))
-        
-    #     print(f"Loudness: {avg_amplitude}, Duration: {duration_ms}ms\n")
+def extract_features(audio, sample_rate):
+    hop_length = 200
+    win_length = 400
+    max_len = 160
+    n_fft = 512
 
-    #     if avg_amplitude > loudness_threshold:
-    #         loud_duration_ms += duration_ms
-    #     else:
-    #         loud_duration_ms = 0
-            
-    #     if loud_duration_ms >= loud_threshold_ms:
-    #         loud_duration_ms = 0
-    #         print(f"Loud sound detected for {loud_threshold_ms}ms. Proceeding to inference...")
-    #         inference(audio_data.flatten(), f"Room{room_id}_{timestamp}", room_id)
-            
-    #     return True
-        
-    # except Exception as e:
-    #     print(f"Error processing audio: {e}")
-
-    #     return False
-
-def extract_features(audio, sample_rate, max_len=160):
-
-    def _to_float32(y):
+    def float32(y):
         arr = np.asarray(y)
         if arr.dtype == np.int16:
             return arr.astype(np.float32) / 32768.0
@@ -420,16 +392,19 @@ def extract_features(audio, sample_rate, max_len=160):
             return arr.astype(np.float32) / 2147483648.0
         return arr.astype(np.float32, copy=False)
 
-    y = _to_float32(audio).squeeze()
+    y = float32(audio).squeeze()
 
-    mfcc = lb.feature.mfcc(y=y, sr=sample_rate, n_mfcc=20, hop_length=512)
+    mfcc = lb.feature.mfcc(y=y, sr=sample_rate, n_mfcc=20, n_fft=n_fft, win_length=win_length, hop_length=hop_length)
+    mfcc_delta = lb.feature.delta(mfcc)
+    mfcc_delta2 = lb.feature.delta(mfcc, order=2)
 
-    zcr = lb.feature.zero_crossing_rate(y)
-    spectral_centroid = lb.feature.spectral_centroid(y=y, sr=sample_rate)
-    spectral_rolloff = lb.feature.spectral_rolloff(y=y, sr=sample_rate)
-    rms = lb.feature.rms(y=y)
+    rms = lb.feature.rms(y=y, frame_length=win_length, hop_length=hop_length)
+    zcr = lb.feature.zero_crossing_rate(y=y, frame_length=win_length, hop_length=hop_length)
+    spectral_centroid = lb.feature.spectral_centroid(y=y, sr=sample_rate, n_fft=n_fft, win_length=win_length, hop_length=hop_length)
+    spectral_rolloff = lb.feature.spectral_rolloff(y=y, sr=sample_rate, n_fft=n_fft, win_length=win_length, hop_length=hop_length)
+    # chroma = lb.feature.chroma_stft(y=y, sr=sample_rate, hop_length=hop_length)
 
-    features = [mfcc, spectral_centroid, spectral_rolloff, zcr, rms]
+    features = [mfcc, mfcc_delta, mfcc_delta2, spectral_centroid, spectral_rolloff, zcr, rms]
     extracted_features = []
 
     for feature in features:
@@ -549,7 +524,6 @@ async def send_alert_web(room_id, action=None):
 
         except Exception as e:
             print("Failed to send alert to Web Dashboard:", e)
-            traceback.print_exc()
 
     return success_web
 
