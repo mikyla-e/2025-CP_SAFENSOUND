@@ -43,7 +43,7 @@ typedef struct {
 
 AudioRecording audioRecording;
 bool audioReady = false;
-const int room_id = 2;
+const int room_id = 3;
 
 /////////////////////////////////////////////////////////
 

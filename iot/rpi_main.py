@@ -352,18 +352,15 @@ def process_audio(audio_data_int16, room_id=None, timestamp=None):
     rms = lb.feature.rms(y=y, frame_length=frame_length, hop_length=hop_length, center=False)[0]
     rms_db = 20.0 * np.log10(np.maximum(rms, 1e-6))
 
-    # Adaptive threshold: noise floor + margin
     noise_floor = np.percentile(rms_db, 30)
     margin_db = 8.0
     active = rms_db > (noise_floor + margin_db)
 
-    # Require sustained activity
     active_ms = active.sum() * (hop_length / sample_rate) * 1000.0
-    # print(f"Activity={active_ms:.0f} ms, floor={noise_floor:.1f} dBFS, peak={rms_db.max():.1f} dBFS")
     print(f"Activity={active_ms:.0f} ms")
 
     try:
-        if active_ms >= 800:
+        if active_ms >= 600:
             inference(y_i16, f"Room{room_id}_{timestamp}", room_id)
             return True
         # if active_ms >= 4500:
@@ -433,7 +430,7 @@ def inference(audio, wav_name, room_id=None):
     prediction = model.predict(audio_features.reshape(1, -1))
     predicted_class = prediction[0]
 
-    # alarming sound = 3 times before emergency is confirmed
+    # alarming sound = 4 times before emergency is confirmed
     # emergency sound = 2 times after emergency is confirmed
 
     print(f"\nPrediction for {wav_name}: {predicted_class}")
@@ -442,7 +439,7 @@ def inference(audio, wav_name, room_id=None):
         alarming_count += 1
         print("ALARMING sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
 
-        if alarming_count >= 3:
+        if alarming_count >= 4:
             emergency_detected = True
             trigger_alarm(room_id)
         
