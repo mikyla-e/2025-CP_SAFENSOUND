@@ -58,7 +58,7 @@ class Database:
             self.conn.execute('''
                 INSERT INTO room (room_name)
                 VALUES (?)
-            ''', room_name)
+            ''', (room_name))
 
     def insert_history(self, action, date, time, room_id):
         with self.conn:
