@@ -167,7 +167,21 @@ async def get_history(room_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# RENAME ROOM
+# ROOM UPDATES
+@app.post("/api/newroom")
+async def create_room(data: NewRoom):
+    try:
+        db.insert_room(data.room_name)
+
+        await manager.broadcast({
+            "type": "room_created",
+            "room_name": data.room_name
+        })
+
+        return {"success": True, "message": "Room created successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/rooms/{room_id}/rename")
 async def rename_room(room_id: int, data: RoomRename):
     try:

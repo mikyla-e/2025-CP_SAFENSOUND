@@ -16,7 +16,7 @@ class Database:
         with self.conn:
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS room (
-                    room_id INTEGER PRIMARY KEY CHECK (room_id IN (1, 2, 3)),
+                    room_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     room_name TEXT NOT NULL
                 )
             ''')
@@ -37,21 +37,29 @@ class Database:
 
     def initialize_rooms(self):
         try:
-            cursor = self.conn.execute('SELECT COUNT(*) FROM room')
-            count = cursor.fetchone()[0]
+            # cursor = self.conn.execute('SELECT COUNT(*) FROM room')
+            # count = cursor.fetchone()[0]
             
-            if count == 0:
-                default_rooms = [
-                    (1, "Room 1"),
-                    (2, "Room 2"), 
-                    (3, "Room 3")
-                ]
-                self.conn.executemany('INSERT INTO room (room_id, room_name) VALUES (?, ?)', default_rooms)
-                self.conn.commit()
+            # if count == 0:
+            #     default_rooms = [
+            #         (1, "Room 1"),
+            #         (2, "Room 2"), 
+            #         (3, "Room 3")
+            #     ]
+            #     self.conn.executemany('INSERT INTO room (room_id, room_name) VALUES (?, ?)', default_rooms)
+            #     self.conn.commit()
+            pass
         except Exception as e:
             print(f"Error initializing rooms: {e}")
 
     #insert data
+    def insert_room(self, room_name):
+        with self.conn:
+            self.conn.execute('''
+                INSERT INTO room (room_name)
+                VALUES (?)
+            ''', room_name)
+
     def insert_history(self, action, date, time, room_id):
         with self.conn:
             self.conn.execute('''

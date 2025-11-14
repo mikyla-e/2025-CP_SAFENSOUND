@@ -33,6 +33,7 @@ bool wifi_configured = false;
 #define IP_ADDR 64
 #define CONFIG_FLAG_ADDR 96
 #define TOKEN_ADDR 128
+#define ROOM_ID_ADDR 160
 
 typedef struct {
   int16_t audioData[16000];
@@ -43,7 +44,21 @@ typedef struct {
 
 AudioRecording audioRecording;
 bool audioReady = false;
-const int room_id = 3;
+int room_id = 1;
+const int esp_id = 1;
+
+/////////////////////////////////////////////////////////
+
+void saveRoomID() {
+  EEPROM.writeInt(ROOM_ID_ADDR, room_id);
+  EEPROM.commit();
+  Serial.println("Room ID " + String(room_id) + " saved to EEPROM");
+}
+
+void loadRoomID() {
+  room_id = EEPROM.readInt(ROOM_ID_ADDR);
+  Serial.println("📖 Loaded Room ID: " + String(room_id));
+}
 
 /////////////////////////////////////////////////////////
 
@@ -650,6 +665,8 @@ bool discoverLaptopIP(){
 void setup() { // esp setup
   Serial.begin(115200);
   EEPROM.begin(512);
+
+  wifi.macAddress();
 
   delay(500);
 
