@@ -22,6 +22,18 @@ templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 class RoomRename(BaseModel):
     new_name: str
 
+class NewRoom(BaseModel):
+    room_name: str
+
+class DeviceRegister(BaseModel):
+    device_id: str
+
+class DeviceAssign(BaseModel):
+    room_id: int
+
+device_room_map: dict[str, int] = {}
+
+
 class AlertData(BaseModel):
     room_id: int
     action: str
@@ -59,6 +71,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 room_status = {1:0, 2:0, 3:0}
+
 
 async def periodic_updates():
     while True:
@@ -168,17 +181,12 @@ async def get_history(room_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ROOM UPDATES
-@app.post("/api/newroom")
+@app.post("/api/rooms")
 async def create_room(data: NewRoom):
     try:
         db.insert_room(data.room_name)
-
-        await manager.broadcast({
-            "type": "room_created",
-            "room_name": data.room_name
-        })
-
-        return {"success": True, "message": "Room created successfully."}
+        await manager.broadcast({"type": "room_created", "room_name": data.room_name})
+        return {"success": True, "message": "Room created", "room_name": data.room_name}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -196,6 +204,37 @@ async def rename_room(room_id: int, data: RoomRename):
         return {"success": True, "message": "Room renamed successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/api/devices/register")
+async def register_device(data: DeviceRegister):
+    device_id = data.device_id.strip()
+    if not device_id:
+        raise HTTPException(status_code=400, detail="Invalid device_id")
+    if device_id not in device_room_map:
+        device_room_map[device_id] = 0  # unassigned
+    return {"success": True, "device_id": device_id, "room_id": device_room_map[device_id]}
+
+@app.get("/api/devices")
+async def list_devices():
+    return [{"device_id": d, "room_id": r} for d, r in device_room_map.items()]
+
+@app.post("/api/devices/{device_id}/assign_room")
+async def assign_device(device_id: str, data: DeviceAssign):
+    if device_id not in device_room_map:
+        raise HTTPException(status_code=404, detail="Device not registered")
+    device_room_map[device_id] = data.room_id
+    await manager.broadcast({
+        "type": "device_assigned",
+        "device_id": device_id,
+        "room_id": data.room_id
+    })
+    return {"success": True, "device_id": device_id, "room_id": data.room_id}
+
+@app.get("/api/devices/config")
+async def device_config(device_id: str):
+    if device_id not in device_room_map:
+        return {"registered": False, "room_id": 0}
+    return {"registered": True, "room_id": device_room_map[device_id]}
     
 # MONTHLY EMERGENCIES
 @app.get("/api/monthly_emergencies/{year}")

@@ -8,6 +8,7 @@
 #include <ArduinoJson.h>
 #include <WiFiUdp.h>
 #include "driver/gpio.h"
+#include <HTTPClient.h>
 
 const int disc_port = 60123;
 const int audio_port = 54321;
@@ -27,6 +28,9 @@ String stored_password = "";
 String laptop_ip = "";
 String auth_token = "";
 bool wifi_configured = false;
+unsigned long lastPoll = 0;
+const unsigned long pollIntervalMs = 10000;
+String device_id = "";
 
 #define SSID_ADDR 0
 #define PASS_ADDR 32
@@ -585,6 +589,67 @@ void handleCSS() {
 
 /////////////////////////////////////////////////////////
 
+bool postRegisterDevice() {
+  if (laptop_ip.length() == 0) {
+    Serial.println("Missing data for registration.");
+    return false;
+  }
+  HTTPClient http;
+  String url = "http://" + laptop_ip + ":8000/api/devices/register";
+
+  JsonDocument doc;
+  doc["device_id"] = device_id;
+  String payload;
+  serializeJson(doc, payload);
+
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  int httpResponseCode = http.POST(payload);
+  if (httpResponseCode == 200) {
+    Serial.println("Device " + device_id + " registered successfully.");
+    http.end();
+    return true;
+  } else {
+    Serial.printf("Failed to register device. HTTP response code: %d\n", httpResponseCode);
+    http.end();
+    return false;
+  }
+}
+
+void pollRoomAssignment() {
+  if (laptop_ip.length() == 0) {
+    Serial.println("No laptop IP for polling.");
+    return;
+  }
+
+  HTTPClient http;
+  String url = "http://" + laptop_ip + ":8000/api/devices/config?device_id=" + device_id;
+
+  http.begin(url);
+  int httpResponseCode = http.GET();
+  if (httpResponseCode == 200) {
+    String response = http.getString();
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, response);
+    if (!error) {
+      bool registered = doc["registered"];
+      int new_room_id = doc["room_id"];
+      if (registered && new_room_id != room_id) {
+        room_id = new_room_id;
+        saveRoomID();
+        Serial.println("Updated Room ID to " + String(room_id));
+      }
+    } else {
+      Serial.println("Failed to parse room assignment response.");
+    }
+  } else {
+    Serial.printf("Failed to poll room assignment. HTTP response code: %d\n", httpResponseCode);
+  }
+  http.end();
+}
+
+/////////////////////////////////////////////////////////
+
 void startCaptivePortal() {
   Serial.println("Starting Captive Portal...");
 
@@ -660,13 +725,23 @@ bool discoverLaptopIP(){
   return false;
 }
 
+bool getDeviceConfig() {
+  if (laptop_ip.length() == 0) {
+    Serial.println("No laptop ip.");
+    return false;
+  }
+}
+
 /////////////////////////////////////////////////////////
 
 void setup() { // esp setup
   Serial.begin(115200);
   EEPROM.begin(512);
 
-  wifi.macAddress();
+  device_id = WiFi.macAddress();
+  Serial.println("Device ID: " + device_id);
+
+  // String mac_esp = WiFi.macAddress();
 
   delay(500);
 
@@ -687,6 +762,12 @@ void setup() { // esp setup
         Serial.println("Discovery failed... trying again.");
         discoverLaptopIP();
       }
+    }
+
+    if (postRegisterDevice()) {
+      Serial.println("Device registration successful.");
+    } else {
+      Serial.println("Device registration failed.");
     }
 
     Serial.println("Laptop IP: " + laptop_ip);
@@ -794,8 +875,15 @@ void loop() { //loops
   } else {
     processAudioRecording();
     sendData();
+    
     if (processResetButton()) {
       sendResetSignal();
+    }
+
+    unsigned long now = millis();
+    if (now - lastPoll >= pollIntervalMs) {
+      lastPoll = now;
+      pollRoomAssignment();
     }
 
     delay(1); 

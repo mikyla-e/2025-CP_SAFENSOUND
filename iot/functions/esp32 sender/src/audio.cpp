@@ -97,6 +97,8 @@ void processAudioRecording(){
     static int16_t audio_buffer[CHUNK_SAMPLES];
     static size_t samples_collected = 0;
     static int samples_sent = 0;
+    static int64_t sum_abs = 0;
+    static int64_t sum_sq = 0;
 
     int32_t audio[BUFFER_SIZE];
     size_t bytes_read;
@@ -115,20 +117,43 @@ void processAudioRecording(){
                 int32_t s32 = audio[idx + i] >> SHIFT;
                 if (s32 > 32767) s32 = 32767;
                 if (s32 < -32768) s32 = -32768;
-                audio_buffer[samples_collected + i] = (int16_t)s32;
+
+                int16_t s16 = (int16_t)s32;
+                audio_buffer[samples_collected + i] = s16;
+
+                sum_abs += (uint16_t)abs(s16);
+                sum_sq += (int32_t)s16 * (int32_t)s16;
             }
 
             samples_collected += to_copy;
             idx += to_copy;
 
             if (samples_collected == CHUNK_SAMPLES) {
-                prepareAudio(audio_buffer, CHUNK_SAMPLES);
-                samples_sent += samples_collected;
-                samples_collected = 0;
+                const float EMERGENCY_RMS_THRESHOLD = 8000.0;
 
-                if (samples_sent >= SAMPLE_RATE * AUDIO_DURATION) {
-                    Serial.println("Full 5-second recording sent in chunks.");
+                samples_sent += samples_collected;
+                uint16_t avg_amplitude = (float)sum_abs / (float)samples_sent;
+                uint16_t rms_amplitude = sqrt((float)sum_sq / (float)samples_sent);
+
+                if (rms_amplitude > EMERGENCY_RMS_THRESHOLD) {
+                    prepareAudio(avg_amplitude, rms_amplitude, audio_buffer, CHUNK_SAMPLES);
+
+                    samples_collected = 0;
+
+                    if (samples_sent >= SAMPLE_RATE * AUDIO_DURATION) {
+                        Serial.printf("5s metrics: avg_abs=%.2f rms=%.2f\n", avg_amplitude, rms_amplitude);
+                        Serial.println("Full 5-second recording sent in chunks.");
+                        
+                        samples_sent = 0;
+                        sum_abs = 0;
+                        sum_sq = 0;
+                    }
+                } else {
+                    samples_collected = 0;
                     samples_sent = 0;
+                    sum_abs = 0;
+                    sum_sq = 0;
+                    Serial.printf("Chunk skipped due to low RMS: %.2f\n", rms_amplitude);
                 }
             }
         }

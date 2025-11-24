@@ -21,6 +21,15 @@ class Database:
                 )
             ''')
 
+    def create_device(self):
+        with self.conn:
+            self.conn.execute('''
+                CREATE TABLE IF NOT EXISTS device (
+                    device_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    room_id INTEGER,
+                )
+            ''')
+
     def create_history(self):
         with self.conn:
             self.conn.execute('''

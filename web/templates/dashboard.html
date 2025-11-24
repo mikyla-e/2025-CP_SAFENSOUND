@@ -114,6 +114,79 @@
                 height: 24px;
             }
         }
+
+
+
+        .admin-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.35);
+            backdrop-filter: blur(1px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s ease;
+            z-index: 1000;
+        }
+        .admin-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .admin-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: min(920px, 94vw);
+            max-height: 85vh;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 12px 30px rgba(0,0,0,.2);
+            transform: translate(-50%, -45%);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform .2s ease, opacity .2s ease;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+        }
+        .admin-modal.show {
+            transform: translate(-50%, -50%);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .admin-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(0,0,0,.06);
+        }
+        .admin-modal-body {
+            padding: 16px 18px 20px;
+            overflow: auto;
+        }
+        .admin-close {
+            background: transparent;
+            border: none;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            color: #333;
+        }
+        .btn-manage {
+            background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%);
+            color: var(--primary);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(45,51,107,0.2);
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .btn-manage:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(45,51,107,0.28);
+        }
     </style>
 </body>
 </html>
@@ -125,7 +198,40 @@
             <p id="current-date">00/00/00</p>
             <p class="time" id="current-time">00:00 AM</p>
         </div>
+        <div class="admin-launch" style="margin:20px 0;">
+            <button type="button" class="btn-manage" onclick="openAdminModal()">Manage Rooms & Devices</button>
+        </div>
     </nav>
+
+    <div id="admin-overlay" class="admin-overlay" onclick="closeAdminModal()"></div>
+    <div id="admin-modal" class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title" onclick="event.stopPropagation()">
+        <div class="admin-modal-header">
+            <h3 id="admin-modal-title" style="margin:0;">Room & Device Management</h3>
+            <button class="admin-close" aria-label="Close" onclick="closeAdminModal()">×</button>
+        </div>
+        <div class="admin-modal-body">
+            <div class="admin-panel">
+                <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom: 12px;">
+                    <input id="new-room-name" placeholder="New Room Name" style="padding:8px; flex:1; min-width:180px;">
+                    <button onclick="createRoom()" style="padding:8px 14px;">Add Room</button>
+                </div>
+                <hr style="margin:15px 0;">
+                <div>
+                    <h4 style="margin:4px 0;">Registered Devices</h4>
+                    <table id="devices-table" style="width:100%; border-collapse:collapse; font-size:.9rem;">
+                        <thead>
+                            <tr style="text-align:left;">
+                                <th style="padding:6px;">Device ID</th>
+                                <th style="padding:6px;">Assigned Room</th>
+                                <th style="padding:6px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <main>
         <div class="rooms-div">
@@ -1171,6 +1277,106 @@
             await initializeYearFilter();
             await updateTopChart(); 
         });
+
+        function openAdminModal() {
+            const overlay = document.getElementById('admin-overlay');
+            const modal = document.getElementById('admin-modal');
+            overlay.classList.add('show');
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            // Refresh data when opened
+            try { loadDevices(); } catch(e) {}
+            // Focus input
+            const input = document.getElementById('new-room-name');
+            if (input) { setTimeout(() => input.focus(), 50); }
+        }
+
+        function closeAdminModal() {
+            const overlay = document.getElementById('admin-overlay');
+            const modal = document.getElementById('admin-modal');
+            overlay.classList.remove('show');
+            modal.classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close admin modal on ESC as well
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAdminModal();
+            }
+        });
+                
+        async function createRoom() {
+            const nameEl = document.getElementById('new-room-name');
+            const room_name = nameEl.value.trim();
+            if (!room_name) { alert("Enter room name"); return; }
+            try {
+                const r = await fetch('/api/rooms', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({room_name})
+                });
+                if (!r.ok) throw new Error(await r.text());
+                nameEl.value = '';
+                await fetchRoomData();
+                updateMonthlyGraph();
+                updateTopChart();
+                loadDevices(); // refresh
+            } catch(e){ console.error(e); alert("Failed to add room"); }
+        }
+
+        async function loadDevices() {
+            try {
+                const r = await fetch('/api/devices');
+                const devices = await r.json();
+                const tbody = document.querySelector('#devices-table tbody');
+                tbody.innerHTML = '';
+                devices.forEach(dev => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="padding:6px;">${dev.device_id}</td>
+                    <td style="padding:6px;">${dev.room_id}</td>
+                    <td style="padding:6px;">
+                    <select data-device="${dev.device_id}" onchange="assignDevice(this)">
+                        ${buildRoomOptions(dev.room_id)}
+                    </select>
+                    </td>`;
+                tbody.appendChild(tr);
+                });
+            } catch(e){ console.error("Load devices error", e); }
+        }
+
+        function buildRoomOptions(current) {
+            let opts = '';
+            for (const id in roomData) {
+                const sel = parseInt(id) === parseInt(current) ? 'selected' : '';
+                opts += `<option value="${id}" ${sel}>${roomData[id].name}</option>`;
+            }
+            if (current === 0) opts = `<option value="0" selected>Unassigned</option>` + opts;
+            else opts = `<option value="0">Unassigned</option>` + opts;
+            return opts;
+        }
+
+        async function assignDevice(sel) {
+            const device_id = sel.getAttribute('data-device');
+            const room_id = parseInt(sel.value);
+            try {
+                const r = await fetch(`/api/devices/${encodeURIComponent(device_id)}/assign_room`, {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({room_id})
+                });
+                if (!r.ok) throw new Error(await r.text());
+                updateTopChart();
+            } catch(e){ console.error(e); alert("Assignment failed"); }
+        }
+
+        setInterval(loadDevices, 10000); // refresh list
+            window.addEventListener('load', () => {
+            setTimeout(loadDevices, 1500);
+        });
+
+        
     </script>
 </body>
 </html>
