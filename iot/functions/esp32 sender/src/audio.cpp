@@ -136,7 +136,7 @@ void processAudioRecording(){
                 uint16_t rms_amplitude = sqrt((float)sum_sq / (float)samples_sent);
 
                 if (rms_amplitude > EMERGENCY_RMS_THRESHOLD) {
-                    prepareAudio(avg_amplitude, rms_amplitude, audio_buffer, CHUNK_SAMPLES);
+                    prepareAudio(audio_buffer, CHUNK_SAMPLES);
 
                     samples_collected = 0;
 

@@ -185,8 +185,17 @@ async def get_history(room_id: int):
 async def create_room(data: NewRoom):
     try:
         db.insert_room(data.room_name)
-        await manager.broadcast({"type": "room_created", "room_name": data.room_name})
-        return {"success": True, "message": "Room created", "room_name": data.room_name}
+        cursor = db.conn.execute('SELECT last_insert_rowid()')
+        room_id = cursor.fetchone()[0]
+
+        room_status[room_id] = room_status.get(room_id, 0)
+
+        await manager.broadcast({
+            "type": "room_created",
+            "room_id": room_id,
+            "room_name": data.room_name
+        })
+        return {"success": True, "message": "Room created", "room_id": room_id, "room_name": data.room_name}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -211,7 +220,7 @@ async def register_device(data: DeviceRegister):
     if not device_id:
         raise HTTPException(status_code=400, detail="Invalid device_id")
     if device_id not in device_room_map:
-        device_room_map[device_id] = 0  # unassigned
+        device_room_map[device_id] = 0 # unassigned
     return {"success": True, "device_id": device_id, "room_id": device_room_map[device_id]}
 
 @app.get("/api/devices")
@@ -223,6 +232,7 @@ async def assign_device(device_id: str, data: DeviceAssign):
     if device_id not in device_room_map:
         raise HTTPException(status_code=404, detail="Device not registered")
     device_room_map[device_id] = data.room_id
+    
     await manager.broadcast({
         "type": "device_assigned",
         "device_id": device_id,

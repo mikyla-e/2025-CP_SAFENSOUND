@@ -6,6 +6,6 @@
 void setupAudio();
 void processAudioRecording();
 
-extern void prepareAudio(float avg, float rms, int16_t* audio, size_t sampleCount);
+extern void prepareAudio(int16_t* audio, size_t sampleCount);
 
 #endif

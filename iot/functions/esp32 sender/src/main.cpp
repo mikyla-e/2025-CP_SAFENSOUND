@@ -59,10 +59,10 @@ void saveRoomID() {
   Serial.println("Room ID " + String(room_id) + " saved to EEPROM");
 }
 
-void loadRoomID() {
-  room_id = EEPROM.readInt(ROOM_ID_ADDR);
-  Serial.println("📖 Loaded Room ID: " + String(room_id));
-}
+// void loadRoomID() {
+//   room_id = EEPROM.readInt(ROOM_ID_ADDR);
+//   Serial.println("📖 Loaded Room ID: " + String(room_id));
+// }
 
 /////////////////////////////////////////////////////////
 
@@ -873,8 +873,12 @@ void loop() { //loops
     dns.processNextRequest();
     server.handleClient();
   } else {
-    processAudioRecording();
-    sendData();
+    if(room_id != 0) {
+      processAudioRecording();
+      sendData();
+    } else {
+      Serial.println("Room ID is 0, skipping audio send.");
+    }
     
     if (processResetButton()) {
       sendResetSignal();
