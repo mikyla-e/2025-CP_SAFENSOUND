@@ -8,8 +8,9 @@ class Database:
         print(f"Using database at: {self.db_name}")
         self.conn = sqlite3.connect(self.db_name)
         self.create_room()
+        self.create_device
         self.create_history()
-        self.initialize_rooms()
+        # self.initialize_rooms()
 
     # create tables
     def create_room(self):
@@ -25,8 +26,9 @@ class Database:
         with self.conn:
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS device (
-                    device_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id TEXT PRIMARY KEY,
                     room_id INTEGER,
+                    FOREIGN KEY (room_id) REFERENCES room (room_id)
                 )
             ''')
 
@@ -67,7 +69,7 @@ class Database:
             self.conn.execute('''
                 INSERT INTO room (room_name)
                 VALUES (?)
-            ''', (room_name))
+            ''', (room_name,))
 
     def insert_history(self, action, date, time, room_id):
         with self.conn:
@@ -75,7 +77,14 @@ class Database:
                 INSERT INTO history (action, date, time, room_id)
                 VALUES (?, ?, ?, ?)
             ''', (action, date, time, room_id))
-
+        
+    def assign_device(self, device_id, room_id):
+        with self.conn:
+            self.conn.execute('''
+                INSERT INTO device (device_id, room_id)
+                VALUES (?, ?)
+                ON CONFLICT(device_id) DO UPDATE SET room_id=excluded.room_id
+            ''', (device_id, room_id))
 
     #update data
     def update_room(self, room_id, new_name):
@@ -85,6 +94,16 @@ class Database:
                 SET room_name = ?
                 WHERE room_id = ?
             ''', (new_name, room_id))
+
+    def update_device(self, device_id, room_id):
+        with self.conn:
+            self.conn.execute('''
+                INSERT OR IGNORE INTO device (device_id, room_id)
+                VALUES (?, 0)
+            ''', (device_id,))
+            cursor = self.conn.execute('SELECT room_id FROM device WHERE device_id = ?', (device_id,))
+            current_room_id = cursor.fetchone()[0]
+            return current_room_id[0] if row else 0
 
     #fetch and display data
     def fetch_rooms(self):
@@ -98,6 +117,16 @@ class Database:
                 'SELECT * FROM history WHERE room_id = ? ORDER BY date DESC, time DESC',
                 (room_id,)
             )
+            return cursor.fetchall()
+        
+    def fetch_device(self, device_id: str):
+        with self.conn:
+            cursor = self.conn.execute('SELECT * FROM device WHERE device_id = ?', (device_id,))
+            return cursor.fetchone()
+    
+    def fetch_devices(self):
+        with self.conn:
+            cursor = self.conn.execute('SELECT * FROM device')
             return cursor.fetchall()
         
     # monthly emergencies

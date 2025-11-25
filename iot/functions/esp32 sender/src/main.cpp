@@ -725,12 +725,12 @@ bool discoverLaptopIP(){
   return false;
 }
 
-bool getDeviceConfig() {
-  if (laptop_ip.length() == 0) {
-    Serial.println("No laptop ip.");
-    return false;
-  }
-}
+// bool getDeviceConfig() {
+//   if (laptop_ip.length() == 0) {
+//     Serial.println("No laptop ip.");
+//     return false;
+//   }
+// }
 
 /////////////////////////////////////////////////////////
 
@@ -754,20 +754,19 @@ void setup() { // esp setup
 
     delay(500);
     if (laptop_ip.length() == 0 || laptop_ip == "0.0.0.0") {
-      if (!discoverLaptopIP()){
+      while (!discoverLaptopIP()){
         Serial.println("Discovering Laptop IP failed.");
       }
     } else {
-      if (!discoverLaptopIP()) {
+      while (!discoverLaptopIP()) {
         Serial.println("Discovery failed... trying again.");
         discoverLaptopIP();
       }
     }
 
-    if (postRegisterDevice()) {
-      Serial.println("Device registration successful.");
-    } else {
-      Serial.println("Device registration failed.");
+    while (postRegisterDevice() == false) {
+      Serial.println("Retrying device registration in 5 seconds...");
+      delay(5000);
     }
 
     Serial.println("Laptop IP: " + laptop_ip);
@@ -876,12 +875,10 @@ void loop() { //loops
     if(room_id != 0) {
       processAudioRecording();
       sendData();
-    } else {
-      Serial.println("Room ID is 0, skipping audio send.");
-    }
-    
-    if (processResetButton()) {
-      sendResetSignal();
+
+      if (processResetButton()) {
+        sendResetSignal();
+      }
     }
 
     unsigned long now = millis();

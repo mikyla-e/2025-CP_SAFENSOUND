@@ -93,12 +93,57 @@ void setupAudio(){
     // }
 }
 
+#define FRAME_LENGTH 1024
+#define HOP_LENGTH 200
+#define ACTIVITY_THRESHOLD_MS 600
+// #define NOISE_PERCENTILE 30
+// #define MARGIN_DB 8.0
+#define EMERGENCY_RMS_THRESHOLD 8000.0
+
+float computeRMS(int16_t* buffer, int length) {
+    int64_t sum = 0;
+    for (int i = 0; i < length; i++) {
+        int32_t sample = buffer[i];
+        sum += sample * sample;
+    }
+    return sqrt((float)sum / (float)length);
+}
+
+bool checkAudio(int16_t* full_recording, size_t total_samples) {
+    const int num_frames = (total_samples - FRAME_LENGTH) / HOP_LENGTH + 1;
+    if (num_frames <= 0) return false;
+
+    int active_frames = 0;
+
+    for (int i = 0; i< num_frames; i++) {
+        int start = i * HOP_LENGTH;
+        float rms = computeRMS(&full_recording[start], FRAME_LENGTH);
+
+        if (rms > EMERGENCY_RMS_THRESHOLD) {
+            active_frames++;
+        }
+    }
+
+    float active_ms = (float)active_frames * (float)HOP_LENGTH / (float)SAMPLE_RATE * 1000.0;
+
+    return (active_ms >= ACTIVITY_THRESHOLD_MS);
+}
+
 void processAudioRecording(){
     static int16_t audio_buffer[CHUNK_SAMPLES];
+    static int16_t* full_audio = NULL;
     static size_t samples_collected = 0;
-    static int samples_sent = 0;
-    static int64_t sum_abs = 0;
-    static int64_t sum_sq = 0;
+    static int total_samples = 0;
+    static int chunks_sent = 0;
+    static bool recording_checked = false;
+
+    if (full_audio == NULL) {
+        full_audio = (int16_t*)heap_caps_malloc((SAMPLE_RATE * AUDIO_DURATION) * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (!full_audio) {
+            Serial.println("Failed to allocate full_audio buffer!");
+            return;
+        }
+    }
 
     int32_t audio[BUFFER_SIZE];
     size_t bytes_read;
@@ -121,39 +166,39 @@ void processAudioRecording(){
                 int16_t s16 = (int16_t)s32;
                 audio_buffer[samples_collected + i] = s16;
 
-                sum_abs += (uint16_t)abs(s16);
-                sum_sq += (int32_t)s16 * (int32_t)s16;
+                if(total_samples < (SAMPLE_RATE * AUDIO_DURATION)) {
+                    full_audio[total_samples + i] = s16;
+                }
             }
 
             samples_collected += to_copy;
+            total_samples += to_copy;
             idx += to_copy;
 
-            if (samples_collected == CHUNK_SAMPLES) {
-                const float EMERGENCY_RMS_THRESHOLD = 8000.0;
+            if (total_samples == SAMPLE_RATE * AUDIO_DURATION && !recording_checked) {
+                recording_checked = checkAudio(full_audio, total_samples) ? true : false;
 
-                samples_sent += samples_collected;
-                uint16_t avg_amplitude = (float)sum_abs / (float)samples_sent;
-                uint16_t rms_amplitude = sqrt((float)sum_sq / (float)samples_sent);
-
-                if (rms_amplitude > EMERGENCY_RMS_THRESHOLD) {
-                    prepareAudio(audio_buffer, CHUNK_SAMPLES);
-
-                    samples_collected = 0;
-
-                    if (samples_sent >= SAMPLE_RATE * AUDIO_DURATION) {
-                        Serial.printf("5s metrics: avg_abs=%.2f rms=%.2f\n", avg_amplitude, rms_amplitude);
-                        Serial.println("Full 5-second recording sent in chunks.");
-                        
-                        samples_sent = 0;
-                        sum_abs = 0;
-                        sum_sq = 0;
-                    }
+                if (recording_checked) {
+                    Serial.println("Activity detected, sending audio chunks!");
                 } else {
+                    Serial.println("No significant activity detected.");
+                }
+            } 
+
+            if (samples_collected == CHUNK_SAMPLES) {
+                if (recording_checked) {
+                    prepareAudio(audio_buffer, CHUNK_SAMPLES);
+                    chunks_sent++;
+                    Serial.printf("Sent chunk %d/%d\n", chunks_sent, CHUNKS_PER_RECORDING);
+                }
+                samples_collected = 0;
+
+                if (chunks_sent >= CHUNKS_PER_RECORDING || (total_samples >= SAMPLE_RATE * AUDIO_DURATION && !recording_checked)) {
                     samples_collected = 0;
-                    samples_sent = 0;
-                    sum_abs = 0;
-                    sum_sq = 0;
-                    Serial.printf("Chunk skipped due to low RMS: %.2f\n", rms_amplitude);
+                    total_samples = 0;
+                    chunks_sent = 0;
+                    recording_checked = false;
+                    Serial.printf("Completed processing audio recording.\n");
                 }
             }
         }
