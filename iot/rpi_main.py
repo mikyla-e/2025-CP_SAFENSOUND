@@ -24,7 +24,7 @@ import numpy as np
 # import seaborn as sns
 
 # import tensorflow as tf
-# from tensorflow import keras
+from tensorflow import keras
 # from tensorflow.keras import layers, models
 # from tensorflow.keras.utils import to_categorical
 
@@ -61,7 +61,8 @@ db = Database()
 print("Database connected successfully.")
 
 # ml model
-model = joblib.load("ml/ml models/mfcc_rf_model.joblib")
+# model = joblib.load("ml/ml models/mfcc_rf_model.joblib") # mfcc + random forest
+model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
 print("Model loaded successfully.")
 
 audio_data = None
@@ -376,83 +377,93 @@ def process_audio(audio_data_int16, room_id=None, timestamp=None):
         return False
 
 
-def extract_features(audio, sample_rate, hop_length=200, n_fft=512, win_length=400):
-    max_len = int(5.0 * sample_rate / hop_length)  # 5 seconds
+def extract_features(audio, sample_rate, hop_length=200, win_length=400,frame_ms=25, n_mels=64, max_len=320):
+    audio = np.asarray(audio).squeeze()
 
-    # # mel-spectrogram + delta + delta-delta approach (new)
-    # hop_length = 200
-    # n_fft = 512
-    # n_mels = 128
+    if audio.dtype == np.int16:
+        audio = audio.astype(np.float32) / 32768.0
+    else:
+        audio = audio.astype(np.float32)
+    
+    frame_length = int(sample_rate * frame_ms / 1000)
+    n_fft = 1 << (frame_length - 1).bit_length()
 
-    # melspectrogram = lb.feature.melspectrogram(y=audio, sr=sample_rate, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
-    # melS_dB = lb.power_to_db(melspectrogram, ref=np.max)
+    # mel-spectrogram + delta + delta-delta approach (new)
 
-    # if melS_dB.shape[1] < max_len:
-    #     melS_dB = np.pad(melS_dB, ((0,0),(0, max_len - melS_dB.shape[1])), mode='constant')
-    # else:
-    #     melS_dB = melS_dB[:, :max_len]
+    melspectrogram = lb.feature.melspectrogram(y=audio, sr=sample_rate, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
+    melS_dB = lb.power_to_db(melspectrogram, ref=np.max)
 
-    # S_norm = (melS_dB - melS_dB.mean()) / (melS_dB.std() + 1e-6)
-    # # melS_dB = melS_dB[..., np.newaxis]
-    # delta = lb.feature.delta(S_norm)
-    # delta2 = lb.feature.delta(S_norm, order=2)
+    if melS_dB.shape[1] < max_len:
+        melS_dB = np.pad(melS_dB, ((0,0),(0, max_len - melS_dB.shape[1])), mode='constant')
+    else:
+        melS_dB = melS_dB[:, :max_len]
 
-    # features = np.stack([S_norm, delta, delta2], axis=-1)
+    S_norm = (melS_dB - melS_dB.mean()) / (melS_dB.std() + 1e-6)
+    # melS_dB = melS_dB[..., np.newaxis]
+    delta = lb.feature.delta(S_norm)
+    delta2 = lb.feature.delta(S_norm, order=2)
 
-    # return features
+    features = np.stack([S_norm, delta, delta2], axis=-1)
+
+    return features
 
     #  mfcc+random forest approach (old)
-    def float32(y):
-        arr = np.asarray(y)
-        if arr.dtype == np.int16:
-            return arr.astype(np.float32) / 32768.0
-        if arr.dtype == np.int32:
-            return arr.astype(np.float32) / 2147483648.0
-        return arr.astype(np.float32, copy=False)
+    # n_fft=512
 
-    y = float32(audio).squeeze()
+    # def float32(y):
+    #     arr = np.asarray(y)
+    #     if arr.dtype == np.int16:
+    #         return arr.astype(np.float32) / 32768.0
+    #     if arr.dtype == np.int32:
+    #         return arr.astype(np.float32) / 2147483648.0
+    #     return arr.astype(np.float32, copy=False)
 
-    mfcc = lb.feature.mfcc(y=y, sr=sample_rate, n_mfcc=20, n_fft=n_fft, win_length=win_length, hop_length=hop_length)
-    mfcc_delta = lb.feature.delta(mfcc)
-    mfcc_delta2 = lb.feature.delta(mfcc, order=2)
+    # y = float32(audio).squeeze()
 
-    rms = lb.feature.rms(y=y, frame_length=win_length, hop_length=hop_length)
-    zcr = lb.feature.zero_crossing_rate(y=y, frame_length=win_length, hop_length=hop_length)
-    spectral_centroid = lb.feature.spectral_centroid(y=y, sr=sample_rate, n_fft=n_fft, win_length=win_length, hop_length=hop_length)
-    spectral_rolloff = lb.feature.spectral_rolloff(y=y, sr=sample_rate, n_fft=n_fft, win_length=win_length, hop_length=hop_length)
-    # chroma = lb.feature.chroma_stft(y=y, sr=sample_rate, hop_length=hop_length)
+    # mfcc = lb.feature.mfcc(y=y, sr=sample_rate, n_mfcc=20, n_fft=n_fft, win_length=win_length, hop_length=hop_length)
+    # mfcc_delta = lb.feature.delta(mfcc)
+    # mfcc_delta2 = lb.feature.delta(mfcc, order=2)
 
-    features = [mfcc, mfcc_delta, mfcc_delta2, spectral_centroid, spectral_rolloff, zcr, rms]
-    extracted_features = []
+    # rms = lb.feature.rms(y=y, frame_length=win_length, hop_length=hop_length)
+    # zcr = lb.feature.zero_crossing_rate(y=y, frame_length=win_length, hop_length=hop_length)
+    # spectral_centroid = lb.feature.spectral_centroid(y=y, sr=sample_rate, n_fft=n_fft, win_length=win_length, hop_length=hop_length)
+    # spectral_rolloff = lb.feature.spectral_rolloff(y=y, sr=sample_rate, n_fft=n_fft, win_length=win_length, hop_length=hop_length)
+    # # chroma = lb.feature.chroma_stft(y=y, sr=sample_rate, hop_length=hop_length)
 
-    for feature in features:
-        if feature.shape[1] < max_len:
-            feature = np.pad(feature, ((0,0),(0, max_len - feature.shape[1])), mode='constant')
-        else:
-            feature = feature[:, :max_len]
+    # features = [mfcc, mfcc_delta, mfcc_delta2, spectral_centroid, spectral_rolloff, zcr, rms]
+    # extracted_features = []
+
+    # for feature in features:
+    #     if feature.shape[1] < max_len:
+    #         feature = np.pad(feature, ((0,0),(0, max_len - feature.shape[1])), mode='constant')
+    #     else:
+    #         feature = feature[:, :max_len]
         
-        feature_stat = [
-            np.mean(feature, axis=1),
-            np.std(feature, axis=1),
-            np.min(feature, axis=1),
-            np.max(feature, axis=1)
-        ]
+    #     feature_stat = [
+    #         np.mean(feature, axis=1),
+    #         np.std(feature, axis=1),
+    #         np.min(feature, axis=1),
+    #         np.max(feature, axis=1)
+    #     ]
         
-        for stat in feature_stat:
-            extracted_features.append(stat.flatten())
+    #     for stat in feature_stat:
+    #         extracted_features.append(stat.flatten())
 
-    return np.concatenate(extracted_features)
+    # return np.concatenate(extracted_features)
 
 def inference(audio, wav_name, room_id=None):
     global emergency_count, alarming_count, nonemergency_count, emergency_detected
 
     print(f"\nProcessing audio for inference: {wav_name}")
     save_wav(f"processed_audio/{wav_name}.wav", audio, sample_rate)
-    audio_features = extract_features(audio, sample_rate)
-    prediction = model.predict(audio_features.reshape(1, -1))
-    predicted_class = prediction[0]
 
-    # alarming sound = 4 times before emergency is confirmed
+    audio_features = extract_features(audio, sample_rate).astype(np.float32)
+    features = np.expand_dims(audio_features, axis=0)
+
+    prediction = model.predict(features)
+    predicted_class = np.argmax(prediction[0]) if prediction.ndim == 2 else int(prediction[0])
+
+    # alarming sound = 3 times before emergency is confirmed
     # emergency sound = 2 times after emergency is confirmed
 
     print(f"\nPrediction for {wav_name}: {predicted_class}")
@@ -461,7 +472,7 @@ def inference(audio, wav_name, room_id=None):
         alarming_count += 1
         print("ALARMING sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
 
-        if alarming_count >= 4:
+        if alarming_count >= 3:
             emergency_detected = True
             trigger_alarm(room_id)
         

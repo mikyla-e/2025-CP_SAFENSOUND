@@ -8,7 +8,7 @@ class Database:
         print(f"Using database at: {self.db_name}")
         self.conn = sqlite3.connect(self.db_name)
         self.create_room()
-        self.create_device
+        self.create_device()
         self.create_history()
         # self.initialize_rooms()
 
@@ -27,7 +27,7 @@ class Database:
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS device (
                     device_id TEXT PRIMARY KEY,
-                    room_id INTEGER,
+                    room_id INTEGER NOT NULL DEFAULT 0,
                     FOREIGN KEY (room_id) REFERENCES room (room_id)
                 )
             ''')
@@ -95,15 +95,13 @@ class Database:
                 WHERE room_id = ?
             ''', (new_name, room_id))
 
-    def update_device(self, device_id, room_id):
+    def register_device(self, device_id):
         with self.conn:
             self.conn.execute('''
                 INSERT OR IGNORE INTO device (device_id, room_id)
                 VALUES (?, 0)
             ''', (device_id,))
-            cursor = self.conn.execute('SELECT room_id FROM device WHERE device_id = ?', (device_id,))
-            current_room_id = cursor.fetchone()[0]
-            return current_room_id[0] if row else 0
+            self.conn.commit()
 
     #fetch and display data
     def fetch_rooms(self):

@@ -219,20 +219,26 @@ async def register_device(data: DeviceRegister):
     device_id = data.device_id.strip()
     if not device_id:
         raise HTTPException(status_code=400, detail="Invalid device_id")
-    if device_id not in device_room_map:
-        device_room_map[device_id] = 0 # unassigned
-    return {"success": True, "device_id": device_id, "room_id": device_room_map[device_id]}
+    try:
+        db.register_device(device_id)
+        record = db.fetch_device(device_id)
+        room_id = record[1] if record else 0
+        return {"success": True, "device_id": device_id, "room_id": room_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/devices")
 async def list_devices():
-    return [{"device_id": d, "room_id": r} for d, r in device_room_map.items()]
+    devices = db.fetch_devices()
+    return [{"device_id": d, "room_id": r} for d, r in devices]
 
 @app.post("/api/devices/{device_id}/assign_room")
 async def assign_device(device_id: str, data: DeviceAssign):
-    if device_id not in device_room_map:
-        raise HTTPException(status_code=404, detail="Device not registered")
-    device_room_map[device_id] = data.room_id
-    
+    record = db.fetch_device(device_id)
+    if record is None:
+        db.register_device(device_id)
+    db.assign_device(device_id, data.room_id)
+
     await manager.broadcast({
         "type": "device_assigned",
         "device_id": device_id,
@@ -242,9 +248,11 @@ async def assign_device(device_id: str, data: DeviceAssign):
 
 @app.get("/api/devices/config")
 async def device_config(device_id: str):
-    if device_id not in device_room_map:
+    record = db.fetch_device(device_id)
+    if record is None:
         return {"registered": False, "room_id": 0}
-    return {"registered": True, "room_id": device_room_map[device_id]}
+    _, room_id = record
+    return {"registered": True, "room_id": room_id}
     
 # MONTHLY EMERGENCIES
 @app.get("/api/monthly_emergencies/{year}")
