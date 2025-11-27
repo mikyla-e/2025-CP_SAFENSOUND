@@ -28,7 +28,7 @@
         }
 
         main .stats-div .monthly #monthly-header select{
-            background: var(--second-light);
+            background: var(--second);
             color: var(--primary);
             border: none;
             border-radius: 5px;
@@ -41,7 +41,7 @@
         }
 
         main .stats-div .monthly #monthly-header select:hover {
-            background: var(--second);
+            background: var(--second-light);
         }
 
         main .stats-div .monthly #monthly-header select:focus {
@@ -66,6 +66,17 @@
             display: block; 
 
             box-sizing: border-box;
+        }
+
+        /* top emergency count */
+        main .stats-div .top #top-filters select,
+        main .stats-div .top #top-filters input[type="date"] {
+            background: var(--second);
+        }
+
+        main .stats-div .top #top-filters select:hover,
+        main .stats-div .top #top-filters input[type="date"]:hover {
+            background: var(--second-light);
         }
 
         /* ========================================= */
@@ -114,9 +125,10 @@
                 height: 24px;
             }
         }
-
-
-
+    </style>
+    
+    <style>
+        /* overlay */
         .admin-overlay {
             position: fixed;
             inset: 0;
@@ -148,21 +160,31 @@
             z-index: 1001;
             display: flex;
             flex-direction: column;
+
+            padding: 14px 18px;
         }
         .admin-modal.show {
             transform: translate(-50%, -50%);
             opacity: 1;
             pointer-events: auto;
         }
+
+        /* overlay inside */
+        .admin-modal h3, p{
+            margin: 2px;
+        }
+
+        .admin-modal h3{
+            color: var(--second);
+        }
+
         .admin-modal-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 18px;
-            border-bottom: 1px solid rgba(0,0,0,.06);
+            /* border-bottom: 1px solid rgba(0,0,0,.06); */
         }
         .admin-modal-body {
-            padding: 16px 18px 20px;
             overflow: auto;
         }
         .admin-close {
@@ -173,19 +195,212 @@
             cursor: pointer;
             color: #333;
         }
+
+        /* add room button */
         .btn-manage {
-            background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%);
+            background: var(--second);
             color: var(--primary);
             border: none;
-            border-radius: 8px;
+            border-radius: 5px;
             padding: 10px 16px;
             cursor: pointer;
             box-shadow: 0 2px 8px rgba(45,51,107,0.2);
             transition: transform .15s ease, box-shadow .15s ease;
         }
         .btn-manage:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(45,51,107,0.28);
+            background: var(--second-light);
+        }
+        
+        /* TABLE */
+        .device-section {
+            padding-top: 20px;
+            /* border-top: 2px solid var(--second-light); */
+        }
+
+        .device-section p.helper-text,
+        .helper-text {
+            color: #666;
+            font-size: 0.88rem;
+        }
+
+        .device-table-container {
+            /* overflow-x: auto;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.67);
+            border-radius: 5px; */
+
+            width: 100%;
+
+            text-align: left;
+            overflow-x: auto;
+
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        .device-table {
+            /* width: 100%;
+            border-collapse: collapse;
+            background: white;
+            overflow: hidden; */
+            min-width: auto;
+            width: 100%;
+
+            border-collapse: collapse;
+            background: var(--primary);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .device-table thead {
+            background-color: #002c472a;
+            padding: 7px 10px;
+        }
+
+        .device-table th {
+            padding: 8px 10px;
+            text-align: left;
+        }
+
+        .device-table tbody tr {
+            border-bottom: 1px solid #e9ecef;
+            padding: 0;
+        }
+
+        .device-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .device-table td {
+            padding: 2px 10px;
+            color: var(--text);
+        }
+
+        .device-table select {
+            /* background: var(--second); */
+            color: var(--second);
+            border: none;
+            border-radius: 5px;
+            padding: 5px 0;
+            font-family: "DM Sans", sans-serif;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .device-table select:focus {
+            border-color: var(--second-light);
+        }
+
+        .no-devices-row {
+            text-align: center;
+            padding: 40px 20px !important;
+            color: #999;
+            font-style: italic;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn-rename {
+            background: var(--second-light);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: "DM Sans", sans-serif;
+            transition: background 0.2s;
+        }
+
+        .btn-rename:hover {
+            background: var(--second);
+        }
+
+        .sensor-info {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .no-sensor {
+            color: #999;
+            font-style: italic;
+        }
+
+        .room-name-cell {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-weight: 600;
+            color: var(--text);
+            padding-right: 5px;
+        }
+
+        .room-name-cell {
+            color: var(--text);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            background: transparent;
+            border: 1px solid var(--second-light);
+            color: var(--second);
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-family: "DM Sans", sans-serif;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-action:hover {
+            background: var(--second);
+            color: white;
+            border-color: var(--second);
+        }
+
+        .btn-delete {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .btn-delete:hover {
+            background: var(--red);
+            color: white;
+            border-color: var(--red);
+        }
+        
+        @media screen and (max-width: 768px) {
+            .device-table th,
+            .device-table td {
+                padding: 10px 12px;
+                font-size: 0.88rem;
+            }
+
+            .device-table select {
+                font-size: 0.85rem;
+            }
+
+            .action-buttons {
+                gap: 4px;
+            }
+
+            .btn-action {
+                font-size: 0.75rem;
+                padding: 4px 8px;
+            }
         }
     </style>
 </body>
@@ -204,31 +419,44 @@
     </nav>
 
     <div id="admin-overlay" class="admin-overlay" onclick="closeAdminModal()"></div>
+
     <div id="admin-modal" class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title" onclick="event.stopPropagation()">
         <div class="admin-modal-header">
-            <h3 id="admin-modal-title" style="margin:0;">Room & Device Management</h3>
-            <button class="admin-close" aria-label="Close" onclick="closeAdminModal()">×</button>
+            <h3 id="helper-text" >Create New Room</h3>
+            <!-- <h3 id="admin-modal-title" style="margin:0;">Manage Rooms & Sensors</h3> -->
+            <button class="admin-close" onclick="closeAdminModal()" aria-label="Close">×</button>
         </div>
         <div class="admin-modal-body">
-            <div class="admin-panel">
-                <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom: 12px;">
-                    <input id="new-room-name" placeholder="New Room Name" style="padding:8px; flex:1; min-width:180px;">
-                    <button onclick="createRoom()" style="padding:8px 14px;">Add Room</button>
+            <div>
+                <p class="helper-text">Add a new room to monitor.</p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <input type="text" id="new-room-name" placeholder="Enter room name (e.g., Kitchen)" 
+                        style="flex:1; min-width:200px; padding:10px; border:2px solid var(--second-light); border-radius:5px; font-family: 'DM Sans', sans-serif;">
+                    <button onclick="createRoom()" class="btn-manage">Add Room</button>
                 </div>
-                <hr style="margin:15px 0;">
-                <div>
-                    <h4 style="margin:4px 0;">Registered Devices</h4>
-                    <table id="devices-table" style="width:100%; border-collapse:collapse; font-size:.9rem;">
+            </div>
+
+            <div class="device-section">
+                <h3>Room & Sensor Management</h3>
+                <p class="helper-text">Manage room names and assign sensors to each room.</p>
+                <div class="device-table-container">
+                    <table class="device-table">
                         <thead>
-                            <tr style="text-align:left;">
-                                <th style="padding:6px;">Device ID</th>
-                                <th style="padding:6px;">Assigned Room</th>
-                                <th style="padding:6px;">Action</th>
+                            <tr>
+                                <th>Room Name</th>
+                                <th>Assigned Sensor</th>
+                                <th>Sensor Actions</th>
+                                <th>Room Actions</th>
                             </tr>
                         </thead>
-                        <tbody></tbody>
+                        <tbody id="device-table-body">
+                            <tr>
+                                <td colspan="4" class="no-devices-row">Loading...</td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
+                <br>
             </div>
         </div>
     </div>
@@ -439,13 +667,27 @@
                 const response = await fetch('/api/rooms');
                 const rooms = await response.json();
                 
+                // Clear and rebuild roomData from API
+                roomData = {};
+                
                 for (const [roomId, roomInfo] of Object.entries(rooms)) {
                     const id = parseInt(roomId);
-                    roomData[id].name = roomInfo.name;
+                    roomData[id] = {
+                        name: roomInfo.name,
+                        history: []
+                    };
                     
-                    // Update room name in UI
-                    document.querySelector(`.room${id} h2`).textContent = roomInfo.name;
+                    // Update room name in UI if the room card exists
+                    const roomCard = document.querySelector(`.room[data-room-id="${id}"]`);
+                    if (roomCard) {
+                        const nameElement = roomCard.querySelector('.room-name');
+                        if (nameElement) {
+                            nameElement.textContent = roomInfo.name;
+                        }
+                    }
                 }
+                
+                console.log('Room data loaded:', roomData);
             } catch (error) {
                 console.error('Error fetching room data:', error);
             }
@@ -1277,7 +1519,10 @@
             await initializeYearFilter();
             await updateTopChart(); 
         });
+    </script>
 
+    <!-- OVERLAY -->
+    <script>
         function openAdminModal() {
             const overlay = document.getElementById('admin-overlay');
             const modal = document.getElementById('admin-modal');
@@ -1327,56 +1572,291 @@
 
         async function loadDevices() {
             try {
-                const r = await fetch('/api/devices');
-                const devices = await r.json();
-                const tbody = document.querySelector('#devices-table tbody');
-                tbody.innerHTML = '';
-                devices.forEach(dev => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td style="padding:6px;">${dev.device_id}</td>
-                    <td style="padding:6px;">${dev.room_id}</td>
-                    <td style="padding:6px;">
-                    <select data-device="${dev.device_id}" onchange="assignDevice(this)">
-                        ${buildRoomOptions(dev.room_id)}
-                    </select>
-                    </td>`;
-                tbody.appendChild(tr);
+                const [devicesResp, roomsResp] = await Promise.all([
+                    fetch('/api/devices'),
+                    fetch('/api/rooms')
+                ]);
+                
+                const devices = await devicesResp.json();
+                const rooms = await roomsResp.json();
+                
+                const tbody = document.getElementById('device-table-body');
+                
+                // Create a map of room_id -> device info
+                const roomToDevice = {};
+                devices.forEach(d => {
+                    if (d.room_id !== 0) {
+                        roomToDevice[d.room_id] = d.device_id;
+                    }
                 });
-            } catch(e){ console.error("Load devices error", e); }
+                
+                // Create available sensors list (devices not assigned or with room_id = 0)
+                const availableDevices = devices.filter(d => d.room_id === 0);
+                
+                // Sort room IDs
+                const sortedRoomIds = Object.keys(rooms).sort((a, b) => parseInt(a) - parseInt(b));
+                
+                if (sortedRoomIds.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="no-devices-row">No rooms available. Create a room first.</td></tr>';
+                    return;
+                }
+                
+                let sensorCounter = 1;
+                const deviceLabels = {}; // Map device_id -> "Sensor #X"
+                
+                // First pass: label all devices
+                devices.forEach(d => {
+                    deviceLabels[d.device_id] = `Sensor #${sensorCounter++}`;
+                });
+                
+                tbody.innerHTML = sortedRoomIds.map(roomId => {
+                    const room = rooms[roomId];
+                    const assignedDeviceId = roomToDevice[roomId];
+                    const sensorLabel = assignedDeviceId ? deviceLabels[assignedDeviceId] : null;
+                    
+                    return `
+                        <tr>
+                            <td class="room-name-cell">${room.name}</td>
+                            <td class="sensor-info">
+                                ${sensorLabel ? sensorLabel : '<span class="no-sensor">No sensor assigned</span>'}
+                            </td>
+                            <td>
+                                <select data-room="${roomId}" onchange="assignSensorToRoom(this)">
+                                    <option value="" style="color: #015382;">Select Sensor</option>
+                                    ${assignedDeviceId ? `<option value="${assignedDeviceId}" selected>${deviceLabels[assignedDeviceId]}</option>` : ''}
+                                    ${availableDevices.map(d => 
+                                        `<option value="${d.device_id}">${deviceLabels[d.device_id]}</option>`
+                                    ).join('')}
+                                    ${assignedDeviceId ? '<option value="unassign">Remove Sensor</option>' : ''}
+                                </select>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn-action" onclick="renameRoomFromTable(${roomId}, '${room.name.replace(/'/g, "\\'")}')">
+                                        Rename
+                                    </button>
+                                    <button class="btn-action btn-delete" onclick="deleteRoom(${roomId}, '${room.name.replace(/'/g, "\\'")}')">
+                                        Delete
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                
+            } catch (err) {
+                console.error('Failed to load devices:', err);
+                document.getElementById('device-table-body').innerHTML = 
+                    '<tr><td colspan="4" class="no-devices-row">Unable to load data. Please refresh.</td></tr>';
+            }
+        }
+
+        async function deleteRoom(roomId, roomName) {
+            const confirmDelete = confirm(`Are you sure you want to delete "${roomName}"?\n\nThis will remove all emergency history for this room and cannot be undone.`);
+            
+            if (!confirmDelete) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/rooms/${roomId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    // Remove from roomData
+                    delete roomData[roomId];
+                    
+                    // Remove room card if exists
+                    const roomCard = document.querySelector(`.room[data-room-id="${roomId}"]`);
+                    if (roomCard) {
+                        roomCard.remove();
+                    }
+                    
+                    // If this was the selected room, switch to another room
+                    if (currentSelectedRoom === roomId) {
+                        const remainingRooms = Object.keys(roomData).map(id => parseInt(id));
+                        if (remainingRooms.length > 0) {
+                            const newRoomId = remainingRooms[0];
+                            const newRoomCard = document.querySelector(`.room[data-room-id="${newRoomId}"]`);
+                            if (newRoomCard) {
+                                await selectRoom(newRoomId, newRoomCard);
+                            }
+                        }
+                    }
+                    
+                    // Refresh the table
+                    await loadDevices();
+                    
+                    // Update graphs
+                    updateMonthlyGraph();
+                    updateTopChart();
+                    
+                    alert(`"${roomName}" has been deleted successfully.`);
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to delete room: ${error.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error deleting room:', error);
+                alert('Error deleting room. Please try again.');
+            }
+        }
+
+        async function assignSensorToRoom(sel) {
+            const roomId = parseInt(sel.getAttribute('data-room'));
+            const deviceId = sel.value;
+            
+            if (!deviceId) {
+                alert('Please select a sensor.');
+                await loadDevices();
+                return;
+            }
+            
+            if (deviceId === 'unassign') {
+                // Find the device currently assigned to this room and unassign it
+                try {
+                    const devicesResp = await fetch('/api/devices');
+                    const devices = await devicesResp.json();
+                    const currentDevice = devices.find(d => d.room_id === roomId);
+                    
+                    if (currentDevice) {
+                        const resp = await fetch(`/api/devices/${encodeURIComponent(currentDevice.device_id)}/assign_room`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({room_id: 0}) // Unassign
+                        });
+                        
+                        if (resp.ok) {
+                            await loadDevices();
+                            updateTopChart();
+                        } else {
+                            alert('Failed to remove sensor.');
+                            await loadDevices();
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error removing sensor:', err);
+                    alert('Error removing sensor.');
+                    await loadDevices();
+                }
+                return;
+            }
+
+            try {
+                const resp = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/assign_room`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({room_id: roomId})
+                });
+                
+                if (resp.ok) {
+                    await loadDevices();
+                    updateTopChart();
+                } else {
+                    alert('Failed to assign sensor.');
+                    await loadDevices();
+                }
+            } catch (err) {
+                console.error('Error assigning sensor:', err);
+                alert('Error assigning sensor.');
+                await loadDevices();
+            }
+        }
+
+        async function renameRoomFromTable(roomId, currentName) {
+            const newName = prompt(`Enter new name for ${currentName}:`, currentName);
+            
+            if (newName !== null && newName.trim() !== '' && newName.trim() !== currentName) {
+                const trimmedName = newName.trim();
+                
+                try {
+                    const response = await fetch(`/api/rooms/${roomId}/rename`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ new_name: trimmedName })
+                    });
+                    
+                    if (response.ok) {
+                        // Update roomData
+                        roomData[roomId].name = trimmedName;
+                        
+                        // Update room card if exists
+                        const roomCard = document.querySelector(`.room[data-room-id="${roomId}"]`);
+                        if (roomCard) {
+                            roomCard.querySelector('.room-name').textContent = trimmedName;
+                        }
+                        
+                        // Update aside if this is current room
+                        if (currentSelectedRoom === roomId) {
+                            document.querySelector('aside header h2').textContent = trimmedName;
+                            const popupHeader = document.querySelector('.popup-aside header h2');
+                            if (popupHeader) popupHeader.textContent = trimmedName;
+                        }
+                        
+                        // Refresh table
+                        await loadDevices();
+                        updateTopChart();
+                    } else {
+                        alert('Failed to rename room.');
+                    }
+                } catch (error) {
+                    console.error('Error renaming room:', error);
+                    alert('Error renaming room.');
+                }
+            }
         }
 
         function buildRoomOptions(current) {
             let opts = '';
-            for (const id in roomData) {
+            
+            // Sort room IDs numerically
+            const sortedRoomIds = Object.keys(roomData).sort((a, b) => parseInt(a) - parseInt(b));
+            
+            // Add all room options
+            for (const id of sortedRoomIds) {
                 const sel = parseInt(id) === parseInt(current) ? 'selected' : '';
                 opts += `<option value="${id}" ${sel}>${roomData[id].name}</option>`;
             }
-            if (current === 0) opts = `<option value="0" selected>Unassigned</option>` + opts;
-            else opts = `<option value="0">Unassigned</option>` + opts;
+            
             return opts;
         }
 
-        async function assignDevice(sel) {
-            const device_id = sel.getAttribute('data-device');
-            const room_id = parseInt(sel.value);
+        async function assignDeviceFromTable(sel) {
+            const deviceId = sel.getAttribute('data-device');
+            const roomId = parseInt(sel.value);
+            
+            if (roomId === 0) {
+                alert('Please select a room.');
+                await loadDevices();
+                return;
+            }
+
             try {
-                const r = await fetch(`/api/devices/${encodeURIComponent(device_id)}/assign_room`, {
-                method: 'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({room_id})
+                const resp = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/assign_room`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({room_id: roomId})
                 });
-                if (!r.ok) throw new Error(await r.text());
-                updateTopChart();
-            } catch(e){ console.error(e); alert("Assignment failed"); }
+                
+                if (resp.ok) {
+                    await loadDevices();
+                    updateTopChart();
+                } else {
+                    alert('Failed to assign sensor.');
+                    await loadDevices();
+                }
+            } catch (err) {
+                console.error('Error assigning device:', err);
+                alert('Error assigning sensor.');
+                await loadDevices();
+            }
         }
 
         setInterval(loadDevices, 10000); // refresh list
             window.addEventListener('load', () => {
             setTimeout(loadDevices, 1500);
         });
-
-        
     </script>
 </body>
 </html>

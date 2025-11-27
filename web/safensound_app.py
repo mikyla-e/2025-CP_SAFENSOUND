@@ -213,7 +213,37 @@ async def rename_room(room_id: int, data: RoomRename):
         return {"success": True, "message": "Room renamed successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/rooms/{room_id}")
+async def delete_room(room_id: int):
+    try:
+        # Check if room exists
+        rooms = db.fetch_rooms()
+        room_ids = [room[0] for room in rooms]  # Extract room IDs from tuples
+        
+        if room_id not in room_ids:
+            raise HTTPException(status_code=404, detail="Room not found")
+        
+        # Delete room from database
+        db.delete_room(room_id)
+        
+        # Remove from room_status tracking
+        if room_id in room_status:
+            del room_status[room_id]
+        
+        # Broadcast room deletion to all connected clients
+        await manager.broadcast({
+            "type": "room_deleted",
+            "room_id": room_id
+        })
+        
+        return {"message": "Room deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
+# DEVICES
 @app.post("/api/devices/register")
 async def register_device(data: DeviceRegister):
     device_id = data.device_id.strip()

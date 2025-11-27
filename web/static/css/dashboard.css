@@ -408,7 +408,7 @@ main .stats-div .top #top-filters {
 
 main .stats-div .top #top-filters select,
 main .stats-div .top #top-filters input[type="date"] {
-    background: var(--second-light);
+    background: var(--second);
     color: var(--primary);
     border: none;
     border-radius: 5px;
@@ -422,18 +422,18 @@ main .stats-div .top #top-filters input[type="date"] {
 
 main .stats-div .top #top-filters select:hover,
 main .stats-div .top #top-filters input[type="date"]:hover {
-    background: var(--second);
+    background: var(--second-light);
 }
 
 main .stats-div .top #top-filters input[type="date"] {
-    color-scheme: dark;
+    /* color-scheme: dark; */
     padding: 4px 10px;
 }
 
 main .stats-div .top #top-filters select:focus,
 main .stats-div .top #top-filters input[type="date"]:focus {
-    background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%);
-    color: var(--second-very-light);
+    /* background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%); */
+    /* color: var(--second-very-light); */
 }
 
 main .stats-div .top #top-filters .date-inputs {

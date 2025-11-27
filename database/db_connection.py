@@ -32,6 +32,31 @@ class Database:
                 )
             ''')
 
+    def delete_room(self, room_id):
+        cursor = self.conn.cursor()
+        
+        # First, unassign any devices from this room
+        cursor.execute('''
+            UPDATE device 
+            SET room_id = 0 
+            WHERE room_id = ?
+        ''', (room_id,))
+        
+        # Delete all history for this room
+        cursor.execute('''
+            DELETE FROM history 
+            WHERE room_id = ?
+        ''', (room_id,))
+        
+        # Delete the room
+        cursor.execute('''
+            DELETE FROM room 
+            WHERE room_id = ?
+        ''', (room_id,))
+        
+        self.conn.commit()
+        return cursor.rowcount
+
     def create_history(self):
         with self.conn:
             self.conn.execute('''
