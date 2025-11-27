@@ -1923,11 +1923,16 @@
 
 <script>
     // CAROUSEL FOR ROOMS
-    let currentCarouselPage = 0;
-    const ROOMS_PER_PAGE = 3;
+    let currentCarouselIndex = 0;
+    const ROOMS_VISIBLE = 3;
 
     function initializeRoomsCarousel() {
         const roomsDiv = document.querySelector('.rooms-div');
+        
+        // Check if already initialized
+        if (roomsDiv.querySelector('.carousel-prev')) {
+            return;
+        }
         
         // Create navigation buttons
         const prevBtn = document.createElement('button');
@@ -1956,14 +1961,15 @@
 
     function navigateCarousel(direction) {
         const totalRooms = Object.keys(roomData).length;
-        const totalPages = Math.ceil(totalRooms / ROOMS_PER_PAGE);
+        const maxIndex = Math.max(0, totalRooms - ROOMS_VISIBLE);
         
-        currentCarouselPage += direction;
+        currentCarouselIndex += direction;
         
-        if (currentCarouselPage < 0) {
-            currentCarouselPage = 0;
-        } else if (currentCarouselPage >= totalPages) {
-            currentCarouselPage = totalPages - 1;
+        // Clamp the index
+        if (currentCarouselIndex < 0) {
+            currentCarouselIndex = 0;
+        } else if (currentCarouselIndex > maxIndex) {
+            currentCarouselIndex = maxIndex;
         }
         
         updateCarousel();
@@ -1971,20 +1977,35 @@
 
     function updateCarousel() {
         const container = document.querySelector('.rooms-container');
+        if (!container) return;
+        
         const rooms = container.querySelectorAll('.room');
         const totalRooms = rooms.length;
-        const totalPages = Math.ceil(totalRooms / ROOMS_PER_PAGE);
+        
+        // If 3 or fewer rooms, show all
+        if (totalRooms <= ROOMS_VISIBLE) {
+            rooms.forEach(room => {
+                room.style.display = 'flex';
+            });
+            
+            // Disable both buttons
+            const prevBtn = document.querySelector('.carousel-prev');
+            const nextBtn = document.querySelector('.carousel-next');
+            if (prevBtn) prevBtn.disabled = true;
+            if (nextBtn) nextBtn.disabled = true;
+            
+            return;
+        }
         
         // Hide all rooms first
         rooms.forEach(room => {
             room.style.display = 'none';
         });
         
-        // Show only current page rooms
-        const startIdx = currentCarouselPage * ROOMS_PER_PAGE;
-        const endIdx = Math.min(startIdx + ROOMS_PER_PAGE, totalRooms);
+        // Show only 3 consecutive rooms starting from currentCarouselIndex
+        const endIdx = Math.min(currentCarouselIndex + ROOMS_VISIBLE, totalRooms);
         
-        for (let i = startIdx; i < endIdx; i++) {
+        for (let i = currentCarouselIndex; i < endIdx; i++) {
             if (rooms[i]) {
                 rooms[i].style.display = 'flex';
             }
@@ -1993,9 +2014,10 @@
         // Update navigation buttons
         const prevBtn = document.querySelector('.carousel-prev');
         const nextBtn = document.querySelector('.carousel-next');
+        const maxIndex = totalRooms - ROOMS_VISIBLE;
         
-        if (prevBtn) prevBtn.disabled = currentCarouselPage === 0;
-        if (nextBtn) nextBtn.disabled = currentCarouselPage >= totalPages - 1;
+        if (prevBtn) prevBtn.disabled = currentCarouselIndex === 0;
+        if (nextBtn) nextBtn.disabled = currentCarouselIndex >= maxIndex;
     }
 
     function refreshRoomsCarousel() {
@@ -2036,41 +2058,8 @@
             container.appendChild(roomDiv);
         });
         
-        // Reset to first page and update display
-        currentCarouselPage = 0;
-        updateCarousel();
-    }
-
-    function initializeRoomsCarousel() {
-        const roomsDiv = document.querySelector('.rooms-div');
-        
-        // Check if already initialized
-        if (roomsDiv.querySelector('.carousel-prev')) {
-            return;
-        }
-        
-        // Create navigation buttons
-        const prevBtn = document.createElement('button');
-        prevBtn.className = 'carousel-prev';
-        prevBtn.innerHTML = '←';
-        prevBtn.onclick = () => navigateCarousel(-1);
-        
-        const nextBtn = document.createElement('button');
-        nextBtn.className = 'carousel-next';
-        nextBtn.innerHTML = '→';
-        nextBtn.onclick = () => navigateCarousel(1);
-        
-        // Wrap existing rooms in a container
-        const rooms = Array.from(roomsDiv.querySelectorAll('.room'));
-        const container = document.createElement('div');
-        container.className = 'rooms-container';
-        
-        rooms.forEach(room => container.appendChild(room));
-        roomsDiv.innerHTML = '';
-        roomsDiv.appendChild(prevBtn);
-        roomsDiv.appendChild(container);
-        roomsDiv.appendChild(nextBtn);
-        
+        // Reset to first position
+        currentCarouselIndex = 0;
         updateCarousel();
     }
 
