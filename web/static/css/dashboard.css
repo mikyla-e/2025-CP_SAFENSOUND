@@ -107,11 +107,12 @@ main .rooms-div{
 
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     gap: 15px;
 
     overflow-y: visible;
+    position: relative;
 }
 
 /* all rooms */

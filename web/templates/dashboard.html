@@ -403,6 +403,72 @@
             }
         }
     </style>
+
+    <style>
+        /* ================================ */
+        /* ROOMS CAROUSEL */
+        /* div containing rooms */
+        main .rooms-div{
+            position: relative;
+        }
+
+        /* Navigation arrows */
+        .carousel-prev,
+        .carousel-next {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            background: var(--second);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.3s ease;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .carousel-prev:hover,
+        .carousel-next:hover {
+            opacity: 1;
+            background: var(--second-light);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .carousel-prev {
+            left: 0;
+        }
+
+        .carousel-next {
+            right: 0;
+        }
+
+        .carousel-prev:disabled,
+        .carousel-next:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: #ccc;
+        }
+
+        /* Rooms container wrapper */
+        .rooms-container {
+            display: flex;
+            gap: 15px;
+            transition: transform 0.4s ease;
+            width: 100%;
+            /* padding: 0 50px;  */
+            box-sizing: border-box;
+            flex-direction: row;
+            justify-content: center;
+        }
+    </style>
+    
 </body>
 </html>
 </head>
@@ -462,6 +528,7 @@
     </div>
 
     <main>
+        <!-- rooms -->
         <div class="rooms-div">
             <div class="room1 rooms room" data-room-id="1" onclick="selectRoom(1, this)">
                 <svg class="logo" 
@@ -676,18 +743,13 @@
                         name: roomInfo.name,
                         history: []
                     };
-                    
-                    // Update room name in UI if the room card exists
-                    const roomCard = document.querySelector(`.room[data-room-id="${id}"]`);
-                    if (roomCard) {
-                        const nameElement = roomCard.querySelector('.room-name');
-                        if (nameElement) {
-                            nameElement.textContent = roomInfo.name;
-                        }
-                    }
                 }
                 
                 console.log('Room data loaded:', roomData);
+                
+                // Rebuild carousel with fetched rooms
+                refreshRoomsCarousel();
+                
             } catch (error) {
                 console.error('Error fetching room data:', error);
             }
@@ -1858,5 +1920,195 @@
             setTimeout(loadDevices, 1500);
         });
     </script>
+
+<script>
+    // CAROUSEL FOR ROOMS
+    let currentCarouselPage = 0;
+    const ROOMS_PER_PAGE = 3;
+
+    function initializeRoomsCarousel() {
+        const roomsDiv = document.querySelector('.rooms-div');
+        
+        // Create navigation buttons
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'carousel-prev';
+        prevBtn.innerHTML = '←';
+        prevBtn.onclick = () => navigateCarousel(-1);
+        
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'carousel-next';
+        nextBtn.innerHTML = '→';
+        nextBtn.onclick = () => navigateCarousel(1);
+        
+        // Wrap existing rooms in a container
+        const rooms = Array.from(roomsDiv.querySelectorAll('.room'));
+        const container = document.createElement('div');
+        container.className = 'rooms-container';
+        
+        rooms.forEach(room => container.appendChild(room));
+        roomsDiv.innerHTML = '';
+        roomsDiv.appendChild(prevBtn);
+        roomsDiv.appendChild(container);
+        roomsDiv.appendChild(nextBtn);
+        
+        updateCarousel();
+    }
+
+    function navigateCarousel(direction) {
+        const totalRooms = Object.keys(roomData).length;
+        const totalPages = Math.ceil(totalRooms / ROOMS_PER_PAGE);
+        
+        currentCarouselPage += direction;
+        
+        if (currentCarouselPage < 0) {
+            currentCarouselPage = 0;
+        } else if (currentCarouselPage >= totalPages) {
+            currentCarouselPage = totalPages - 1;
+        }
+        
+        updateCarousel();
+    }
+
+    function updateCarousel() {
+        const container = document.querySelector('.rooms-container');
+        const rooms = container.querySelectorAll('.room');
+        const totalRooms = rooms.length;
+        const totalPages = Math.ceil(totalRooms / ROOMS_PER_PAGE);
+        
+        // Hide all rooms first
+        rooms.forEach(room => {
+            room.style.display = 'none';
+        });
+        
+        // Show only current page rooms
+        const startIdx = currentCarouselPage * ROOMS_PER_PAGE;
+        const endIdx = Math.min(startIdx + ROOMS_PER_PAGE, totalRooms);
+        
+        for (let i = startIdx; i < endIdx; i++) {
+            if (rooms[i]) {
+                rooms[i].style.display = 'flex';
+            }
+        }
+        
+        // Update navigation buttons
+        const prevBtn = document.querySelector('.carousel-prev');
+        const nextBtn = document.querySelector('.carousel-next');
+        
+        if (prevBtn) prevBtn.disabled = currentCarouselPage === 0;
+        if (nextBtn) nextBtn.disabled = currentCarouselPage >= totalPages - 1;
+    }
+
+    function refreshRoomsCarousel() {
+        const roomsDiv = document.querySelector('.rooms-div');
+        let container = roomsDiv.querySelector('.rooms-container');
+        
+        // If carousel not initialized yet, initialize it first
+        if (!container) {
+            initializeRoomsCarousel();
+            container = roomsDiv.querySelector('.rooms-container');
+        }
+        
+        if (!container) return;
+        
+        // Clear existing rooms
+        container.innerHTML = '';
+        
+        // Rebuild rooms from roomData
+        const sortedRoomIds = Object.keys(roomData).sort((a, b) => parseInt(a) - parseInt(b));
+        
+        sortedRoomIds.forEach((roomId) => {
+            const room = roomData[roomId];
+            const roomDiv = document.createElement('div');
+            roomDiv.className = `room${roomId} rooms room`;
+            roomDiv.setAttribute('data-room-id', roomId);
+            roomDiv.onclick = function() { selectRoom(parseInt(roomId), this); };
+            
+            roomDiv.innerHTML = `
+                <svg class="logo" viewBox="0 0 512 512" fill="white">
+                    <path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/>
+                </svg>
+                <div class="texts">
+                    <h2 class="room-name">${room.name}</h2>
+                    <p onclick="renameRoom(this, event)">rename</p>
+                </div>
+            `;
+            
+            container.appendChild(roomDiv);
+        });
+        
+        // Reset to first page and update display
+        currentCarouselPage = 0;
+        updateCarousel();
+    }
+
+    function initializeRoomsCarousel() {
+        const roomsDiv = document.querySelector('.rooms-div');
+        
+        // Check if already initialized
+        if (roomsDiv.querySelector('.carousel-prev')) {
+            return;
+        }
+        
+        // Create navigation buttons
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'carousel-prev';
+        prevBtn.innerHTML = '←';
+        prevBtn.onclick = () => navigateCarousel(-1);
+        
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'carousel-next';
+        nextBtn.innerHTML = '→';
+        nextBtn.onclick = () => navigateCarousel(1);
+        
+        // Wrap existing rooms in a container
+        const rooms = Array.from(roomsDiv.querySelectorAll('.room'));
+        const container = document.createElement('div');
+        container.className = 'rooms-container';
+        
+        rooms.forEach(room => container.appendChild(room));
+        roomsDiv.innerHTML = '';
+        roomsDiv.appendChild(prevBtn);
+        roomsDiv.appendChild(container);
+        roomsDiv.appendChild(nextBtn);
+        
+        updateCarousel();
+    }
+
+    // Initialize carousel after room data is loaded
+    window.addEventListener('load', async function() {
+        await fetchRoomData(); // This will now initialize carousel with all rooms
+        await fetchRecentEmergency();
+        await updateAllRoomStatusesFromHistory();
+        connectWebSocket();
+        
+        const aside = document.querySelector('aside');
+        const isDesktop = window.getComputedStyle(aside).display !== 'none';
+        if (isDesktop) {
+            const firstRoomId = Object.keys(roomData)[0];
+            if (firstRoomId) {
+                const firstRoom = document.querySelector(`.room[data-room-id="${firstRoomId}"]`);
+                if (firstRoom) {
+                    await selectRoom(parseInt(firstRoomId), firstRoom);
+                }
+            }
+        } else {
+            currentSelectedRoom = Object.keys(roomData)[0] || 1;
+        }
+    });
+
+    // Update the original createRoom function to refresh carousel
+    const originalCreateRoom = createRoom;
+    createRoom = async function() {
+        await originalCreateRoom();
+        refreshRoomsCarousel();
+    };
+
+    // Update the deleteRoom function to refresh carousel
+    const originalDeleteRoom = deleteRoom;
+    deleteRoom = async function(roomId, roomName) {
+        await originalDeleteRoom(roomId, roomName);
+        refreshRoomsCarousel();
+    };
+</script>
 </body>
 </html>
