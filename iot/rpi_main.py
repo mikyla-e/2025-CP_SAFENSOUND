@@ -190,6 +190,9 @@ def get_audio_local():
 
 
 def receive_audio_data():
+    from database.db_connection import Database
+    get = Database()
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', audio_port))
     sock.settimeout(1.0)
@@ -213,15 +216,18 @@ def receive_audio_data():
             chunk_samples = int.from_bytes(data[8:12], 'little')
 
             if room_id is None or timestamp is None or chunk_samples is None:
-                print(f"Incomplete data received from {addr}: Room {room_id}")
+                print(f"Incomplete data received from {addr}: Room ID{room_id}")
                 continue
+            
+            get_room = get.fetch_rooms()
+            rooms_list = [room[0] for room in get_room]
 
-            if room_id not in [1, 2, 3]:
-                print(f"Unknown room ID from {addr}: Room {room_id}")
+            if room_id not in rooms_list:
+                print(f"Unknown room ID from {addr}: Room ID {room_id}")
                 continue
             
             if chunk_samples > 16000 or chunk_samples <= 0:
-                print(f"Invalid chunk size from Room {room_id}: {chunk_samples} samples")
+                print(f"Invalid chunk size from Room ID {room_id}: {chunk_samples} samples")
                 continue
 
             audio_chunk = np.frombuffer(data[12:], dtype=np.int16)
@@ -235,16 +241,20 @@ def receive_audio_data():
 
             if total_samples >= EXPECTED_TOTAL_SAMPLES:
                 full_audio = np.concatenate(audio_chunks[room_id])[:EXPECTED_TOTAL_SAMPLES]
-                audio16 = np.asarray(full_audio, dtype=np.int16)
+                # audio16 = np.asarray(full_audio, dtype=np.int16)
                 
-                thread = threading.Thread(
-                    target=inference,
-                    args=(audio16, f"Room{room_id}_{timestamp}", room_id)
-                )
+                datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                wav_filename = f"recorded_audio/ID{room_id}_{datetime_str}.wav"
+                save_wav(wav_filename, full_audio, sample_rate) #audio for testing
+                
                 # thread = threading.Thread(
-                #     target=process_audio,
-                #     args=(full_audio, room_id, timestamp)
+                #     target=inference,
+                #     args=(audio16, f"Room{room_id}_{timestamp_str}", room_id)
                 # )
+                thread = threading.Thread(
+                    target=process_audio,
+                    args=(full_audio, room_id, timestamp)
+                )
                 thread.start()
 
                 del audio_chunks[room_id]
@@ -254,7 +264,7 @@ def receive_audio_data():
 
             for room_id in list(chunk_timestamps.keys()):
                 if last_packet_time - chunk_timestamps[room_id] > 10:
-                    print(f"Timeout: Discarding incomplete recording from room {room_id}")
+                    print(f"Timeout: Discarding incomplete recording from room id {room_id}")
                     del audio_chunks[room_id]
                     del chunk_timestamps[room_id]
 
@@ -454,8 +464,8 @@ def extract_features(audio, sample_rate, hop_length=200, win_length=400,frame_ms
 def inference(audio, wav_name, room_id=None):
     global emergency_count, alarming_count, nonemergency_count, emergency_detected
 
-    print(f"\nProcessing audio for inference: {wav_name}")
-    save_wav(f"processed_audio/{wav_name}.wav", audio, sample_rate)
+    # print(f"\nProcessing audio for inference: {wav_name}")
+    # save_wav(f"processed_audio/{wav_name}.wav", audio, sample_rate)
 
     audio_features = extract_features(audio, sample_rate).astype(np.float32)
     features = np.expand_dims(audio_features, axis=0)
@@ -476,7 +486,7 @@ def inference(audio, wav_name, room_id=None):
             emergency_detected = True
             trigger_alarm(room_id)
         
-        elif alarming_count == 2 and emergency_count >= 1:
+        elif alarming_count >= 1 and emergency_count >= 1:
             emergency_detected = True
             trigger_alarm(room_id)
 
@@ -487,7 +497,7 @@ def inference(audio, wav_name, room_id=None):
             emergency_detected = True
             trigger_alarm(room_id)
 
-        elif emergency_count == 1 and alarming_count >= 2:
+        elif emergency_count >= 1 and alarming_count >= 1:
             emergency_detected = True
             trigger_alarm(room_id)
 
