@@ -662,19 +662,8 @@
                             <span class="total-value" id="total-emergencies">000</span>
                         </div>
                     </div>
-                    <div class="room-stats">
-                        <div class="room-stat" id="room-stat-1">
-                            <span class="room-label">Room 1</span>
-                            <span class="room-count">00</span>
-                        </div>
-                        <div class="room-stat" id="room-stat-2">
-                            <span class="room-label">Room 2</span>
-                            <span class="room-count">00</span>
-                        </div>
-                        <div class="room-stat" id="room-stat-3">
-                            <span class="room-label">Room 3</span>
-                            <span class="room-count">00</span>
-                        </div>
+                    <div class="room-stats" id="room-stats-container">
+                        <!-- Room stats will be dynamically generated here -->
                     </div>
                 </div>
             </div>
@@ -1558,16 +1547,34 @@
                 document.getElementById('total-emergencies').textContent = 
                     data.total.toString().padStart(3, '0');
                 
-                // Ensure all 3 rooms are displayed with current names
-                for (let roomId = 1; roomId <= 3; roomId++) {
-                    const statElement = document.getElementById(`room-stat-${roomId}`);
-                    if (statElement) {
-                        const roomInfo = data.rooms[roomId] || { name: roomData[roomId].name, count: 0 };
-                        statElement.querySelector('.room-label').textContent = roomInfo.name;
-                        statElement.querySelector('.room-count').textContent = 
-                            roomInfo.count.toString().padStart(2, '0');
+                // Dynamically create room stats for all rooms
+                const roomStatsContainer = document.getElementById('room-stats-container');
+                roomStatsContainer.innerHTML = '';
+                
+                // Get all rooms in the correct order from roomData
+                const roomIds = Object.keys(roomData);
+                const sortedRoomIds = roomIds.sort((a, b) => {
+                    const roomA = roomData[a];
+                    const roomB = roomData[b];
+                    
+                    if (roomA.has_sensor === roomB.has_sensor) {
+                        return roomA.name.toLowerCase().localeCompare(roomB.name.toLowerCase());
                     }
-                }
+                    return roomB.has_sensor ? 1 : -1;
+                });
+                
+                // Create stat elements for each room
+                sortedRoomIds.forEach(roomId => {
+                    const roomInfo = data.rooms[roomId] || { name: roomData[roomId].name, count: 0 };
+                    const statDiv = document.createElement('div');
+                    statDiv.className = 'room-stat';
+                    statDiv.id = `room-stat-${roomId}`;
+                    statDiv.innerHTML = `
+                        <span class="room-label">${roomInfo.name}</span>
+                        <span class="room-count">${roomInfo.count.toString().padStart(2, '0')}</span>
+                    `;
+                    roomStatsContainer.appendChild(statDiv);
+                });
                 
                 // Create pie chart (only with rooms that have data)
                 const ctx = document.getElementById('topChart').getContext('2d');
@@ -1582,7 +1589,9 @@
                 
                 const labels = sortedRooms.map(([_, roomData]) => roomData.name);
                 const values = sortedRooms.map(([_, roomData]) => roomData.count);
-                const colors = ['#015382', '#2d8ec2', '#002C47']; //second-light, second-very-light, --
+                
+                // Generate colors dynamically based on number of rooms
+                const colors = ['#015382', '#2d8ec2', '#002C47', '#4a9fd8', '#1a6b99', '#357ab8'];
                 
                 topChart = new Chart(ctx, {
                     type: 'doughnut',
@@ -1604,11 +1613,11 @@
                                 display: false
                             },
                             tooltip: {
-                                backgroundColor: '#002C47', //second
+                                backgroundColor: '#002C47',
                                 padding: 12,
                                 titleColor: '#fff',
                                 bodyColor: '#fff',
-                                borderColor: '#015382', //second-light
+                                borderColor: '#015382',
                                 borderWidth: 1,
                                 displayColors: true,
                                 callbacks: {
