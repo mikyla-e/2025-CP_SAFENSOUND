@@ -79,6 +79,12 @@
             background: var(--second-light);
         }
 
+        @media screen and (max-width: 768px) {
+            .time {
+                display: none;
+            }
+        }
+
         @media screen and (max-width: 440px) {
             nav {
                 flex-wrap: wrap;
@@ -507,6 +513,7 @@
             flex-direction: row;
             justify-content: center;
         }
+        
     </style>
     
 </body>
@@ -514,7 +521,12 @@
 </head>
 <body>
     <nav>
-        <h1>Dashboard</h1>
+        <div class="backNdashboard" style="display: flex; align-items: center; gap: 15px;">
+            <a href="/" style="text-decoration: none; color: var(--second); display: flex; align-items: center; font-size: 1.2rem; transition: color 0.3s;" title="Back to Homepage">
+                ←
+            </a>
+            <h1>Dashboard</h1>
+        </div>
         <div>
             <p id="current-date">00/00/00</p>
             <p class="time" id="current-time">00:00 AM</p>

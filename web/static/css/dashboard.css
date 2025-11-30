@@ -925,6 +925,10 @@ aside .table-div table tr:nth-child(odd),
         grid-template-columns: 1fr;
     }
 
+    .time{
+        display: none;
+    }
+
     main{
         padding: 20px clamp(3.5vw, 4vw, 5vw);
     }
@@ -990,10 +994,6 @@ aside .table-div table tr:nth-child(odd),
 
     nav h1{
         margin: 0;
-    }
-
-    .time{
-        display: none;
     }
 
     main{
