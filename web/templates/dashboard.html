@@ -1551,19 +1551,29 @@
                 const roomStatsContainer = document.getElementById('room-stats-container');
                 roomStatsContainer.innerHTML = '';
                 
-                // Get all rooms in the correct order from roomData
+                // Get all rooms and sort by emergency count (highest first)
                 const roomIds = Object.keys(roomData);
                 const sortedRoomIds = roomIds.sort((a, b) => {
+                    const countA = data.rooms[a]?.count || 0;
+                    const countB = data.rooms[b]?.count || 0;
+                    
+                    // Sort by count descending (most emergencies first)
+                    if (countB !== countA) {
+                        return countB - countA;
+                    }
+                    
+                    // If counts are equal, sort by sensor status (with sensor first)
                     const roomA = roomData[a];
                     const roomB = roomData[b];
-                    
-                    if (roomA.has_sensor === roomB.has_sensor) {
-                        return roomA.name.toLowerCase().localeCompare(roomB.name.toLowerCase());
+                    if (roomA.has_sensor !== roomB.has_sensor) {
+                        return roomB.has_sensor ? 1 : -1;
                     }
-                    return roomB.has_sensor ? 1 : -1;
+                    
+                    // If still equal, sort alphabetically
+                    return roomA.name.toLowerCase().localeCompare(roomB.name.toLowerCase());
                 });
                 
-                // Create stat elements for each room
+                // Create stat elements for each room in sorted order
                 sortedRoomIds.forEach(roomId => {
                     const roomInfo = data.rooms[roomId] || { name: roomData[roomId].name, count: 0 };
                     const statDiv = document.createElement('div');
