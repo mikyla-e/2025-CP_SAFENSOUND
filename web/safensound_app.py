@@ -126,12 +126,43 @@ async def dashboard_alias(request: Request):
 async def get_rooms():
     try:
         rooms = db.fetch_rooms()
-        rooms_data = {}
+        devices = db.fetch_devices()
+        
+        # Create a map of room_id -> has_sensor
+        rooms_with_sensors = set(device[1] for device in devices if device[1] != 0)
+        
+        # Separate and sort rooms
+        assigned_rooms = []
+        unassigned_rooms = []
+        
         for room_id, room_name in rooms:
-            rooms_data[room_id] = {
+            room_data = {
+                "id": room_id,
                 "name": room_name,
-                "status": room_status.get(room_id, 0)
+                "status": room_status.get(room_id, 0),
+                "has_sensor": room_id in rooms_with_sensors
             }
+            
+            if room_id in rooms_with_sensors:
+                assigned_rooms.append(room_data)
+            else:
+                unassigned_rooms.append(room_data)
+        
+        # Sort unassigned rooms alphabetically by name
+        unassigned_rooms.sort(key=lambda x: x["name"].lower())
+        
+        # Combine: assigned first, then unassigned (alphabetically)
+        sorted_rooms = assigned_rooms + unassigned_rooms
+        
+        # Return as dictionary with room_id as key
+        rooms_data = {}
+        for room in sorted_rooms:
+            rooms_data[room["id"]] = {
+                "name": room["name"],
+                "status": room["status"],
+                "has_sensor": room["has_sensor"]
+            }
+        
         return rooms_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

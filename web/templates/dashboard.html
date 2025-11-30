@@ -786,14 +786,17 @@
                 const response = await fetch('/api/rooms');
                 const rooms = await response.json();
                 
-                // Clear and rebuild roomData from API
+                // Clear roomData
                 roomData = {};
                 
+                // Preserve order from server by iterating through rooms object
+                // The server already returns rooms in the correct order
                 for (const [roomId, roomInfo] of Object.entries(rooms)) {
                     const id = parseInt(roomId);
                     roomData[id] = {
                         name: roomInfo.name,
-                        history: []
+                        history: [],
+                        has_sensor: roomInfo.has_sensor
                     };
                 }
                 
@@ -1656,6 +1659,21 @@
             overlay.classList.remove('show');
             modal.classList.remove('show');
             document.body.style.overflow = 'auto';
+            
+            // Refresh the room data and carousel to reflect any changes
+            fetchRoomData().then(() => {
+                // If a room is selected, refresh its display
+                if (currentSelectedRoom) {
+                    const aside = document.querySelector('aside');
+                    const isDesktop = window.getComputedStyle(aside).display !== 'none';
+                    if (isDesktop) {
+                        const currentRoom = document.querySelector(`.room[data-room-id="${currentSelectedRoom}"]`);
+                        if (currentRoom) {
+                            selectRoom(currentSelectedRoom, currentRoom);
+                        }
+                    }
+                }
+            });
         }
 
         // Close admin modal on ESC as well
@@ -2087,8 +2105,21 @@
         // Clear existing rooms
         container.innerHTML = '';
         
-        // Rebuild rooms from roomData
-        const sortedRoomIds = Object.keys(roomData).sort((a, b) => parseInt(a) - parseInt(b));
+        // Sort rooms: sensors first, then alphabetically by name for unassigned
+        const roomIds = Object.keys(roomData);
+        const sortedRoomIds = roomIds.sort((a, b) => {
+            const roomA = roomData[a];
+            const roomB = roomData[b];
+            
+            // If both have sensors or both don't have sensors
+            if (roomA.has_sensor === roomB.has_sensor) {
+                // Sort alphabetically by name
+                return roomA.name.toLowerCase().localeCompare(roomB.name.toLowerCase());
+            }
+            
+            // Rooms with sensors come first
+            return roomB.has_sensor ? 1 : -1;
+        });
         
         sortedRoomIds.forEach((roomId) => {
             const room = roomData[roomId];
@@ -2097,12 +2128,16 @@
             roomDiv.setAttribute('data-room-id', roomId);
             roomDiv.onclick = function() { selectRoom(parseInt(roomId), this); };
             
+            // Add visual indicator if room has sensor
+            const sensorIndicator = room.has_sensor ? 
+                '<span style="color: #4CAF50; font-size: 0.8rem; margin-left: 5px;" title="Sensor assigned">●</span>' : '';
+            
             roomDiv.innerHTML = `
                 <svg class="logo" viewBox="0 0 512 512" fill="white">
                     <path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/>
                 </svg>
                 <div class="texts">
-                    <h2 class="room-name">${room.name}</h2>
+                    <h2 class="room-name">${room.name}${sensorIndicator}</h2>
                     <p onclick="renameRoom(this, event)">rename</p>
                 </div>
             `;
