@@ -79,56 +79,61 @@
             background: var(--second-light);
         }
 
-        /* ========================================= */
-        /* FLOATING PRINT BUTTON */
-        .print-button {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%);
-            color: var(--primary);
-            border: none;
-            border-radius: 50%;
-            font-size: 1.5rem;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(45, 51, 107, 0.3);
-            transition: all 0.3s ease;
-            z-index: 999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-        }
-
-        .print-button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 16px rgba(45, 51, 107, 0.4);
-            background: linear-gradient(133deg, var(--second-light) 60%, var(--second) 120%);
-        }
-
-        .print-button:active {
-            transform: scale(0.95);
-        }
-
-        @media screen and (max-width: 768px) {
-            .print-button {
-                bottom: 20px;
-                right: 20px;
-                width: 50px;
-                height: 50px;
+        @media screen and (max-width: 440px) {
+            nav {
+                flex-wrap: wrap;
+                padding: 20px clamp(3.5vw, 4vw, 5vw)  10px clamp(3.5vw, 4vw, 5vw);
+                justify-content: space-between;
+                gap: 8px;
             }
 
-            .print-button svg {
-                width: 24px;
-                height: 24px;
+            /* Back button and Dashboard on the left */
+            nav .backNdashboard {
+                flex: 1;
+                order: 1;
+            }
+
+            /* Manage button on the right */
+            nav .admin-launch {
+                margin: 0 !important;
+                flex: 0 0 auto;
+                order: 2;
+            }
+            
+            nav .admin-launch .btn-manage {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+                white-space: nowrap;
+            }
+
+            nav .admin-launch .btn-manage span{
+                display: none;
+            }
+
+            /* Date and time below - full width with space between */
+            nav > div:not(.backNdashboard):not(.admin-launch) {
+                width: 100%;
+                flex-basis: 100%;
+                order: 3;
+                justify-content: space-between; 
+                margin-top: 5px;
+                display: flex;
+                gap: 10px;
+            }
+
+            nav h1 {
+                margin: 0;
+                font-size: 1.3rem;
+            }
+
+            .time {
+                display: inline;
             }
         }
     </style>
     
     <style>
-        /* overlay */
+        /* MANGE ROOMS AND DEVICES OVERLAY */
         .admin-overlay {
             position: fixed;
             inset: 0;
@@ -182,7 +187,6 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            /* border-bottom: 1px solid rgba(0,0,0,.06); */
         }
         .admin-modal-body {
             overflow: auto;
@@ -214,7 +218,6 @@
         /* TABLE */
         .device-section {
             padding-top: 20px;
-            /* border-top: 2px solid var(--second-light); */
         }
 
         .device-section p.helper-text,
@@ -224,10 +227,6 @@
         }
 
         .device-table-container {
-            /* overflow-x: auto;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.67);
-            border-radius: 5px; */
-
             width: 100%;
 
             text-align: left;
@@ -238,10 +237,6 @@
         }
 
         .device-table {
-            /* width: 100%;
-            border-collapse: collapse;
-            background: white;
-            overflow: hidden; */
             min-width: auto;
             width: 100%;
 
@@ -276,7 +271,6 @@
         }
 
         .device-table select {
-            /* background: var(--second); */
             color: var(--second);
             border: none;
             border-radius: 5px;
@@ -402,9 +396,56 @@
                 padding: 4px 8px;
             }
         }
-    </style>
 
-    <style>
+        /* ========================================= */
+        /* ========================================= */
+        /* FLOATING PRINT BUTTON */
+        .print-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%);
+            color: var(--primary);
+            border: none;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(45, 51, 107, 0.3);
+            transition: all 0.3s ease;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .print-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(45, 51, 107, 0.4);
+            background: linear-gradient(133deg, var(--second-light) 60%, var(--second) 120%);
+        }
+
+        .print-button:active {
+            transform: scale(0.95);
+        }
+
+        @media screen and (max-width: 768px) {
+            .print-button {
+                bottom: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+            }
+
+            .print-button svg {
+                width: 24px;
+                height: 24px;
+            }
+        }
+
+        /* ================================ */
         /* ================================ */
         /* ROOMS CAROUSEL */
         /* div containing rooms */
@@ -462,7 +503,6 @@
             gap: 15px;
             transition: transform 0.4s ease;
             width: 100%;
-            /* padding: 0 50px;  */
             box-sizing: border-box;
             flex-direction: row;
             justify-content: center;
@@ -480,7 +520,7 @@
             <p class="time" id="current-time">00:00 AM</p>
         </div>
         <div class="admin-launch" style="margin:20px 0;">
-            <button type="button" class="btn-manage" onclick="openAdminModal()">Manage Rooms & Devices</button>
+            <button type="button" class="btn-manage" onclick="openAdminModal()"><span>Manage </span>Rooms & Devices</button>
         </div>
     </nav>
 

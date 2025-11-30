@@ -87,8 +87,8 @@ async def periodic_updates():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     task = asyncio.create_task(periodic_updates())
-    print("FastAPI SafeNSound Dashboard started!")
-    print("Dashboard available at: http://localhost:8000")
+    print("FastAPI SafeNSound started!")
+    print("Homepage available at: http://localhost:8000")
     print("API Documentation at: http://localhost:8000/docs")
 
     yield
@@ -99,7 +99,7 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         print("Periodic updates cancelled.")
 
-app = FastAPI(title="SafeNSound Dashboard", version="1.0", lifespan=lifespan)
+app = FastAPI(title="SafeNSound Homepage", version="1.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")  
 templates = Jinja2Templates(directory=templates_dir)
 
@@ -116,7 +116,7 @@ connected_websockets: List[WebSocket] = []
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse("homepage.html", {"request": request})
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_alias(request: Request):
