@@ -818,13 +818,13 @@ void sendData() {
       delay(0);
     }
 
-    Serial.println("All packets sent");
+    // Serial.println("All packets sent");
     audioReady = false;
   }
 }
 
 void prepareAudio(int16_t* audio, size_t sampleCount) { //prepare audio data to be sent
-  Serial.println("Getting audio recording...");
+  // Serial.println("Getting audio recording...");
 
   size_t copyCount = min(sampleCount, (size_t)(sizeof(audioRecording.audioData) / sizeof(int16_t)));
   memcpy(audioRecording.audioData, audio, copyCount * sizeof(int16_t));
@@ -835,7 +835,7 @@ void prepareAudio(int16_t* audio, size_t sampleCount) { //prepare audio data to 
 
   audioReady = true;
 
-  Serial.printf("Audio ready: %d samples, %d bytes\n", copyCount, copyCount * sizeof(int16_t));
+  // Serial.printf("Audio ready: %d samples, %d bytes\n", copyCount, copyCount * sizeof(int16_t));
 }
 
 void sendResetSignal() {

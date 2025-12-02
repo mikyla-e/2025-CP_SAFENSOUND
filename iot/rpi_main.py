@@ -218,7 +218,7 @@ def receive_audio_data():
             if room_id is None or timestamp is None or chunk_samples is None:
                 print(f"Incomplete data received from {addr}: Room ID{room_id}")
                 continue
-            
+
             get_room = get.fetch_rooms()
             rooms_list = [room[0] for room in get_room]
 
@@ -417,7 +417,7 @@ def extract_features(audio, sample_rate, hop_length=200, win_length=400,frame_ms
 
     return features
 
-    #  mfcc+random forest approach (old)
+    # #  mfcc+random forest approach (old)
     # n_fft=512
 
     # def float32(y):
@@ -471,7 +471,8 @@ def inference(audio, wav_name, room_id=None):
     features = np.expand_dims(audio_features, axis=0)
 
     prediction = model.predict(features)
-    predicted_class = np.argmax(prediction[0]) if prediction.ndim == 2 else int(prediction[0])
+    # predicted_class = prediction[0] #random forest
+    predicted_class = np.argmax(prediction[0]) if prediction.ndim == 2 else int(prediction[0]) #cnn
 
     # alarming sound = 3 times before emergency is confirmed
     # emergency sound = 2 times after emergency is confirmed
@@ -486,7 +487,7 @@ def inference(audio, wav_name, room_id=None):
             emergency_detected = True
             trigger_alarm(room_id)
         
-        elif alarming_count >= 1 and emergency_count >= 1:
+        elif alarming_count >= 1 and emergency_count >= 2:
             emergency_detected = True
             trigger_alarm(room_id)
 
@@ -497,7 +498,7 @@ def inference(audio, wav_name, room_id=None):
             emergency_detected = True
             trigger_alarm(room_id)
 
-        elif emergency_count >= 1 and alarming_count >= 1:
+        elif emergency_count >= 1 and alarming_count >= 2:
             emergency_detected = True
             trigger_alarm(room_id)
 
