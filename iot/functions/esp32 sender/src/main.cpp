@@ -887,6 +887,6 @@ void loop() { //loops
       pollRoomAssignment();
     }
 
-    delay(1); 
+    delay(10); 
   }
 }
