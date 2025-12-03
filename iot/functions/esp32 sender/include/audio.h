@@ -5,7 +5,9 @@
 
 void setupAudio();
 void processAudioRecording();
+float analyzeAudioActivity(int16_t* audio_data, size_t sample_count);
+float calculatePercentile(float* data, int size, float percentile);
 
-extern void prepareAudio(int16_t* audio, size_t sampleCount);
+void sendData(int16_t* audio, size_t sampleCount, int chunkIndex, int totalChunks);
 
 #endif

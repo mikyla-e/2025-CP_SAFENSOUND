@@ -741,8 +741,6 @@ void setup() { // esp setup
   device_id = WiFi.macAddress();
   Serial.println("Device ID: " + device_id);
 
-  // String mac_esp = WiFi.macAddress();
-
   delay(500);
 
   loadWiFiCredentials();
@@ -782,60 +780,46 @@ void setup() { // esp setup
 
 ///////////////////////////////////////////////////////////
 
-void sendData() {
-  if (audioReady && WiFi.status() == WL_CONNECTED) {
+void sendData(int16_t* audio, size_t sampleCount, int chunkIndex, int totalChunks) {
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.printf("I'm recording from esp room %d!\n", room_id);
+    const size_t headerSize = 20;
+    const size_t audioSize = sampleCount * sizeof(int16_t);
+    const size_t packetSize = headerSize;
+    const size_t maxPacketSize = 1400;
 
-    size_t maxPacketSize = 1400;
-    size_t maxAudioSize = maxPacketSize - 12;
-    size_t maxSamplesPerPacket = maxAudioSize / sizeof(int16_t);
+    uint32_t timestamp = millis();
+    uint32_t chunk_idx = chunkIndex;
+    uint32_t total_chunks = totalChunks;
+    uint32_t sample_cnt = sampleCount;
 
-    size_t totalSamples = audioRecording.sampleCount;
-    size_t samplesSent = 0;
-
-    while (samplesSent < totalSamples) {
-      size_t samplesToSend = min(maxSamplesPerPacket, totalSamples - samplesSent);
-      size_t packetSize = 12 + samplesToSend * sizeof(int16_t);
-
-      uint8_t* buffer = (uint8_t*)malloc(packetSize);
-      if (!buffer) {
-        Serial.println("Failed to allocate buffer");
-        return;
-      }
-
-      memcpy(buffer, &room_id, 4);
-      memcpy(buffer + 4, &audioRecording.timestamp, 4);
-      memcpy(buffer + 8, &samplesToSend, 4);
-      memcpy(buffer + 12, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
-
-      udp.beginPacket(laptop_ip.c_str(), audio_port);
-      udp.write(buffer, packetSize);
-      udp.endPacket();
-      
-      free(buffer);
-
-      samplesSent += samplesToSend;
-          
-      delay(0);
+    uint8_t* buffer = (uint8_t*)malloc(packetSize);
+    if (!buffer) {
+      Serial.println("Failed to allocate buffer");
+      return;
     }
 
-    // Serial.println("All packets sent");
-    audioReady = false;
+    Serial.printf("timestamp: %u, chunk_idx: %u, total_chunks: %u, sample_cnt: %u\n", timestamp, chunk_idx, total_chunks, sample_cnt);
+
+    memcpy(buffer, &room_id, 4);
+    memcpy(buffer + 4, &timestamp, 4);
+    memcpy(buffer + 8, &chunk_idx, 4);
+    memcpy(buffer + 12, &total_chunks, 4);
+    memcpy(buffer + 16, &sample_cnt, 4);
+    memcpy(buffer + 20, audio, sampleCount * sizeof(int16_t));
+
+    udp.beginPacket(laptop_ip.c_str(), audio_port);
+    udp.write(buffer, packetSize);
+    int result = udp.endPacket();
+    
+    free(buffer);
+
+    if (result) {
+        Serial.printf("Sent chunk %d/%d (%d samples)\n", chunkIndex + 1, totalChunks, sampleCount);
+    } else {
+        Serial.printf("Failed to send chunk %d\n", chunkIndex);
+    }
   }
-}
-
-void prepareAudio(int16_t* audio, size_t sampleCount) { //prepare audio data to be sent
-  // Serial.println("Getting audio recording...");
-
-  size_t copyCount = min(sampleCount, (size_t)(sizeof(audioRecording.audioData) / sizeof(int16_t)));
-  memcpy(audioRecording.audioData, audio, copyCount * sizeof(int16_t));
-
-  audioRecording.sampleCount = copyCount;
-  audioRecording.timestamp = millis();
-  audioRecording.roomID = room_id;
-
-  audioReady = true;
-
-  // Serial.printf("Audio ready: %d samples, %d bytes\n", copyCount, copyCount * sizeof(int16_t));
 }
 
 void sendResetSignal() {
@@ -874,7 +858,6 @@ void loop() { //loops
   } else {
     if(room_id != 0) {
       processAudioRecording();
-      sendData();
 
       if (processResetButton()) {
         sendResetSignal();

@@ -6,6 +6,7 @@ from time import sleep
 from datetime import datetime
 import json
 import wave
+import struct
 
 # --- networking ---
 import socket
@@ -207,16 +208,40 @@ def receive_audio_data():
         try:
             data, addr = sock.recvfrom(65536)
 
-            if len(data) < 12:
+            if len(data) < 20:
                 print(f"Received packet too small from {addr}: {len(data)} bytes")
                 continue
 
-            room_id = int.from_bytes(data[0:4], 'little')
-            timestamp = int.from_bytes(data[4:8], 'little')
-            chunk_samples = int.from_bytes(data[8:12], 'little')
+            payload_len = len(data) - 20
+            if payload_len < 0 or (payload_len % 2) != 0:
+                print(f"Invalid packet length from {addr}: {len(data)} (payload {payload_len})")
+                continue
 
-            if room_id is None or timestamp is None or chunk_samples is None:
+            print("Header bytes:", data[:20].hex())
+
+            try:
+                room_id, timestamp, chunk_index, total_chunks, chunk_samples = struct.unpack('<IIIII', data[:20])
+            except struct.error as e:
+                print(f"Header unpack error from {addr}: {e}")
+                continue
+
+            # room_id = int.from_bytes(data[0:4], 'little')
+            # timestamp = int.from_bytes(data[4:8], 'little')
+            # chunk_index = int.from_bytes(data[8:12], 'little')
+            # total_chunks = int.from_bytes(data[12:16], 'little')
+            # chunk_samples = int.from_bytes(data[16:20], 'little')
+            
+
+            if room_id is None or timestamp is None or chunk_index is None or total_chunks is None or chunk_samples is None:
                 print(f"Incomplete data received from {addr}: Room ID{room_id}")
+                continue
+
+            if chunk_samples <= 0 or chunk_samples > 16000:
+                print(f"Invalid chunk size from Room ID {room_id}: {chunk_samples} samples")
+                continue
+
+            if payload_len != chunk_samples * 2:
+                print(f"Payload/sample mismatch from Room ID {room_id}: payload={payload_len} bytes, samples={chunk_samples}")
                 continue
 
             get_room = get.fetch_rooms()
@@ -225,12 +250,8 @@ def receive_audio_data():
             if room_id not in rooms_list:
                 print(f"Unknown room ID from {addr}: Room ID {room_id}")
                 continue
-            
-            if chunk_samples > 16000 or chunk_samples <= 0:
-                print(f"Invalid chunk size from Room ID {room_id}: {chunk_samples} samples")
-                continue
 
-            audio_chunk = np.frombuffer(data[12:], dtype=np.int16)
+            audio_chunk = np.frombuffer(data[20:], dtype=np.int16)
 
             if room_id not in audio_chunks:
                 audio_chunks[room_id] = []
@@ -243,9 +264,9 @@ def receive_audio_data():
                 full_audio = np.concatenate(audio_chunks[room_id])[:EXPECTED_TOTAL_SAMPLES]
                 # audio16 = np.asarray(full_audio, dtype=np.int16)
                 
-                datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-                wav_filename = f"recorded_audio/ID{room_id}_{datetime_str}.wav"
-                save_wav(wav_filename, full_audio, sample_rate) #audio for testing
+                # datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                # wav_filename = f"recorded_audio/ID{room_id}_{datetime_str}.wav"
+                # save_wav(wav_filename, full_audio, sample_rate) #audio for testing
                 
                 # thread = threading.Thread(
                 #     target=inference,
