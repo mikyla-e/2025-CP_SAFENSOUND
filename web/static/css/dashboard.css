@@ -516,6 +516,7 @@ main .stats-div .top .room-stats {
     gap: 15px;
     flex-shrink: 1;
     min-width: 0;
+    overflow-y: auto;
 }
 
 main .stats-div .top .room-stat {
@@ -879,7 +880,7 @@ aside .table-div table tr:nth-child(odd),
         flex-direction: row;
         justify-content: space-around;
         gap: 15px;
-        flex-wrap: wrap;
+        /* flex-wrap: wrap; */
     }
 
     main .stats-div .top .room-stat {
