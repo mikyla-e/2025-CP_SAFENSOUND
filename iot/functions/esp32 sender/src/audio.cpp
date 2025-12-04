@@ -14,10 +14,6 @@
 #define I2S_WS 25 //LRCLK
 #define I2S_SD 32 //DOUT
 
-// #define I2S_SCK 14 //BCLK
-// #define I2S_WS 15 //LRCLK
-// #define I2S_SD 32 //DOUT
-
 static const int SAMPLE_RATE = 16000;
 #define BUFFER_SIZE 1024
 
@@ -28,35 +24,6 @@ static const int SAMPLE_RATE = 16000;
 static int16_t* full_audio = NULL;
 
 extern void prepareAudio(int16_t* audio, size_t sampleCount);
-
-static int16_t* allocateFullAudio(size_t samples) {
-    size_t bytes = samples * sizeof(int16_t);
-    size_t free_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-    size_t free_dram  = heap_caps_get_free_size(MALLOC_CAP_8BIT);
-    Serial.printf("Alloc full_audio (%u bytes). Free PSRAM=%u, DRAM=%u\n",
-                  (unsigned)bytes, (unsigned)free_psram, (unsigned)free_dram);
-
-    int16_t* ptr = nullptr;
-
-    if (psramFound() && free_psram >= bytes) {
-        ptr = (int16_t*)ps_malloc(bytes);
-        if (ptr) {
-            Serial.println("full_audio allocated in PSRAM");
-            return ptr;
-        }
-    }
-
-    if (free_dram >= bytes) {
-        ptr = (int16_t*)heap_caps_malloc(bytes, MALLOC_CAP_8BIT); // DRAM
-        if (ptr) {
-            Serial.println("full_audio allocated in DRAM");
-            return ptr;
-        }
-    }
-
-    Serial.println("full_audio allocation failed");
-    return nullptr;
-}
 
 // void printI2SRegisters() {
 //     Serial.println("\n=== I2S Register Dump ===");
@@ -77,8 +44,6 @@ static int16_t* allocateFullAudio(size_t samples) {
 // }
 
 void setupAudio(){
-    // Serial.println("\n=== I2S MICROPHONE INITIALIZATION ===");
-    
     i2s_config_t cfg = {
 		.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
 		.sample_rate = SAMPLE_RATE,
@@ -113,168 +78,140 @@ void setupAudio(){
 
 	i2s_zero_dma_buffer(I2S_PORT);
     i2s_start(I2S_PORT);
-
-    size_t rb_samples = (size_t)SAMPLE_RATE * (size_t)AUDIO_DURATION;
-    if (!full_audio) {
-        full_audio = allocateFullAudio(rb_samples);
-        if (full_audio) {
-            memset(full_audio, 0, rb_samples * sizeof(int16_t));
-        }
-    }
 }
 
 static const int FRAME_LENGTH = 1024;
 static const int HOP_LENGTH = 200;
-static const float ACTIVITY_THRESHOLD_MS = 600.0f;
-static float EMERGENCY_RMS_THRESHOLD = 400.0f;
+static const float EMERGENCY_RMS_THRESHOLD = 1200.0f;
+static const int32_t AMP_THRESHOLD = 800;
+static const float ACTIVITY_THRESHOLD = 600.0f;
+static const float MIN_ACTIVE_RATIO = 0.15f;
 
-static float dc_mean = 0.0f;
-static const float DC_ALPHA = 0.001f;
-static float noise_floor_rms = 0.0f;
-static const float NOISE_ALPHA = 0.001f;
-static const float RMS_MARGIN_MULT = 3.0f;
+static int32_t dc_offset = 0;
+static const float DC_FILTER_ALPHA = 0.995f;
 
-static int16_t frame_buffer[FRAME_LENGTH];
-static int frame_fill = 0;
-static int active_frames = 0;
-static int total_frames = 0;
-static bool activity_confirmed = false;
+enum RecordingState {
+    STATE_LISTENING,    // Waiting for amplitude trigger
+    STATE_RECORDING     // Recording 5 seconds of audio
+};
 
-static const size_t RING_BUFFER_SAMPLES = (size_t)SAMPLE_RATE * (size_t)AUDIO_DURATION;
-static size_t rb_write_idx = 0;
-static size_t rb_filled = 0;
-static bool activity_triggered = false;
+static RecordingState currentState = STATE_LISTENING;
+static int chunks_sent = 0;
 
-static bool flush_in_progress = false;
-static size_t flush_read_idx = 0;
-static size_t flush_samples_remaining = 0;
-
-float computeRMS(int16_t* buffer, int length) {
-    double sum_sq = 0.0;
-    for (int i = 0; i < length; i++) {
-        float x = (float)buffer[i];
-        dc_mean = dc_mean + DC_ALPHA * (x - dc_mean);
-        float y = x -dc_mean;
-        sum_sq += (double)y * (double)y;
-    }
-    float rms = sqrtf((float)(sum_sq / (double)length));
-
-    noise_floor_rms = noise_floor_rms + NOISE_ALPHA * (rms - noise_floor_rms);
-    EMERGENCY_RMS_THRESHOLD = max(300.0f, noise_floor_rms * RMS_MARGIN_MULT);
-    return rms;
-}
-
-static void pushSample(int16_t sample) {
-    frame_buffer[frame_fill++] = sample;
-
-    if (frame_fill >= FRAME_LENGTH) {
-        float rms = computeRMS(frame_buffer, FRAME_LENGTH);
-        if (rms > EMERGENCY_RMS_THRESHOLD) {
-            active_frames++;
-        }
-
-        total_frames++;
-        float per_frame_ms = (float)HOP_LENGTH / (float)SAMPLE_RATE * 1000.0f;
-        float active_ms = (float)active_frames * per_frame_ms;
-        if (!activity_confirmed && active_ms >= ACTIVITY_THRESHOLD_MS) {
-            activity_confirmed = true;
-            Serial.printf("Activity >= %.1f ms detected (per-frame=%.2f ms, frames=%d)\n", ACTIVITY_THRESHOLD_MS, per_frame_ms, active_frames);
-        }
-
-        memmove(frame_buffer, frame_buffer + HOP_LENGTH, (FRAME_LENGTH - HOP_LENGTH) * sizeof(int16_t));
-        frame_fill = FRAME_LENGTH - HOP_LENGTH;
+void removeDCOffset(int16_t* samples, size_t length) {
+    for (size_t i = 0; i < length; i++) {
+        dc_offset = (int32_t)(DC_FILTER_ALPHA * dc_offset + (1.0f - DC_FILTER_ALPHA) * samples[i]);
+        samples[i] = samples[i] - (int16_t)dc_offset;
     }
 }
 
-static void beginAudioFlush() {
-    if (!full_audio) return;
-
-    flush_in_progress = true;
-    flush_read_idx = rb_write_idx % RING_BUFFER_SAMPLES;
-    flush_samples_remaining = RING_BUFFER_SAMPLES;
-
-    Serial.printf("Starting audio flush: %u samples (%ds)\n", (unsigned)flush_samples_remaining, AUDIO_DURATION);
+float calculateAverageAmplitude(int16_t* samples, size_t length) {
+    if (length == 0) return 0.0f;
+    
+    float sum = 0.0f;
+    for (size_t i = 0; i < length; i++) {
+        float val = abs(samples[i]);
+        sum += val * val;
+    }
+    
+    return sqrtf(sum / length);
 }
 
-static void sendNextFlushChunk() {
-    if (!flush_in_progress || !full_audio || flush_samples_remaining == 0) return;
-
-    static int16_t chunk[CHUNK_SAMPLES];
-    size_t to_send = min((size_t)CHUNK_SAMPLES, flush_samples_remaining);
-    for (size_t i = 0; i < to_send; ++i) {
-        chunk[i] = full_audio[(flush_read_idx + i) % RING_BUFFER_SAMPLES];
-    }
-
-    prepareAudio(chunk, to_send);
-
-    flush_samples_remaining -= to_send;
-    if (flush_samples_remaining == 0) {
-        Serial.println("Audio flush completed.");
-        flush_in_progress = false;
-        active_frames = 0;
-        total_frames = 0;
-        frame_fill = 0;
-        activity_confirmed = false;
-    }
-}
-
-bool checkAudio(int16_t* full_recording, size_t total_samples) {
-    const int num_frames = (total_samples - FRAME_LENGTH) / HOP_LENGTH + 1;
-    if (num_frames <= 0) return false;
-
-    int active_frames = 0;
-
-    for (int i = 0; i< num_frames; i++) {
-        int start = i * HOP_LENGTH;
-        float rms = computeRMS(&full_recording[start], FRAME_LENGTH);
-
-        if (rms > EMERGENCY_RMS_THRESHOLD) {
-            active_frames++;
+bool hasAmplitude(int16_t* audio, size_t sampleCount) {
+    float avgAmplitude = calculateAverageAmplitude(audio, sampleCount);
+    
+    int samplesAboveThreshold = 0;
+    for (size_t i = 0; i < sampleCount; i++) {
+        if (abs(audio[i]) > AMP_THRESHOLD) {
+            samplesAboveThreshold++;
         }
     }
-
-    float active_ms = (float)active_frames * (float)HOP_LENGTH / (float)SAMPLE_RATE * 1000.0;
-
-    return (active_ms >= ACTIVITY_THRESHOLD_MS);
+    
+    float activeRatio = (float)samplesAboveThreshold / sampleCount;
+    
+    Serial.printf("Avg Amplitude: %.2f | Samples above threshold: %d/%d (%.1f%%)\n", 
+                  avgAmplitude, samplesAboveThreshold, sampleCount, activeRatio * 100);
+    
+    bool shouldSend = (avgAmplitude > AMP_THRESHOLD) || 
+                      (activeRatio > MIN_ACTIVE_RATIO);
+    
+    if (shouldSend) {
+        Serial.println("Amplitude above threshold, will send data");
+    } else {
+        Serial.println("Amplitude below threshold, will NOT send data");
+    }
+    
+    return shouldSend;
 }
+
 
 void processAudioRecording(){
+    static int16_t audio_buffer[CHUNK_SAMPLES];
+    static size_t samples_collected = 0;
+
     int32_t audio[BUFFER_SIZE];
     size_t bytes_read;
 
-    bool prepared_audio = false;
 
     esp_err_t result = i2s_read(I2S_PORT, audio, sizeof(audio), &bytes_read, portMAX_DELAY);
     if (result == ESP_OK && bytes_read > 0) {
         int samples_read = bytes_read / sizeof(int32_t);
+        int idx = 0;
 
-        for (int idx = 0; idx < samples_read; ++idx) {
-            const int SHIFT = 14;
-            int32_t s32 = audio[idx] >> SHIFT;
-            if (s32 > 32767) s32 = 32767;
-            if (s32 < -32768) s32 = -32768;
-            int16_t s16 = (int16_t)s32;
+        while (idx < samples_read) {
+            int space = CHUNK_SAMPLES - (int)samples_collected;
+            int to_copy = min(space, samples_read - idx);
 
-            pushSample(s16);
-            if (full_audio) {
-                full_audio[rb_write_idx] = s16;
-                rb_write_idx = (rb_write_idx + 1) % RING_BUFFER_SAMPLES;
-                if (rb_filled < RING_BUFFER_SAMPLES) {
-                    rb_filled++;
-                }
+            for (int i = 0; i < to_copy; ++i) {
+                const int SHIFT = 14;
+                int32_t s32 = audio[idx + i] >> SHIFT;
+                if (s32 > 32767) s32 = 32767;
+                if (s32 < -32768) s32 = -32768;
+
+                int16_t s16 = (int16_t)s32;
+                audio_buffer[samples_collected + i] = s16;
             }
+            
+            samples_collected += to_copy;
+            idx += to_copy;
 
+            if (samples_collected == CHUNK_SAMPLES) {
+                removeDCOffset(audio_buffer, CHUNK_SAMPLES);
+                switch (currentState) {
+                    case STATE_LISTENING: {
+                        bool triggered = hasAmplitude(audio_buffer, CHUNK_SAMPLES);
+                        
+                        if (triggered) {
+                            Serial.println("\nTriggered: Start 5s recording");
+                            currentState = STATE_RECORDING;
+                            chunks_sent = 0;
+                            
+                            prepareAudio(audio_buffer, CHUNK_SAMPLES);
+                            chunks_sent++;
+                            Serial.printf("Sent chunk %d/%d\n", chunks_sent, CHUNKS_PER_RECORDING);
+                        }
+                        break;
+                    }
+                    
+                    case STATE_RECORDING: {
+                        // Send all chunks for the 5-second recording period
+                        prepareAudio(audio_buffer, CHUNK_SAMPLES);
+                        chunks_sent++;
+                        Serial.printf("Sent chunk %d/%d\n", chunks_sent, CHUNKS_PER_RECORDING);
+                        
+                        // Check if 5 seconds complete
+                        if (chunks_sent >= CHUNKS_PER_RECORDING) {
+                            Serial.println("Finished 5s recording\n");
+                            currentState = STATE_LISTENING;
+                            chunks_sent = 0;
+                        }
+                        break;
+                    }
+                }
+
+                samples_collected = 0;
+
+            }
         }
-    }
-
-    if (activity_confirmed && !activity_triggered) {
-        activity_triggered = true;
-        Serial.println("Audio activity confirmed, beginning flush...");
-        beginAudioFlush();
-    }
-
-    if (flush_in_progress && !prepared_audio) {
-        sendNextFlushChunk();
-        prepared_audio = true;
     }
 }

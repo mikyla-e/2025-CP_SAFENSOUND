@@ -741,8 +741,6 @@ void setup() { // esp setup
   device_id = WiFi.macAddress();
   Serial.println("Device ID: " + device_id);
 
-  // String mac_esp = WiFi.macAddress();
-
   delay(500);
 
   loadWiFiCredentials();
