@@ -29,6 +29,11 @@ from tensorflow import keras
 # from tensorflow.keras import layers, models
 # from tensorflow.keras.utils import to_categorical
 
+try:
+    import tflite_runtime.interpreter as tflite
+except ImportError:
+    import tensorflow.lite as tflite
+
 import librosa as lb
 import sounddevice as sd
 import soundfile as sf
@@ -55,8 +60,17 @@ print("Database connected successfully.")
 
 # ml model
 # model = joblib.load("ml/ml models/mfcc_rf_model.joblib") # mfcc + random forest
-model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
+
+# model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
+
+interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite") # tflite
+interpreter.allocate_tensors()
+
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
 print("Model loaded successfully.")
+
 
 audio_data = None
 audio_wav = None
@@ -467,8 +481,13 @@ def inference(audio, wav_name, device_add=None, room_id=None):
     audio_features = extract_features(audio, sample_rate).astype(np.float32)
     features = np.expand_dims(audio_features, axis=0)
 
-    prediction = model.predict(features)
+    # prediction = model.predict(features) # cnn
     # predicted_class = prediction[0] #random forest
+
+    interpreter.set_tensor(input_details[0]['index'], features)
+    interpreter.invoke()
+    prediction = interpreter.get_tensor(output_details[0]['index']) #tflite
+
     predicted_class = np.argmax(prediction[0]) if prediction.ndim == 2 else int(prediction[0]) #cnn
 
     # alarming sound = 3 times before emergency is confirmed
