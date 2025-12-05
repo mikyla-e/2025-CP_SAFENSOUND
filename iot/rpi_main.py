@@ -37,9 +37,9 @@ import soundfile as sf
 # hardware control ---------------------------------
 from gpiozero import LED, Buzzer
 
-led_pin_1 = LED(22)
-led_pin_2 = LED(21)
-led_pin_3 = LED(19)
+led_pin_1 = LED(17)
+led_pin_2 = LED(27)
+led_pin_3 = LED(22)
 
 buzzer_pin = Buzzer(23)
 
@@ -70,7 +70,7 @@ emergency_detected = False
 alerted_rpi = False
 
 esp32_serial = None
-esp32_port = "COM9"
+esp32_port = ""
 
 disc_port = 60123
 audio_port = 54321
@@ -647,15 +647,14 @@ async def send_alert_rpi(device_add, room_id, action=None):
     from database.db_connection import Database
     get = Database()
     
-    get_device = get.fetch_device(device_add)
+    device_id = get.fetch_device(device_add)
     
-
     success_rpi = False
 
     if "Emergency Detected" in action:
         try:
             await asyncio.sleep(1)
-            match device_add:
+            match device_id:
                 case 1:
                     led1_active = True
                     led_pin_1.blink(on_time=0.5, off_time=0.5)
