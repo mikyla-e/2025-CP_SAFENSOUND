@@ -26,7 +26,8 @@ class Database:
         with self.conn:
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS device (
-                    device_id TEXT PRIMARY KEY,
+                    device_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    address TEXT NOT NULL,
                     room_id INTEGER NOT NULL DEFAULT 0,
                     FOREIGN KEY (room_id) REFERENCES room (room_id)
                 )
@@ -103,13 +104,13 @@ class Database:
                 VALUES (?, ?, ?, ?)
             ''', (action, date, time, room_id))
         
-    def assign_device(self, device_id, room_id):
+    def assign_device(self, address, room_id):
         with self.conn:
             self.conn.execute('''
-                INSERT INTO device (device_id, room_id)
+                INSERT INTO device (address, room_id)
                 VALUES (?, ?)
-                ON CONFLICT(device_id) DO UPDATE SET room_id=excluded.room_id
-            ''', (device_id, room_id))
+                ON CONFLICT(address) DO UPDATE SET room_id=excluded.room_id
+            ''', (address, room_id))
 
     #update data
     def update_room(self, room_id, new_name):
@@ -120,12 +121,12 @@ class Database:
                 WHERE room_id = ?
             ''', (new_name, room_id))
 
-    def register_device(self, device_id):
+    def register_device(self, address):
         with self.conn:
             self.conn.execute('''
-                INSERT OR IGNORE INTO device (device_id, room_id)
+                INSERT OR IGNORE INTO device (address, room_id)
                 VALUES (?, 0)
-            ''', (device_id,))
+            ''', (address,))
             self.conn.commit()
 
     #fetch and display data
@@ -142,9 +143,9 @@ class Database:
             )
             return cursor.fetchall()
         
-    def fetch_device(self, device_id: str):
+    def fetch_device(self, address: str):
         with self.conn:
-            cursor = self.conn.execute('SELECT * FROM device WHERE device_id = ?', (device_id,))
+            cursor = self.conn.execute('SELECT * FROM device WHERE address = ?', (address,))
             return cursor.fetchone()
     
     def fetch_devices(self):

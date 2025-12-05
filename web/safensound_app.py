@@ -26,7 +26,7 @@ class NewRoom(BaseModel):
     room_name: str
 
 class DeviceRegister(BaseModel):
-    device_id: str
+    address: str
 
 class DeviceAssign(BaseModel):
     room_id: int
@@ -277,39 +277,39 @@ async def delete_room(room_id: int):
 # DEVICES
 @app.post("/api/devices/register")
 async def register_device(data: DeviceRegister):
-    device_id = data.device_id.strip()
-    if not device_id:
-        raise HTTPException(status_code=400, detail="Invalid device_id")
+    address = data.address.strip()
+    if not address:
+        raise HTTPException(status_code=400, detail="Invalid address")
     try:
-        db.register_device(device_id)
-        record = db.fetch_device(device_id)
+        db.register_device(address)
+        record = db.fetch_device(address)
         room_id = record[1] if record else 0
-        return {"success": True, "device_id": device_id, "room_id": room_id}
+        return {"success": True, "address": address, "room_id": room_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/devices")
 async def list_devices():
     devices = db.fetch_devices()
-    return [{"device_id": d, "room_id": r} for d, r in devices]
+    return [{"address": d, "room_id": r} for d, r in devices]
 
-@app.post("/api/devices/{device_id}/assign_room")
-async def assign_device(device_id: str, data: DeviceAssign):
-    record = db.fetch_device(device_id)
+@app.post("/api/devices/{address}/assign_room")
+async def assign_device(address: str, data: DeviceAssign):
+    record = db.fetch_device(address)
     if record is None:
-        db.register_device(device_id)
-    db.assign_device(device_id, data.room_id)
+        db.register_device(address)
+    db.assign_device(address, data.room_id)
 
     await manager.broadcast({
         "type": "device_assigned",
-        "device_id": device_id,
+        "address": address,
         "room_id": data.room_id
     })
-    return {"success": True, "device_id": device_id, "room_id": data.room_id}
+    return {"success": True, "address": address, "room_id": data.room_id}
 
 @app.get("/api/devices/config")
-async def device_config(device_id: str):
-    record = db.fetch_device(device_id)
+async def device_config(address: str):
+    record = db.fetch_device(address)
     if record is None:
         return {"registered": False, "room_id": 0}
     _, room_id = record

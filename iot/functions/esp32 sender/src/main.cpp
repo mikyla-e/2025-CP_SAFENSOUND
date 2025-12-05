@@ -30,7 +30,7 @@ String auth_token = "";
 bool wifi_configured = false;
 unsigned long lastPoll = 0;
 const unsigned long pollIntervalMs = 10000;
-String device_id = "";
+String address = "";
 
 #define SSID_ADDR 0
 #define PASS_ADDR 32
@@ -48,7 +48,7 @@ typedef struct {
 
 AudioRecording audioRecording;
 bool audioReady = false;
-int room_id = 1;
+int room_id;
 
 /////////////////////////////////////////////////////////
 
@@ -597,7 +597,7 @@ bool postRegisterDevice() {
   String url = "http://" + laptop_ip + ":8000/api/devices/register";
 
   JsonDocument doc;
-  doc["device_id"] = device_id;
+  doc["address"] = address;
   String payload;
   serializeJson(doc, payload);
 
@@ -605,7 +605,7 @@ bool postRegisterDevice() {
   http.addHeader("Content-Type", "application/json");
   int httpResponseCode = http.POST(payload);
   if (httpResponseCode == 200) {
-    Serial.println("Device " + device_id + " registered successfully.");
+    Serial.println("Device " + address + " registered successfully.");
     http.end();
     return true;
   } else {
@@ -622,7 +622,7 @@ void pollRoomAssignment() {
   }
 
   HTTPClient http;
-  String url = "http://" + laptop_ip + ":8000/api/devices/config?device_id=" + device_id;
+  String url = "http://" + laptop_ip + ":8000/api/devices/config?address=" + address;
 
   http.begin(url);
   int httpResponseCode = http.GET();
@@ -737,8 +737,8 @@ void setup() { // esp setup
   Serial.begin(115200);
   EEPROM.begin(512);
 
-  device_id = WiFi.macAddress();
-  Serial.println("Device ID: " + device_id);
+  address = WiFi.macAddress();
+  Serial.println("Device ID: " + address);
 
   delay(500);
 
@@ -799,11 +799,11 @@ void sendData() {
         return;
       }
 
-      memcpy(buffer, &room_id, 4);
-      memcpy(buffer + 4, &audioRecording.timestamp, 4);
-      memcpy(buffer + 8, &samplesToSend, 4);
-      memcpy(buffer + 12, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
-
+      memcpy(buffer, &address, 4);
+      memcpy(buffer + 4, &room_id, 4);
+      memcpy(buffer + 8, &audioRecording.timestamp, 4);
+      memcpy(buffer + 12, &samplesToSend, 4);
+      memcpy(buffer + 16, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
       udp.beginPacket(laptop_ip.c_str(), audio_port);
       udp.write(buffer, packetSize);
       udp.endPacket();
