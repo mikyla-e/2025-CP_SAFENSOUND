@@ -49,7 +49,6 @@ typedef struct {
 AudioRecording audioRecording;
 bool audioReady = false;
 int room_id = 1;
-const int esp_id = 1;
 
 /////////////////////////////////////////////////////////
 

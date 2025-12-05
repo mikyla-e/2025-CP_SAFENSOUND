@@ -17,8 +17,6 @@ const unsigned long BLINK_INTERVAL = 500;
 bool lowState = false;
 int roomID;
 
-
-
 void setup() {
   Serial.begin(115200);
   pinMode(BUZZER_PIN, OUTPUT);

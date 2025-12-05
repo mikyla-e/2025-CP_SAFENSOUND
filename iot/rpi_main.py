@@ -165,28 +165,28 @@ def init_esp32_serial():
 
 
 # audio recording and receiving --------------------
-def get_audio_local():
-    date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+# def get_audio_local():
+#     date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    try:
-        print("/" * 60 + "\n")
-        print(f"Recording audio... at {date_time}")
-        audio = sd.rec(int(audio_duration * sample_rate), samplerate=sample_rate, channels=1)
-        sd.wait()
+#     try:
+#         print("/" * 60 + "\n")
+#         print(f"Recording audio... at {date_time}")
+#         audio = sd.rec(int(audio_duration * sample_rate), samplerate=sample_rate, channels=1)
+#         sd.wait()
 
-        audio_folder = "recorded_audio"
-        if not os.path.exists(audio_folder):
-            os.makedirs(audio_folder)
+#         audio_folder = "recorded_audio"
+#         if not os.path.exists(audio_folder):
+#             os.makedirs(audio_folder)
         
-        audio_wav = os.path.join(audio_folder, f"recording_{date_time}.wav")
-        sf.write(audio_wav, audio, sample_rate)
-        print(f"Audio recorded and saved as {audio_wav}")
+#         audio_wav = os.path.join(audio_folder, f"recording_{date_time}.wav")
+#         sf.write(audio_wav, audio, sample_rate)
+#         print(f"Audio recorded and saved as {audio_wav}")
 
-    except Exception as e:
-        print("Audio recording failed:", e)
-        return None, None
+#     except Exception as e:
+#         print("Audio recording failed:", e)
+#         return None, None
 
-    return audio.flatten(), audio_wav
+#     return audio.flatten(), audio_wav
 
 
 def receive_audio_data():
