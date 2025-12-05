@@ -25,7 +25,7 @@ const uint16_t timeoutMs = 4000;
 
 String stored_ssid = "";
 String stored_password = "";
-String laptop_ip = "";
+String rpi_ip = "";
 String auth_token = "";
 bool wifi_configured = false;
 unsigned long lastPoll = 0;
@@ -68,7 +68,7 @@ void saveRoomID() {
 void saveWiFiCredentials() {
   EEPROM.writeString(SSID_ADDR, stored_ssid);
   EEPROM.writeString(PASS_ADDR, stored_password);
-  EEPROM.writeString(IP_ADDR, laptop_ip);
+  EEPROM.writeString(IP_ADDR, rpi_ip);
   EEPROM.writeBool(CONFIG_FLAG_ADDR, true);
   EEPROM.commit();
 
@@ -82,7 +82,7 @@ void loadWiFiCredentials() {
   if (wifi_configured) {
     stored_ssid = EEPROM.readString(SSID_ADDR);
     stored_password = EEPROM.readString(PASS_ADDR);
-    laptop_ip = EEPROM.readString(IP_ADDR);
+    rpi_ip = EEPROM.readString(IP_ADDR);
     
     Serial.println("📖 Loaded saved credentials");
   }
@@ -589,12 +589,12 @@ void handleCSS() {
 /////////////////////////////////////////////////////////
 
 bool postRegisterDevice() {
-  if (laptop_ip.length() == 0) {
+  if (rpi_ip.length() == 0) {
     Serial.println("Missing data for registration.");
     return false;
   }
   HTTPClient http;
-  String url = "http://" + laptop_ip + ":8000/api/devices/register";
+  String url = "http://" + rpi_ip + ":8000/api/devices/register";
 
   JsonDocument doc;
   doc["address"] = address;
@@ -616,13 +616,13 @@ bool postRegisterDevice() {
 }
 
 void pollRoomAssignment() {
-  if (laptop_ip.length() == 0) {
-    Serial.println("No laptop IP for polling.");
+  if (rpi_ip.length() == 0) {
+    Serial.println("No RPI IP for polling.");
     return;
   }
 
   HTTPClient http;
-  String url = "http://" + laptop_ip + ":8000/api/devices/config?address=" + address;
+  String url = "http://" + rpi_ip + ":8000/api/devices/config?address=" + address;
 
   http.begin(url);
   int httpResponseCode = http.GET();
@@ -670,7 +670,7 @@ void startCaptivePortal() {
 
 }
 
-bool discoverLaptopIP(){
+bool discoverRPIIP(){
   WiFiUDP discIP;
   const uint16_t srcPort = 61234;
   const char* msg = "DISCOVER_MAIN_DEVICE";
@@ -705,10 +705,10 @@ bool discoverLaptopIP(){
         String ip = s.substring(strlen("MAIN_DEVICE_HERE:"));
         ip.trim();
         if (ip.length()) {
-          laptop_ip = ip;
-          EEPROM.writeString(IP_ADDR, laptop_ip);
+          rpi_ip = ip;
+          EEPROM.writeString(IP_ADDR, rpi_ip);
           EEPROM.commit();
-          Serial.printf("Discovery: Saving %s as Laptop IP.\n", laptop_ip.c_str());
+          Serial.printf("Discovery: Saving %s as RPI IP.\n", rpi_ip.c_str());
           discIP.stop();
           return true;
         }
@@ -725,8 +725,8 @@ bool discoverLaptopIP(){
 }
 
 // bool getDeviceConfig() {
-//   if (laptop_ip.length() == 0) {
-//     Serial.println("No laptop ip.");
+//   if (rpi_ip.length() == 0) {
+//     Serial.println("No RPI ip.");
 //     return false;
 //   }
 // }
@@ -750,14 +750,14 @@ void setup() { // esp setup
     Serial.println("Room ID: " + String(room_id));
 
     delay(500);
-    if (laptop_ip.length() == 0 || laptop_ip == "0.0.0.0") {
-      while (!discoverLaptopIP()){
-        Serial.println("Discovering Laptop IP failed.");
+    if (rpi_ip.length() == 0 || rpi_ip == "0.0.0.0") {
+      while (!discoverRPIIP()){
+        Serial.println("Discovering RPI IP failed.");
       }
     } else {
-      while (!discoverLaptopIP()) {
+      while (!discoverRPIIP()) {
         Serial.println("Discovery failed... trying again.");
-        discoverLaptopIP();
+        discoverRPIIP();
       }
     }
 
@@ -766,7 +766,7 @@ void setup() { // esp setup
       delay(5000);
     }
 
-    Serial.println("Laptop IP: " + laptop_ip);
+    Serial.println("RPI IP: " + rpi_ip);
     udp.begin(audio_port);
     setupAudio();
     setupResetButton();
@@ -804,7 +804,7 @@ void sendData() {
       memcpy(buffer + 8, &audioRecording.timestamp, 4);
       memcpy(buffer + 12, &samplesToSend, 4);
       memcpy(buffer + 16, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
-      udp.beginPacket(laptop_ip.c_str(), audio_port);
+      udp.beginPacket(rpi_ip.c_str(), audio_port);
       udp.write(buffer, packetSize);
       udp.endPacket();
       
@@ -840,12 +840,12 @@ void sendResetSignal() {
     Serial.println("WiFi not connected!");
     return;
   }
-  if (laptop_ip.length() == 0 || laptop_ip == "0.0.0.0") {
-    Serial.println("Invalid laptop IP!");
+  if (rpi_ip.length() == 0 || rpi_ip == "0.0.0.0") {
+    Serial.println("Invalid RPI IP!");
     return;
   }
   
-  udp.beginPacket(laptop_ip.c_str(), reset_port);
+  udp.beginPacket(rpi_ip.c_str(), reset_port);
   
   JsonDocument jsonDoc;
   jsonDoc["roomID"] = room_id;

@@ -83,8 +83,8 @@ nonemergency_count = 0
 emergency_detected = False
 alerted_rpi = False
 
-esp32_serial = None
-esp32_port = ""
+# esp32_serial = None
+# esp32_port = ""
 
 disc_port = 60123
 audio_port = 54321
@@ -93,12 +93,12 @@ reset_port = 58080
 
 stop_event = threading.Event()
 
-class LaptopDiscoverServer:
+class RPIDiscoverServer:
     def __init__(self):
         self.running = True
-        self.laptop_ip = self.get_laptop_ip()
+        self.RPI_ip = self.get_RPI_ip()
 
-    def get_laptop_ip(self):
+    def get_RPI_ip(self):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
@@ -106,7 +106,7 @@ class LaptopDiscoverServer:
             s.close()
             return ip
         except Exception as e:
-            print("Error getting laptop IP:", e)
+            print("Error getting RPI IP:", e)
             return "localhost"
         
     def discovery_listener(self):
@@ -114,7 +114,7 @@ class LaptopDiscoverServer:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(('0.0.0.0', disc_port))
 
-        print(f"Discovery server listening on {self.laptop_ip}:{disc_port}")
+        print(f"Discovery server listening on {self.RPI_ip}:{disc_port}")
 
         while self.running and not stop_event.is_set():
             try:
@@ -123,9 +123,9 @@ class LaptopDiscoverServer:
                 print(f"Received discovery message from {addr[0]}: {message}")
 
                 if message == "DISCOVER_MAIN_DEVICE":
-                    response = f"MAIN_DEVICE_HERE:{self.laptop_ip}"
+                    response = f"MAIN_DEVICE_HERE:{self.RPI_ip}"
                     sock.sendto(response.encode('utf-8'), addr)
-                    print(f"Sent response to {addr[0]}: {self.laptop_ip}")
+                    print(f"Sent response to {addr[0]}: {self.RPI_ip}")
             
             except Exception as e:
                 if self.running:
@@ -136,7 +136,7 @@ class LaptopDiscoverServer:
     def start(self):
         discovery_thread = threading.Thread(target=self.discovery_listener, daemon=True)
         discovery_thread.start()
-        print(f"Discovery server started on {self.laptop_ip}:{disc_port}.")
+        print(f"Discovery server started on {self.RPI_ip}:{disc_port}.")
 
         return discovery_thread
     
@@ -144,33 +144,32 @@ class LaptopDiscoverServer:
         self.running = False
         print("Discovery listener stopped.")
 
-def init_esp32_serial():
-    global esp32_serial
+# def init_esp32_serial():
+#     global esp32_serial
 
-    try:
-        esp32_serial = serial.Serial(esp32_port, 115200, timeout=1)
-        time.sleep(2)
-        print(f"Connected to ESP32 on {esp32_port}")
+#     try:
+#         esp32_serial = serial.Serial(esp32_port, 115200, timeout=1)
+#         time.sleep(2)
+#         print(f"Connected to ESP32 on {esp32_port}")
 
-        ready = False
-        for _ in range(11):
-            line = esp32_serial.readline().decode('utf-8').strip()
-            if "Receiver ready!" in line:
-                print(f"Received from ESP32: {line}")
-                ready = True
-                break
-            time.sleep(0.5)
-        if not ready:
-            print("ESP32 did not send 'Receiver ready!' message.")
-            return False
+#         ready = False
+#         for _ in range(11):
+#             line = esp32_serial.readline().decode('utf-8').strip()
+#             if "Receiver ready!" in line:
+#                 print(f"Received from ESP32: {line}")
+#                 ready = True
+#                 break
+#             time.sleep(0.5)
+#         if not ready:
+#             print("ESP32 did not send 'Receiver ready!' message.")
+#             return False
         
-        return True
+#         return True
 
-    except Exception as e:
-        print(f"Failed to connect to ESP32 on {esp32_port}: {e}")
-        esp32_serial = None
-        return False
-
+#     except Exception as e:
+#         print(f"Failed to connect to ESP32 on {esp32_port}: {e}")
+#         esp32_serial = None
+#         return False
 
 # audio recording and receiving --------------------
 # def get_audio_local():
@@ -530,7 +529,7 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 
 # alarm triggering -----------------------------------
 def trigger_alarm(device_add=None, room_id=None):
-    global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_esp32, success_rpi
+    global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_rpi
 
     alarming_count = 0
     emergency_count = 0
@@ -559,7 +558,7 @@ def trigger_alarm(device_add=None, room_id=None):
                     success_web = asyncio.run(send_alert_web(room_id, action))
                     # success_esp32 = asyncio.run(send_alert_esp(room_id, action))
                     
-                    if retry == 3 and not success_rpi and not success_web:
+                    if retry > 3:
                         print("Failed to send alert after 3 attempts.")
 
         except Exception as e:
@@ -609,53 +608,53 @@ async def send_reset_web(room_id, action=None):
     
     return success_web
 
-async def send_alert_esp(room_id, action=None):
-    success_esp32 = False
+# async def send_alert_esp(room_id, action=None):
+#     success_esp32 = False
 
-    if "Emergency Detected" in action:
-        try:
-            if esp32_serial and esp32_serial.is_open:
-                command = f"ALERT: {room_id}\n"
-                esp32_serial.write(command.encode())
+#     if "Emergency Detected" in action:
+#         try:
+#             if esp32_serial and esp32_serial.is_open:
+#                 command = f"ALERT: {room_id}\n"
+#                 esp32_serial.write(command.encode())
 
-                responses = []
-                responses.append(esp32_serial.readline().decode().strip())
-                if responses:
-                    for response in responses:
-                        print(f"Received from ESP32: {response}")
+#                 responses = []
+#                 responses.append(esp32_serial.readline().decode().strip())
+#                 if responses:
+#                     for response in responses:
+#                         print(f"Received from ESP32: {response}")
 
-                success_esp32 = True
-            else:
-                print("Serial port not open.")
+#                 success_esp32 = True
+#             else:
+#                 print("Serial port not open.")
 
-        except Exception as e:
-            print("Failed to send alert to ESP32 receiver:", e)
+#         except Exception as e:
+#             print("Failed to send alert to ESP32 receiver:", e)
 
-    return success_esp32
+#     return success_esp32
 
 
-async def send_reset_esp(room_id, action=None):
-    success_esp32 = False
+# async def send_reset_esp(room_id, action=None):
+#     success_esp32 = False
 
-    if "Alert Acknowledged" in action:
-        try:
-            if esp32_serial and esp32_serial.is_open:
-                command = f"RESET: {room_id}\n"
-                esp32_serial.write(command.encode())
+#     if "Alert Acknowledged" in action:
+#         try:
+#             if esp32_serial and esp32_serial.is_open:
+#                 command = f"RESET: {room_id}\n"
+#                 esp32_serial.write(command.encode())
                 
-                responses = []
-                responses.append(esp32_serial.readline().decode().strip())
-                if responses:
-                    for response in responses:
-                        print(f"Received from ESP32: {response}")
+#                 responses = []
+#                 responses.append(esp32_serial.readline().decode().strip())
+#                 if responses:
+#                     for response in responses:
+#                         print(f"Received from ESP32: {response}")
 
-                success_esp32 = True
-            else:
-                print("Serial port not open.")
-        except Exception as e:
-            print("Failed to send reset command to ESP32 receiver:", e)
+#                 success_esp32 = True
+#             else:
+#                 print("Serial port not open.")
+#         except Exception as e:
+#             print("Failed to send reset command to ESP32 receiver:", e)
     
-    return success_esp32
+#     return success_esp32
 
 led1_active = False
 led2_active = False
@@ -729,13 +728,11 @@ async def main_loop():
         await asyncio.sleep(1)
 
 if __name__ == "__main__":
-    if not init_esp32_serial():
-        print("Exiting due to Receiver connection failure.")
-        exit(1)
+    # if not init_esp32_serial():
+    #     print("Exiting due to Receiver connection failure.")
+    #     exit(1)
 
-    print("Receiver connected successfully.")
-
-    discovery_server = LaptopDiscoverServer()
+    discovery_server = RPIDiscoverServer()
     discovery_server.start()
     
     audio_thread = threading.Thread(target=receive_audio_data, daemon=True)
@@ -745,7 +742,7 @@ if __name__ == "__main__":
     reset_thread.start()
     
     print("=" * 60)
-    print(f"LAPTOP IP: {discovery_server.laptop_ip}")
+    print(f"Raspberry Pi IP: {discovery_server.RPI_ip}")
     print("=" * 60)
 
     print("System is running.\n")
@@ -755,7 +752,7 @@ if __name__ == "__main__":
 
         # trigger = 0
         # while True:
-        #     # Main loop for laptop recording
+        #     # Main loop for RPI recording
         #     # audio_data, audio_wav = get_audio_local()
         #     # if audio_data is not None and audio_wav is not None:
         #     #     inference(audio_data, audio_wav)
@@ -809,7 +806,7 @@ if __name__ == "__main__":
         discovery_server.stop()
         audio_thread.join()
         reset_thread.join()
-        if esp32_serial and esp32_serial.is_open:
-            esp32_serial.close()
+        # if esp32_serial and esp32_serial.is_open:
+        #     esp32_serial.close()
         print("\nPorts closed successfully.")
 
