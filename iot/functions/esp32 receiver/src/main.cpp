@@ -11,10 +11,6 @@ bool led2Active = false;
 bool led3Active = false;
 const unsigned long ALARM_DURATION = 120000; // 120 seconds
 
-unsigned long currentMS = 0;
-unsigned long lastBlink = 0;
-const unsigned long BLINK_INTERVAL = 500;
-bool lowState = false;
 int roomID;
 
 void setup() {
@@ -107,6 +103,11 @@ void processCommand() {
 // }
 
 ///////////////////////////////////////////////////////////////
+
+unsigned long currentMS = 0;
+unsigned long lastBlink = 0;
+const unsigned long BLINK_INTERVAL = 500;
+bool lowState = false;
 
 void loop() { 
   processCommand();

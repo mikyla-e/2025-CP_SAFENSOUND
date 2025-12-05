@@ -8,6 +8,6 @@ void processAudioRecording();
 float calculateAverageAmplitude(int16_t* samples, size_t length);
 bool hasAmplitude(int16_t* audio, size_t sampleCount);
 
-extern void prepareAudio(int16_t* audio, size_t sampleCount);
+void prepareAudio(int16_t* audio, size_t sampleCount);
 
 #endif

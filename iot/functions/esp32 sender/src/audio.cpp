@@ -42,6 +42,7 @@ extern void prepareAudio(int16_t* audio, size_t sampleCount);
 //     bool tx_start = (*I2S_CONF_REG) & (1 << 10);
 //     Serial.printf("RX_START bit: %d, TX_START bit: %d\n", rx_start, tx_start);
 // }
+extern void sendData(int16_t* audio, size_t sampleCount, int chunkIndex, int totalChunks);
 
 void setupAudio(){
     i2s_config_t cfg = {
