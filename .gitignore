@@ -10,3 +10,5 @@
 /database/__pycache__
 /web/__pycache__
 *.pyc
+*.pyc
+/database/__pycache__

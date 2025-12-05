@@ -25,17 +25,14 @@ import numpy as np
 # import seaborn as sns
 
 # import tensorflow as tf
-from tensorflow import keras
+# from tensorflow import keras
 # from tensorflow.keras import layers, models
 # from tensorflow.keras.utils import to_categorical
 
-try:
-    import tflite_runtime.interpreter as tflite
-except ImportError:
-    import tensorflow.lite as tflite
+import tflite_runtime.interpreter as tflite
 
 import librosa as lb
-import sounddevice as sd
+# import sounddevice as sd
 import soundfile as sf
 
 
@@ -63,11 +60,24 @@ print("Database connected successfully.")
 
 # model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
 
-interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite") # tflite
-interpreter.allocate_tensors()
+# interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite") # tflite
+# interpreter.allocate_tensors()
 
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+# input_details = interpreter.get_input_details()
+# output_details = interpreter.get_output_details()
+
+model = tf.keras.models.load_model("ml/ml models/lsms_cnn_model.keras")
+
+# Convert with compatibility settings
+converter = tf.lite.TFLiteConverter.from_keras_model(model)
+converter.target_spec.supported_ops = [
+    tf.lite.OpsSet.TFLITE_BUILTINS,  # Use older compatible ops
+]
+tflite_model = converter.convert()
+
+# Save the new model
+with open("ml/ml models/lsms_cnn_model_compatible.tflite", "wb") as f:
+    f.write(tflite_model)
 
 print("Model loaded successfully.")
 
@@ -546,7 +556,7 @@ def trigger_alarm(device_add=None, room_id=None):
                 success_web = asyncio.run(send_alert_web(room_id, action))
                 success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
                 
-                if success_esp32 and success_web:
+                if success_rpi and success_web:
                     print(f"Sent emergency alert from Room {room_id}")
                     break
                 else:
