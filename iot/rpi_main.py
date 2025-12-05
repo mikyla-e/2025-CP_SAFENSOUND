@@ -35,22 +35,14 @@ import soundfile as sf
 
 
 # hardware control ---------------------------------
-# import RPi.GPIO as GPIO
+from gpiozero import LED, Buzzer
 
-# GPIO setup ---------------------------------------
-# GPIO.setmode(GPIO.BOARD)
-# GPIO.setmode(GPIO.BCM)
+led_pin_1 = LED(22)
+led_pin_2 = LED(21)
+led_pin_3 = LED(19)
 
-# light_pin_1 =
-# light_pin_2 = 
-# light_pin_3 =
+buzzer_pin = Buzzer(23)
 
-# buzzer_pin =
-
-# reset_pin =
-
-# GPIO.setup([light_pin_1, light_pin_2, light_pin_3, buzzer_pin], GPIO.OUT)
-# GPIO.setup(reset_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 # functions -----------------------------------------
 
@@ -75,6 +67,7 @@ alarming_count = 0
 emergency_count = 0
 nonemergency_count = 0
 emergency_detected = False
+alerted_rpi = False
 
 esp32_serial = None
 esp32_port = "COM9"
@@ -166,28 +159,28 @@ def init_esp32_serial():
 
 
 # audio recording and receiving --------------------
-def get_audio_local():
-    date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+# def get_audio_local():
+#     date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    try:
-        print("/" * 60 + "\n")
-        print(f"Recording audio... at {date_time}")
-        audio = sd.rec(int(audio_duration * sample_rate), samplerate=sample_rate, channels=1)
-        sd.wait()
+#     try:
+#         print("/" * 60 + "\n")
+#         print(f"Recording audio... at {date_time}")
+#         audio = sd.rec(int(audio_duration * sample_rate), samplerate=sample_rate, channels=1)
+#         sd.wait()
 
-        audio_folder = "recorded_audio"
-        if not os.path.exists(audio_folder):
-            os.makedirs(audio_folder)
+#         audio_folder = "recorded_audio"
+#         if not os.path.exists(audio_folder):
+#             os.makedirs(audio_folder)
         
-        audio_wav = os.path.join(audio_folder, f"recording_{date_time}.wav")
-        sf.write(audio_wav, audio, sample_rate)
-        print(f"Audio recorded and saved as {audio_wav}")
+#         audio_wav = os.path.join(audio_folder, f"recording_{date_time}.wav")
+#         sf.write(audio_wav, audio, sample_rate)
+#         print(f"Audio recorded and saved as {audio_wav}")
 
-    except Exception as e:
-        print("Audio recording failed:", e)
-        return None, None
+#     except Exception as e:
+#         print("Audio recording failed:", e)
+#         return None, None
 
-    return audio.flatten(), audio_wav
+#     return audio.flatten(), audio_wav
 
 
 def receive_audio_data():
@@ -208,42 +201,15 @@ def receive_audio_data():
         try:
             data, addr = sock.recvfrom(65536)
 
-            if len(data) < 20:
+            if len(data) < 16:
                 print(f"Received packet too small from {addr}: {len(data)} bytes")
                 continue
 
-            payload_len = len(data) - 20
-            if payload_len < 0 or (payload_len % 2) != 0:
-                print(f"Invalid packet length from {addr}: {len(data)} (payload {payload_len})")
-                continue
-
-            print("Header bytes:", data[:20].hex())
-
-            try:
-                room_id, timestamp, chunk_index, total_chunks, chunk_samples = struct.unpack('<IIIII', data[:20])
-            except struct.error as e:
-                print(f"Header unpack error from {addr}: {e}")
-                continue
-
-            # room_id = int.from_bytes(data[0:4], 'little')
-            # timestamp = int.from_bytes(data[4:8], 'little')
-            # chunk_index = int.from_bytes(data[8:12], 'little')
-            # total_chunks = int.from_bytes(data[12:16], 'little')
-            # chunk_samples = int.from_bytes(data[16:20], 'little')
+            device_add = int.from_bytes(data[0:4], 'little')
+            room_id = int.from_bytes(data[4:8], 'little')
+            timestamp = int.from_bytes(data[8:12], 'little')
+            chunk_samples = int.from_bytes(data[12:16], 'little')
             
-
-            if room_id is None or timestamp is None or chunk_index is None or total_chunks is None or chunk_samples is None:
-                print(f"Incomplete data received from {addr}: Room ID{room_id}")
-                continue
-
-            if chunk_samples <= 0 or chunk_samples > 16000:
-                print(f"Invalid chunk size from Room ID {room_id}: {chunk_samples} samples")
-                continue
-
-            if payload_len != chunk_samples * 2:
-                print(f"Payload/sample mismatch from Room ID {room_id}: payload={payload_len} bytes, samples={chunk_samples}")
-                continue
-
             get_room = get.fetch_rooms()
             rooms_list = [room[0] for room in get_room]
 
@@ -251,7 +217,15 @@ def receive_audio_data():
                 print(f"Unknown room ID from {addr}: Room ID {room_id}")
                 continue
 
-            audio_chunk = np.frombuffer(data[20:], dtype=np.int16)
+            if device_add is None or room_id is None or timestamp is None or chunk_samples is None:
+                print(f"Incomplete data received from {addr}: Room ID{room_id}")
+                continue
+
+            if chunk_samples <= 0 or chunk_samples > 16000:
+                print(f"Invalid chunk size from Room ID {room_id}: {chunk_samples} samples")
+                continue
+
+            audio_chunk = np.frombuffer(data[16:], dtype=np.int16)
 
             if room_id not in audio_chunks:
                 audio_chunks[room_id] = []
@@ -274,7 +248,7 @@ def receive_audio_data():
                 # )
                 thread = threading.Thread(
                     target=process_audio,
-                    args=(full_audio, room_id, timestamp)
+                    args=(full_audio, device_add, room_id, timestamp)
                 )
                 thread.start()
 
@@ -324,18 +298,20 @@ def receive_reset_signals():
                 retry = 0
                 try:
                     while retry < 3:
+                        success_rpi = asyncio.run(send_reset_rpi(room_id, operation))
                         success_web = asyncio.run(send_reset_web(room_id, operation))
-                        success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
-                        if success_esp32 and success_web:
+                        # success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
+                        if success_rpi and success_web:
                             print(f"Sent reset command from Room {room_id}")
                             break
                         else:
                             print("Failed to send reset command. Retrying...")
                             sleep(2)
                             retry += 1
+                            success_rpi = asyncio.run(send_reset_rpi(room_id, operation))
                             success_web = asyncio.run(send_reset_web(room_id, operation))
-                            success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
-                            if retry == 3 and not success_web and not success_esp32:
+                            # success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
+                            if retry == 3 and not success_web and not success_rpi:
                                 print("Failed to send reset command after 3 attempts.")
                 except Exception as e:
                     print(f"Error sending reset command: {e}")
@@ -373,7 +349,7 @@ loudness_threshold = 6000
 loud_threshold_ms = 5000 #5 seconds
 loud_duration_ms = 0
 
-def process_audio(audio_data_int16, room_id=None, timestamp=None):
+def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=None):
     global loud_duration_ms
     frame_length = 1024
     hop_length = 200
@@ -394,7 +370,7 @@ def process_audio(audio_data_int16, room_id=None, timestamp=None):
 
     try:
         if active_ms >= 600:
-            inference(y_i16, f"Room{room_id}_{timestamp}", room_id)
+            inference(y_i16, f"Room{room_id}_{timestamp}", device_add, room_id)
             return True
         # if active_ms >= 4500:
         #     trigger_alarm(room_id)
@@ -482,7 +458,7 @@ def extract_features(audio, sample_rate, hop_length=200, win_length=400,frame_ms
 
     # return np.concatenate(extracted_features)
 
-def inference(audio, wav_name, room_id=None):
+def inference(audio, wav_name, device_add=None, room_id=None):
     global emergency_count, alarming_count, nonemergency_count, emergency_detected
 
     # print(f"\nProcessing audio for inference: {wav_name}")
@@ -506,22 +482,22 @@ def inference(audio, wav_name, room_id=None):
 
         if alarming_count >= 3:
             emergency_detected = True
-            trigger_alarm(room_id)
+            trigger_alarm(device_add, room_id)
         
         elif alarming_count >= 1 and emergency_count >= 2:
             emergency_detected = True
-            trigger_alarm(room_id)
+            trigger_alarm(device_add, room_id)
 
     elif predicted_class == 2:
         emergency_count += 1
         print("EMERGENCY sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
         if emergency_count >= 2:
             emergency_detected = True
-            trigger_alarm(room_id)
+            trigger_alarm(device_add, room_id)
 
         elif emergency_count >= 1 and alarming_count >= 2:
             emergency_detected = True
-            trigger_alarm(room_id)
+            trigger_alarm(device_add, room_id)
 
     elif predicted_class == 0:
         print("No emergency detected.")
@@ -534,8 +510,8 @@ def inference(audio, wav_name, room_id=None):
 
 
 # alarm triggering -----------------------------------
-def trigger_alarm(room_id=None):
-    global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_esp32
+def trigger_alarm(device_add=None, room_id=None):
+    global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_esp32, success_rpi
 
     alarming_count = 0
     emergency_count = 0
@@ -548,8 +524,9 @@ def trigger_alarm(room_id=None):
         try:
             retry = 0
             while retry < 3:
-                success_esp32 = asyncio.run(send_alert_esp(room_id, action))
+                # success_esp32 = asyncio.run(send_alert_esp(room_id, action))
                 success_web = asyncio.run(send_alert_web(room_id, action))
+                success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
                 
                 if success_esp32 and success_web:
                     print(f"Sent emergency alert from Room {room_id}")
@@ -559,9 +536,11 @@ def trigger_alarm(room_id=None):
                     sleep(2)
 
                     retry += 1
+                    success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
                     success_web = asyncio.run(send_alert_web(room_id, action))
-                    success_esp32 = asyncio.run(send_alert_esp(room_id, action))
-                    if retry == 3 and not success_esp32 and not success_web:
+                    # success_esp32 = asyncio.run(send_alert_esp(room_id, action))
+                    
+                    if retry == 3 and not success_rpi and not success_web:
                         print("Failed to send alert after 3 attempts.")
 
         except Exception as e:
@@ -587,6 +566,28 @@ async def send_alert_web(room_id, action=None):
         except Exception as e:
             print("Failed to send alert to Web Dashboard:", e)
 
+    return success_web
+
+
+async def send_reset_web(room_id, action=None):
+    success_web = False
+
+    if "Alert Acknowledged" in action:
+        try:
+            payload_web = {
+                "room_id": room_id,
+                "action": action
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post("http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
+                    if response.status == 200:
+                        print(f"Reset command sent to Web Dashboard for Room {room_id}")
+                        success_web = True
+
+        except Exception as e:
+            print("Failed to send reset command to Web Dashboard:", e)
+    
     return success_web
 
 async def send_alert_esp(room_id, action=None):
@@ -637,29 +638,73 @@ async def send_reset_esp(room_id, action=None):
     
     return success_esp32
 
-async def send_reset_web(room_id, action=None):
-    success_web = False
+led1_active = False
+led2_active = False
+led3_active = False
+
+async def send_alert_rpi(device_add, room_id, action=None):
+    global alerted_rpi, led1_active, led2_active, led3_active
+    from database.db_connection import Database
+    get = Database()
+    
+    get_device = get.fetch_device(device_add)
+    
+
+    success_rpi = False
+
+    if "Emergency Detected" in action:
+        try:
+            await asyncio.sleep(1)
+            match device_add:
+                case 1:
+                    led1_active = True
+                    led_pin_1.blink(on_time=0.5, off_time=0.5)
+                case 2:
+                    led2_active = True
+                    led_pin_2.blink(on_time=0.5, off_time=0.5)
+                case 3:
+                    led3_active = True
+                    led_pin_3.blink(on_time=0.5, off_time=0.5)
+
+            if alerted_rpi is False and (led1_active or led2_active or led3_active):
+                alerted_rpi = True
+                buzzer_pin.beep(on_time=0.5, off_time=0.5)
+        except Exception as e:
+            print("Failed to send alert to Raspberry Pi:", e)
+
+    return success_rpi
+
+
+async def send_reset_rpi(device_add, room_id, action=None):
+    global alerted_rpi, led1_active, led2_active, led3_active
+    success_rpi = False
 
     if "Alert Acknowledged" in action:
         try:
-            payload_web = {
-                "room_id": room_id,
-                "action": action
-            }
+            match device_add:
+                case 1:
+                    led1_active = False
+                    led_pin_1.off()
+                case 2:
+                    led2_active = False
+                    led_pin_2.off()
+                case 3:
+                    led3_active = False
+                    led_pin_3.off()
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post("http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
-                    if response.status == 200:
-                        print(f"Reset command sent to Web Dashboard for Room {room_id}")
-                        success_web = True
-
+            if (not led1_active and not led2_active and not led3_active):
+                alerted_rpi = False
+                buzzer_pin.off()
         except Exception as e:
-            print("Failed to send reset command to Web Dashboard:", e)
+            print("Failed to send reset command to ESP32 receiver:", e)
     
-    return success_web
+    return success_rpi
     
 
 # main loop -----------------------------------------
+# current_ms = lambda: int(round(time.time() * 1000))
+# last_blink = 0
+# interval = 500
 
 async def main_loop():
     while not stop_event.is_set():
@@ -689,6 +734,7 @@ if __name__ == "__main__":
 
     try:
         asyncio.run(main_loop())
+
         # trigger = 0
         # while True:
         #     # Main loop for laptop recording

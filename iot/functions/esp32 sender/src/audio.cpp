@@ -17,9 +17,9 @@
 static const int SAMPLE_RATE = 16000;
 #define BUFFER_SIZE 1024
 
-#define CHUNK_DURATION 1
-#define CHUNK_SAMPLES (SAMPLE_RATE * CHUNK_DURATION)
-#define TOTAL_CHUNKS 5
+#define AUDIO_DURATION 5
+#define CHUNK_SAMPLES 1600
+#define CHUNKS_PER_RECORDING (SAMPLE_RATE * AUDIO_DURATION / CHUNK_SAMPLES)
 
 static int16_t* full_audio = NULL;
 
@@ -66,179 +66,136 @@ void setupAudio(){
 
 static const int FRAME_LENGTH = 1024;
 static const int HOP_LENGTH = 200;
-static const float ACTIVITY_THRESHOLD_MS = 400.0f;
-static float EMERGENCY_RMS_THRESHOLD = 400.0f;
+static const float EMERGENCY_RMS_THRESHOLD = 1200.0f;
+static const int32_t AMP_THRESHOLD = 1000;
+static const float ACTIVITY_THRESHOLD = 600.0f;
+static const float MIN_ACTIVE_RATIO = 0.15f;
 
-static int16_t* chunk_buffer = NULL;
-static size_t chunk_samples_recorded = 0;
-static int current_chunk = 0;
-static uint32_t recording_session_id = 0;
+static int32_t dc_offset = 0;
+static const float DC_FILTER_ALPHA = 0.995f;
 
-float analyzeAudioActivity(int16_t* audio_data, size_t sample_count) {
-    // Convert to float and normalize
-    float* y = (float*)malloc(sample_count * sizeof(float));
-    if (!y) {
-        Serial.println("Failed to allocate float buffer");
-        return 0.0f;
-    }
-    
-    // Convert to float and remove DC offset
-    float mean = 0.0f;
-    for (size_t i = 0; i < sample_count; i++) {
-        y[i] = (float)audio_data[i] / 32768.0f;
-        mean += y[i];
-    }
-    mean /= sample_count;
-    
-    for (size_t i = 0; i < sample_count; i++) {
-        y[i] -= mean;
-    }
-    
-    // Calculate RMS for each frame
-    int num_frames = (sample_count - FRAME_LENGTH) / HOP_LENGTH + 1;
-    float* rms = (float*)malloc(num_frames * sizeof(float));
-    if (!rms) {
-        free(y);
-        Serial.println("Failed to allocate RMS buffer");
-        return 0.0f;
-    }
-    
-    for (int frame = 0; frame < num_frames; frame++) {
-        int start = frame * HOP_LENGTH;
-        float sum_sq = 0.0f;
-        
-        for (int i = 0; i < FRAME_LENGTH && (start + i) < sample_count; i++) {
-            float val = y[start + i];
-            sum_sq += val * val;
-        }
-        
-        rms[frame] = sqrtf(sum_sq / FRAME_LENGTH);
-    }
+enum RecordingState {
+    STATE_LISTENING,    // Waiting for amplitude trigger
+    STATE_RECORDING     // Recording 5 seconds of audio
+};
 
-    // Convert RMS to dB
-    float* rms_db = (float*)malloc(num_frames * sizeof(float));
-    if (!rms_db) {
-        free(y);
-        free(rms);
-        Serial.println("Failed to allocate RMS_dB buffer");
-        return 0.0f;
+static RecordingState currentState = STATE_LISTENING;
+static int chunks_sent = 0;
+
+void removeDCOffset(int16_t* samples, size_t length) {
+    for (size_t i = 0; i < length; i++) {
+        dc_offset = (int32_t)(DC_FILTER_ALPHA * dc_offset + (1.0f - DC_FILTER_ALPHA) * samples[i]);
+        samples[i] = samples[i] - (int16_t)dc_offset;
     }
-    
-    for (int i = 0; i < num_frames; i++) {
-        rms_db[i] = 20.0f * log10f(fmaxf(rms[i], 1e-6f));
-    }
-
-    // Calculate noise floor (30th percentile)
-    float noise_floor = calculatePercentile(rms_db, num_frames, 30.0f);
-    float margin_db = 8.0f;
-    float threshold = noise_floor + margin_db;
-
-    // Count active frames
-    int active_count = 0;
-    for (int i = 0; i < num_frames; i++) {
-        if (rms_db[i] > threshold) {
-            active_count++;
-        }
-    }
-
-    // Calculate activity duration in milliseconds
-    float active_ms = active_count * (HOP_LENGTH / (float)SAMPLE_RATE) * 1000.0f;
-
-    // Cleanup
-    free(y);
-    free(rms);
-    free(rms_db);
-    
-    return active_ms;
 }
 
-float calculatePercentile(float* data, int size, float percentile) {
-    // Simple percentile calculation using sorting
-    float* sorted = (float*)malloc(size * sizeof(float));
-    if (!sorted) return 0.0f;
+float calculateAverageAmplitude(int16_t* samples, size_t length) {
+    if (length == 0) return 0.0f;
     
-    memcpy(sorted, data, size * sizeof(float));
+    float sum = 0.0f;
+    for (size_t i = 0; i < length; i++) {
+        float val = abs(samples[i]);
+        sum += val * val;
+    }
     
-    // Bubble sort (simple for small arrays)
-    for (int i = 0; i < size - 1; i++) {
-        for (int j = 0; j < size - i - 1; j++) {
-            if (sorted[j] > sorted[j + 1]) {
-                float temp = sorted[j];
-                sorted[j] = sorted[j + 1];
-                sorted[j + 1] = temp;
-            }
+    return sqrtf(sum / length);
+}
+
+bool hasAmplitude(int16_t* audio, size_t sampleCount) {
+    float avgAmplitude = calculateAverageAmplitude(audio, sampleCount);
+    
+    int samplesAboveThreshold = 0;
+    for (size_t i = 0; i < sampleCount; i++) {
+        if (abs(audio[i]) > AMP_THRESHOLD) {
+            samplesAboveThreshold++;
         }
     }
     
-    int index = (int)((percentile / 100.0f) * size);
-    if (index >= size) index = size - 1;
+    float activeRatio = (float)samplesAboveThreshold / sampleCount;
     
-    float result = sorted[index];
-    free(sorted);
+    Serial.printf("Avg Amplitude: %.2f | Samples above threshold: %d/%d (%.1f%%)\n", 
+                  avgAmplitude, samplesAboveThreshold, sampleCount, activeRatio * 100);
     
-    return result;
+    bool shouldSend = (avgAmplitude > AMP_THRESHOLD) || 
+                      (activeRatio > MIN_ACTIVE_RATIO);
+    
+    if (shouldSend) {
+        Serial.println("Amplitude above threshold, will send data");
+    } else {
+        Serial.println("Amplitude below threshold, will NOT send data");
+    }
+    
+    return shouldSend;
 }
+
 
 void processAudioRecording(){
-    static int16_t audio_buffer[BUFFER_SIZE];
+    static int16_t audio_buffer[CHUNK_SAMPLES];
+    static size_t samples_collected = 0;
+
     int32_t audio[BUFFER_SIZE];
     size_t bytes_read;
 
-     if (chunk_buffer == NULL) {
-        chunk_buffer = (int16_t*)malloc(CHUNK_SAMPLES * sizeof(int16_t));
-        if (!chunk_buffer) {
-            Serial.println("Failed to allocate recording buffer");
-            return;
-        }
-        Serial.printf("Allocated chunk buffer of %d samples (%d bytes)\n", CHUNK_SAMPLES, CHUNK_SAMPLES * sizeof(int16_t));
-    }
 
     esp_err_t result = i2s_read(I2S_PORT, audio, sizeof(audio), &bytes_read, portMAX_DELAY);
     if (result == ESP_OK && bytes_read > 0) {
         int samples_read = bytes_read / sizeof(int32_t);
+        int idx = 0;
 
-        for (int i = 0; i < samples_read; ++i) {
-            const int SHIFT = 14;
-            int32_t s32 = audio[i] >> SHIFT;
-            if (s32 > 32767) s32 = 32767;
-            if (s32 < -32768) s32 = -32768;
-            audio_buffer[i] = s32;
-        }
+        while (idx < samples_read) {
+            int space = CHUNK_SAMPLES - (int)samples_collected;
+            int to_copy = min(space, samples_read - idx);
 
-         if (chunk_samples_recorded < CHUNK_SAMPLES) {
-            size_t to_copy = min((size_t)samples_read, (size_t)(CHUNK_SAMPLES - chunk_samples_recorded));
-            memcpy(chunk_buffer + chunk_samples_recorded, audio_buffer, to_copy * sizeof(int16_t));
-            chunk_samples_recorded += to_copy;
-        }
+            for (int i = 0; i < to_copy; ++i) {
+                const int SHIFT = 14;
+                int32_t s32 = audio[idx + i] >> SHIFT;
+                if (s32 > 32767) s32 = 32767;
+                if (s32 < -32768) s32 = -32768;
 
-        if (chunk_samples_recorded >= CHUNK_SAMPLES) {
-
-            if (current_chunk == 0) {
-                float activity_ms = analyzeAudioActivity(chunk_buffer, chunk_samples_recorded);
-                 Serial.printf("Chunk %d Activity=%.0f ms\n", current_chunk, activity_ms);
-            
-                if (activity_ms < ACTIVITY_THRESHOLD_MS) {
-                    Serial.println("Skipping recording");
-                    chunk_samples_recorded = 0;
-                    current_chunk = 0;
-                    return;
-                }
-                
-                // Reset for next recording
-                recording_session_id = millis();
-                Serial.println("Activity detected!");
-            }            
-
-            sendData(chunk_buffer, chunk_samples_recorded, current_chunk, TOTAL_CHUNKS);
-            current_chunk++;
-            chunk_samples_recorded = 0;
-
-            if (current_chunk >= TOTAL_CHUNKS) {
-                current_chunk = 0;
-                Serial.println("Recording session complete");
+                int16_t s16 = (int16_t)s32;
+                audio_buffer[samples_collected + i] = s16;
             }
+            
+            samples_collected += to_copy;
+            idx += to_copy;
 
+            if (samples_collected == CHUNK_SAMPLES) {
+                removeDCOffset(audio_buffer, CHUNK_SAMPLES);
+                switch (currentState) {
+                    case STATE_LISTENING: {
+                        bool triggered = hasAmplitude(audio_buffer, CHUNK_SAMPLES);
+                        
+                        if (triggered) {
+                            Serial.println("\nTriggered: Start 5s recording");
+                            currentState = STATE_RECORDING;
+                            chunks_sent = 0;
+                            
+                            prepareAudio(audio_buffer, CHUNK_SAMPLES);
+                            chunks_sent++;
+                            Serial.printf("Sent chunk %d/%d\n", chunks_sent, CHUNKS_PER_RECORDING);
+                        }
+                        break;
+                    }
+                    
+                    case STATE_RECORDING: {
+                        // Send all chunks for the 5-second recording period
+                        prepareAudio(audio_buffer, CHUNK_SAMPLES);
+                        chunks_sent++;
+                        Serial.printf("Sent chunk %d/%d\n", chunks_sent, CHUNKS_PER_RECORDING);
+                        
+                        // Check if 5 seconds complete
+                        if (chunks_sent >= CHUNKS_PER_RECORDING) {
+                            Serial.println("Finished 5s recording\n");
+                            currentState = STATE_LISTENING;
+                            chunks_sent = 0;
+                        }
+                        break;
+                    }
+                }
+
+                samples_collected = 0;
+
+            }
         }
-        
     }
 }
