@@ -83,7 +83,7 @@ void setupAudio(){
 static const int FRAME_LENGTH = 1024;
 static const int HOP_LENGTH = 200;
 static const float EMERGENCY_RMS_THRESHOLD = 1200.0f;
-static const int32_t AMP_THRESHOLD = 800;
+static const int32_t AMP_THRESHOLD = 1000;
 static const float ACTIVITY_THRESHOLD = 600.0f;
 static const float MIN_ACTIVE_RATIO = 0.15f;
 
