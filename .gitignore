@@ -9,3 +9,4 @@
 # caches
 /database/__pycache__
 /web/__pycache__
+*.pyc
