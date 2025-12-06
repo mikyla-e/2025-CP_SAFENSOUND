@@ -60,24 +60,24 @@ print("Database connected successfully.")
 
 # model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
 
-# interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite") # tflite
-# interpreter.allocate_tensors()
+interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite") # tflite
+interpreter.allocate_tensors()
 
-# input_details = interpreter.get_input_details()
-# output_details = interpreter.get_output_details()
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
-model = tf.keras.models.load_model("ml/ml models/lsms_cnn_model.keras")
+# model = tf.keras.models.load_model("ml/ml models/lsms_cnn_model.keras")
 
-# Convert with compatibility settings
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
-converter.target_spec.supported_ops = [
-    tf.lite.OpsSet.TFLITE_BUILTINS,  # Use older compatible ops
-]
-tflite_model = converter.convert()
+# # Convert with compatibility settings
+# converter = tf.lite.TFLiteConverter.from_keras_model(model)
+# converter.target_spec.supported_ops = [
+#     tf.lite.OpsSet.TFLITE_BUILTINS,  # Use older compatible ops
+# ]
+# tflite_model = converter.convert()
 
-# Save the new model
-with open("ml/ml models/lsms_cnn_model_compatible.tflite", "wb") as f:
-    f.write(tflite_model)
+# # Save the new model
+# with open("ml/ml models/lsms_cnn_model_compatible.tflite", "wb") as f:
+#     f.write(tflite_model)
 
 print("Model loaded successfully.")
 
