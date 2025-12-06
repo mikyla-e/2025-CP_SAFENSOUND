@@ -53,41 +53,22 @@ print("Database connected successfully.")
 
 # model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
 
-import tensorflow as tf
+import tflite_runtime.interpreter as tflite
 
-# Load your Keras model
-model = tf.keras.models.load_model("ml/ml models/lsms_cnn_model.keras")
+# Remove on-device conversion; load a compatible TFLite file produced offline
+def load_tflite_model():
+    try:
+        interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite")
+        interpreter.allocate_tensors()
+        print("Model loaded successfully.")
+        return interpreter
+    except Exception as e:
+        print("Failed to load TFLite model:", e)
+        raise
 
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
-
-# Prefer older built-ins only (no Select TF Ops), which lowers op versions
-converter.target_spec.supported_ops = [
-    tf.lite.OpsSet.TFLITE_BUILTINS,
-]
-# Optional: try the legacy converter if needed
-converter.experimental_new_converter = False
-
-# Convert
-tflite_model = converter.convert()
-
-# Save
-with open("ml/ml models/lsms_cnn_model_compatible.tflite", "wb") as f:
-    f.write(tflite_model)
-
-# model = tf.keras.models.load_model("ml/ml models/lsms_cnn_model.keras")
-
-# # Convert with compatibility settings
-# converter = tf.lite.TFLiteConverter.from_keras_model(model)
-# converter.target_spec.supported_ops = [
-#     tf.lite.OpsSet.TFLITE_BUILTINS,  # Use older compatible ops
-# ]
-# tflite_model = converter.convert()
-
-# # Save the new model
-# with open("ml/ml models/lsms_cnn_model_compatible.tflite", "wb") as f:
-#     f.write(tflite_model)
-
-print("Model loaded successfully.")
+interpreter = load_tflite_model()
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
 
 audio_data = None
