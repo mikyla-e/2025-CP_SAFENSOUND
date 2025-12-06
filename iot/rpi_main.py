@@ -24,13 +24,6 @@ import numpy as np
 # import matplotlib.pyplot as plt
 # import seaborn as sns
 
-# import tensorflow as tf
-# from tensorflow import keras
-# from tensorflow.keras import layers, models
-# from tensorflow.keras.utils import to_categorical
-
-import tflite_runtime.interpreter as tflite
-
 import librosa as lb
 # import sounddevice as sd
 import soundfile as sf
@@ -60,11 +53,30 @@ print("Database connected successfully.")
 
 # model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
 
-interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite") # tflite
-interpreter.allocate_tensors()
+try: 
+    import tflite_runtime.interpreter as tflite
+    interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite")
+    interpreter.allocate_tensors()
 
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+except Exception as e:
+    import tensorflow as tf
+    model = tf.keras.models.load_model("ml/ml models/lsms_cnn_model.keras")
+
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+
+    # Prefer older built-ins only (no Select TF Ops), which lowers op versions
+    converter.target_spec.supported_ops = [
+        tf.lite.OpsSet.TFLITE_BUILTINS,
+    ]
+    # Optional: try the legacy converter if needed
+    converter.experimental_new_converter = False
+
+    # Convert
+    tflite_model = converter.convert()
+
+    # Save
+    with open("ml/ml models/lsms_cnn_model_compatible.tflite", "wb") as f:
+        f.write(tflite_model)
 
 # model = tf.keras.models.load_model("ml/ml models/lsms_cnn_model.keras")
 
