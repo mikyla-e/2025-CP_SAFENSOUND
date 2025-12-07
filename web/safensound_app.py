@@ -1,3 +1,4 @@
+import threading
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -8,6 +9,7 @@ import sys
 import os
 import asyncio
 import json
+import socket
 from typing import List
 from datetime import datetime
 import uvicorn
@@ -72,6 +74,61 @@ class ConnectionManager:
 manager = ConnectionManager()
 room_status = {1:0, 2:0, 3:0}
 
+web_port = 63429
+stop_event = threading.Event()
+
+class WebDiscoverServer:
+    def __init__(self):
+        self.running = True
+        self.web_ip = self.get_web_ip()
+
+    def get_web_ip(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception as e:
+            print("Error getting web IP:", e)
+            return "localhost"
+        
+    def discovery_listener(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('0.0.0.0', web_port))
+
+        print(f"Discovery server listening on {self.web_ip}:{web_port}")
+
+        while self.running and not stop_event.is_set():
+            try:
+                data, addr = sock.recvfrom(1024)
+                message = data.decode('utf-8').strip()
+                print(f"Received discovery message from {addr[0]}: {message}")
+
+                if message == "SAFENSOUND RASPBERRY PI HERE":
+                    response = f"SAFENSOUND WEB DASHBOARD HERE:{self.web_ip}"
+                    sock.sendto(response.encode('utf-8'), addr)
+                    print(f"Sent response to {addr[0]}: {self.web_ip}")
+            
+            except Exception as e:
+                if self.running:
+                    print(f"Error in discovery listener: {e}")
+
+        sock.close()
+
+    def start(self):
+        discovery_thread = threading.Thread(target=self.discovery_listener, daemon=True)
+        discovery_thread.start()
+        print(f"Discovery server started on {self.web_ip}:{web_port}.")
+
+        return discovery_thread
+    
+    def stop(self):
+        self.running = False
+        print("Discovery listener stopped.")
+
+web_discover_server = WebDiscoverServer()
 
 async def periodic_updates():
     while True:
@@ -86,13 +143,16 @@ async def periodic_updates():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    web_discover_server.start()
+
     task = asyncio.create_task(periodic_updates())
     print("FastAPI SafeNSound started!")
-    print("Homepage available at: http://localhost:8000")
+    print(f"Homepage available at: http://{web_discover_server.web_ip}:8000")
     print("API Documentation at: http://localhost:8000/docs")
 
     yield
     print("Shutting down...")
+    web_discover_server.stop()
     task.cancel()
     try:
         await task
@@ -516,3 +576,4 @@ async def get_report_data(
 
 if __name__ == "__main__":
     uvicorn.run("safensound_app:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
+    print("SafeNSound FastAPI is running on...")

@@ -85,10 +85,12 @@ alerted_rpi = False
 # esp32_serial = None
 # esp32_port = ""
 
+web_port= 63429
 disc_port = 60123
 audio_port = 54321
 reset_port = 58080
 
+web_ip = None
 
 stop_event = threading.Event()
 
@@ -135,65 +137,50 @@ class RPIDiscoverServer:
     def start(self):
         discovery_thread = threading.Thread(target=self.discovery_listener, daemon=True)
         discovery_thread.start()
-        print(f"Discovery server started on {self.RPI_ip}:{disc_port}.")
+        print(f"RPI Discovery server started on {self.RPI_ip}:{disc_port}.")
 
         return discovery_thread
     
     def stop(self):
         self.running = False
-        print("Discovery listener stopped.")
+        print("RPI Discovery listener stopped.")
 
-# def init_esp32_serial():
-#     global esp32_serial
+def discover_web_ip(timeout):
+    global web_ip
 
-#     try:
-#         esp32_serial = serial.Serial(esp32_port, 115200, timeout=1)
-#         time.sleep(2)
-#         print(f"Connected to ESP32 on {esp32_port}")
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(('0.0.0.0', web_port))
+    sock.settimeout(1.0)
 
-#         ready = False
-#         for _ in range(11):
-#             line = esp32_serial.readline().decode('utf-8').strip()
-#             if "Receiver ready!" in line:
-#                 print(f"Received from ESP32: {line}")
-#                 ready = True
-#                 break
-#             time.sleep(0.5)
-#         if not ready:
-#             print("ESP32 did not send 'Receiver ready!' message.")
-#             return False
-        
-#         return True
+    message = "SAFENSOUND RASPBERRY PI HERE".encode('utf-8')
+    broadcast_address = ("<broadcast>", web_port)
 
-#     except Exception as e:
-#         print(f"Failed to connect to ESP32 on {esp32_port}: {e}")
-#         esp32_serial = None
-#         return False
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        try:
+            sock.sendto(message, broadcast_address)
+
+            data, addr = sock.recvfrom(1024)
+            response = data.decode('utf-8').strip()
+            print(f"Received response from {addr}: {data}")
+
+            if response.startswith("SAFENSOUND WEB DASHBOARD HERE:"):
+                web_ip = response.split(":")[1]
+                print(f"Discovered Web Dashboard IP: {web_ip}")
+                sock.close()
+                break
+
+        except socket.timeout:
+            continue
+        except Exception as e:
+            print(f"Web discoverer error: {e}")
+
+    sock.close()
+    print("WEb discovery server stopped.")
+
 
 # audio recording and receiving --------------------
-# def get_audio_local():
-#     date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-#     try:
-#         print("/" * 60 + "\n")
-#         print(f"Recording audio... at {date_time}")
-#         audio = sd.rec(int(audio_duration * sample_rate), samplerate=sample_rate, channels=1)
-#         sd.wait()
-
-#         audio_folder = "recorded_audio"
-#         if not os.path.exists(audio_folder):
-#             os.makedirs(audio_folder)
-        
-#         audio_wav = os.path.join(audio_folder, f"recording_{date_time}.wav")
-#         sf.write(audio_wav, audio, sample_rate)
-#         print(f"Audio recorded and saved as {audio_wav}")
-
-#     except Exception as e:
-#         print("Audio recording failed:", e)
-#         return None, None
-
-#     return audio.flatten(), audio_wav
-
 
 def receive_audio_data():
     from database.db_connection import Database
@@ -564,6 +551,7 @@ def trigger_alarm(device_add=None, room_id=None):
             print(f"Error sending alert: {e}")
 
 async def send_alert_web(room_id, action=None):
+    global web_ip
     success_web = False
 
     if "Emergency Detected" in action:
@@ -575,7 +563,7 @@ async def send_alert_web(room_id, action=None):
             }
 
             async with aiohttp.ClientSession() as session:
-                async with session.post("http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
+                async with session.post(f"http://{web_ip}:8000/api/alert", json=payload_web, timeout=10) as response:
                     if response.status == 200:
                         print(f"Alert sent to Web Dashboard for Room {room_id}")
                         success_web = True
@@ -587,6 +575,7 @@ async def send_alert_web(room_id, action=None):
 
 
 async def send_reset_web(room_id, action=None):
+    global web_ip
     success_web = False
 
     if "Alert Acknowledged" in action:
@@ -597,7 +586,7 @@ async def send_reset_web(room_id, action=None):
             }
 
             async with aiohttp.ClientSession() as session:
-                async with session.post("http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
+                async with session.post(f"http://{web_ip}:8000/api/alert", json=payload_web, timeout=10) as response:
                     if response.status == 200:
                         print(f"Reset command sent to Web Dashboard for Room {room_id}")
                         success_web = True
@@ -727,85 +716,86 @@ async def main_loop():
         await asyncio.sleep(1)
 
 if __name__ == "__main__":
-    # if not init_esp32_serial():
-    #     print("Exiting due to Receiver connection failure.")
-    #     exit(1)
-
-    discovery_server = RPIDiscoverServer()
-    discovery_server.start()
+    print("Starting SafeNSound Raspberry Pi Application...\n")
     
-    audio_thread = threading.Thread(target=receive_audio_data, daemon=True)
-    audio_thread.start()
+    if discover_web_ip(timeout=30):
+        discovery_server = RPIDiscoverServer()
+        discovery_server.start()
+        
+        audio_thread = threading.Thread(target=receive_audio_data, daemon=True)
+        audio_thread.start()
 
-    reset_thread = threading.Thread(target=receive_reset_signals, daemon=True)
-    reset_thread.start()
-    
-    print("=" * 60)
-    print(f"Raspberry Pi IP: {discovery_server.RPI_ip}")
-    print("=" * 60)
+        reset_thread = threading.Thread(target=receive_reset_signals, daemon=True)
+        reset_thread.start()
+        
+        print("=" * 60)
+        print(f"Raspberry Pi IP: {discovery_server.RPI_ip}")
+        print("=" * 60)
 
-    print("System is running.\n")
+        print("System is running.\n")
 
-    try:
-        asyncio.run(main_loop())
+        try:
+            asyncio.run(main_loop())
 
-        # trigger = 0
-        # while True:
-        #     # Main loop for RPI recording
-        #     # audio_data, audio_wav = get_audio_local()
-        #     # if audio_data is not None and audio_wav is not None:
-        #     #     inference(audio_data, audio_wav)
+            # trigger = 0
+            # while True:
+            #     # Main loop for RPI recording
+            #     # audio_data, audio_wav = get_audio_local()
+            #     # if audio_data is not None and audio_wav is not None:
+            #     #     inference(audio_data, audio_wav)
 
-        #     # Main loop for dataset
-        #     while trigger < 4:
-        #         if trigger <= 3:
-        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-        #             audio_wav = "wav name"
-        #             room_no = 1
+            #     # Main loop for dataset
+            #     while trigger < 4:
+            #         if trigger <= 3:
+            #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+            #             audio_wav = "wav name"
+            #             room_no = 1
 
-        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #             inference(audio_data, audio_wav, room_no)
+            #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+            #             inference(audio_data, audio_wav, room_no)
 
-        #             time.sleep(1)
-        #             print(f"Next audio... {trigger}")
+            #             time.sleep(1)
+            #             print(f"Next audio... {trigger}")
 
-        #         if trigger >= 4 and trigger <= 6:
-        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-        #             audio_wav = "wav name"
-        #             room_no = 3
+            #         if trigger >= 4 and trigger <= 6:
+            #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+            #             audio_wav = "wav name"
+            #             room_no = 3
 
-        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #             inference(audio_data, audio_wav, room_no)
+            #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+            #             inference(audio_data, audio_wav, room_no)
 
-        #             time.sleep(1)
-        #             print(f"Next audio... {trigger}")
+            #             time.sleep(1)
+            #             print(f"Next audio... {trigger}")
 
-        #         if trigger >= 7 and trigger <= 9:
-        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-        #             audio_wav = "wav name"
-        #             room_no = 2
+            #         if trigger >= 7 and trigger <= 9:
+            #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
+            #             audio_wav = "wav name"
+            #             room_no = 2
 
-        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #             inference(audio_data, audio_wav, room_no)
+            #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+            #             inference(audio_data, audio_wav, room_no)
 
-        #             time.sleep(1)
-        #             print(f"Next audio... {trigger}")
+            #             time.sleep(1)
+            #             print(f"Next audio... {trigger}")
 
-        #         trigger += 1
+            #         trigger += 1
 
-        #     else:
-        #         audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
+            #     else:
+            #         audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
 
-        #         audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #         inference(audio_data, audio_wav, room_no)
-        #         time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nExiting...")
-        stop_event.set()
-        discovery_server.stop()
-        audio_thread.join()
-        reset_thread.join()
-        # if esp32_serial and esp32_serial.is_open:
-        #     esp32_serial.close()
-        print("\nPorts closed successfully.")
-
+            #         audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
+            #         inference(audio_data, audio_wav, room_no)
+            #         time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nExiting...")
+            stop_event.set()
+            discovery_server.stop()
+            audio_thread.join()
+            reset_thread.join()
+            # if esp32_serial and esp32_serial.is_open:
+            #     esp32_serial.close()
+            print("\nPorts closed successfully.")
+    else:
+        print("Could not determine laptop IP. Exiting...")
+        sys.exit(1)
