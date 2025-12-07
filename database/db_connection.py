@@ -27,7 +27,7 @@ class Database:
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS device (
                     device_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    address TEXT NOT NULL,
+                    address TEXT NOT NULL UNIQUE,
                     room_id INTEGER NOT NULL DEFAULT 0,
                     FOREIGN KEY (room_id) REFERENCES room (room_id)
                 )
@@ -134,6 +134,11 @@ class Database:
         with self.conn:
             cursor = self.conn.execute('SELECT * FROM room')
             return cursor.fetchall()
+    
+    def fetch_room(self, room_id):
+        with self.conn:
+            cursor = self.conn.execute('SELECT * FROM room WHERE room_id = ?', (room_id,))
+            return cursor.fetchone()
         
     def fetch_history(self, room_id):
         with self.conn:
@@ -146,6 +151,11 @@ class Database:
     def fetch_device(self, address: str):
         with self.conn:
             cursor = self.conn.execute('SELECT * FROM device WHERE address = ?', (address,))
+            return cursor.fetchone()
+        
+    def fetch_device_by_id(self, address: str):
+        with self.conn:
+            cursor = self.conn.execute('SELECT device_id FROM device WHERE address = ?', (address,))
             return cursor.fetchone()
     
     def fetch_devices(self):
