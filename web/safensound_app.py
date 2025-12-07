@@ -107,7 +107,7 @@ class WebDiscoverServer:
                 print(f"Received discovery message from {addr[0]}: {message}")
 
                 if message == "SAFENSOUND RASPBERRY PI HERE":
-                    response = f"SAFENSOUND WEB DASHBOARD HERE:{self.web_ip}"
+                    response = f"SAFENSOUND WEB DASHBOARD HERE: {self.web_ip}"
                     sock.sendto(response.encode('utf-8'), addr)
                     print(f"Sent response to {addr[0]}: {self.web_ip}")
             

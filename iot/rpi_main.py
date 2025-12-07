@@ -719,8 +719,9 @@ async def main_loop():
 
 if __name__ == "__main__":
     print("Starting SafeNSound Raspberry Pi Application...\n")
-    web_ip = discover_web_ip(timeout=100)
-    if web_ip:
+    discover_web_ip(timeout=100)
+
+    if discover_web_ip and web_ip:
         discovery_server = RPIDiscoverServer()
         discovery_server.start()
         
