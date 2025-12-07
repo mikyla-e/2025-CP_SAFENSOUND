@@ -247,9 +247,9 @@ def receive_audio_data():
 
             mac_add = data[0:6]                                    # bytes 0-5: MAC address
             device_add = bytes_to_mac_string(mac_add)   
-            room_id = int.from_bytes(data[8:12], 'little')
-            timestamp = int.from_bytes(data[12:16], 'little')
-            chunk_samples = int.from_bytes(data[16:20], 'little')
+            room_id = int.from_bytes(data[6:10], 'little')
+            timestamp = int.from_bytes(data[10:14], 'little')
+            chunk_samples = int.from_bytes(data[14:18], 'little')
             
             current_time = time.time()
 
@@ -284,7 +284,7 @@ def receive_audio_data():
                 print(f"Invalid chunk size from Room ID {room_id}: {chunk_samples} samples")
                 continue
 
-            audio_chunk = np.frombuffer(data[20:], dtype=np.int16)
+            audio_chunk = np.frombuffer(data[18:], dtype=np.int16)
 
             if room_id not in audio_chunks:
                 audio_chunks[room_id] = []

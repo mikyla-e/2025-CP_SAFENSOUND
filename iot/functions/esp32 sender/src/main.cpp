@@ -809,7 +809,7 @@ void sendData() {
   if (audioReady && WiFi.status() == WL_CONNECTED) {
 
     size_t maxPacketSize = 1400;
-    size_t maxAudioSize = maxPacketSize - 20;
+    size_t maxAudioSize = maxPacketSize - 18;
     size_t maxSamplesPerPacket = maxAudioSize / sizeof(int16_t);
 
     size_t totalSamples = audioRecording.sampleCount;
@@ -825,11 +825,11 @@ void sendData() {
         return;
       }
 
-      memcpy(buffer, &address, 6);
-      memcpy(buffer + 8, &room_id, 4);
-      memcpy(buffer + 12, &audioRecording.timestamp, 4);
-      memcpy(buffer + 16, &samplesToSend, 4);
-      memcpy(buffer + 20, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
+      memcpy(buffer, macAddress, 6);
+      memcpy(buffer + 6, &room_id, 4);
+      memcpy(buffer + 10, &audioRecording.timestamp, 4);
+      memcpy(buffer + 14, &samplesToSend, 4);
+      memcpy(buffer + 18, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
       udp.beginPacket(rpi_ip.c_str(), audio_port);
       udp.write(buffer, packetSize);
       udp.endPacket();
