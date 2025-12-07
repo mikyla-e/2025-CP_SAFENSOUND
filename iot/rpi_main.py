@@ -244,7 +244,7 @@ def receive_audio_data():
         try:
             data, addr = sock.recvfrom(65536)
 
-            if len(data) < 16:
+            if len(data) < 18:
                 print(f"Received packet too small from {addr}: {len(data)} bytes")
                 continue
 
@@ -253,7 +253,13 @@ def receive_audio_data():
             room_id = int.from_bytes(data[6:10], 'little')
             timestamp = int.from_bytes(data[10:14], 'little')
             chunk_samples = int.from_bytes(data[14:18], 'little')
-            
+
+            print(f"DEBUG: Received from device_add='{device_add}', room_id={room_id}, samples={chunk_samples}")
+
+            if not device_add or device_add == "00:00:00:00:00:00":
+                print(f"Invalid MAC address received: {device_add}")
+                continue
+
             current_time = time.time()
 
             if device_add in device_room_cache:
@@ -349,7 +355,7 @@ def receive_reset_signals():
 
             room_id = reset_data.get('roomID')
             action = reset_data.get('action')
-            device_add = reset_data.get('device_add')
+            device_add = reset_data.get('deviceAdd')
             if not room_id or not action:
                 print(f"Incomplete reset data received from Room {room_id}: {reset_data}")
                 continue
@@ -415,6 +421,9 @@ def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=Non
     global loud_duration_ms
     frame_length = 1024
     hop_length = 200
+
+    print(f"DEBUG: device add = {device_add}")
+
     
     y_i16 = np.asarray(audio_data_int16, dtype=np.int16)
     y = y_i16.astype(np.float32) / 32768.0
@@ -526,6 +535,7 @@ def inference(audio, wav_name, device_add=None, room_id=None):
     # print(f"\nProcessing audio for inference: {wav_name}")
     # save_wav(f"processed_audio/{wav_name}.wav", audio, sample_rate)
 
+    print(f"DEBUG: device add = {device_add}")
     audio_features = extract_features(audio, sample_rate).astype(np.float32)
     features = np.expand_dims(audio_features, axis=0)
 
@@ -579,6 +589,8 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 # alarm triggering -----------------------------------
 def trigger_alarm(device_add=None, room_id=None):
     global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_rpi
+
+    print(f"DEBUG: device add = {device_add}")
 
     alarming_count = 0
     emergency_count = 0
@@ -718,7 +730,8 @@ async def send_alert_rpi(device_add, room_id, action=None):
     success_rpi = False
 
     device_id = get.fetch_device_id(device_add)
-    print(f"Device ID for alert: {device_id}")    
+    print(f"Device ID for alert: {device_id}")
+    print(f"DEBUG: device add = {device_add}")
 
     if action is None:
         print("No action specified for RPI alert.")
@@ -760,7 +773,7 @@ async def send_reset_rpi(device_add, action=None):
 
     device_id = get.fetch_device_id(device_add)
     print(f"Device ID for reset: {device_id}")
-    print(f"Device ID for reset: {device_add}")
+    print(f"DEBUG: device add = {device_add}")
 
     if action is None:
         print("No action specified for RPI alert.")

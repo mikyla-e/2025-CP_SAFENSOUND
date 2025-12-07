@@ -876,6 +876,7 @@ void sendResetSignal() {
   JsonDocument jsonDoc;
   jsonDoc["roomID"] = room_id;
   jsonDoc["action"] = "reset";
+  jsonDoc["deviceAdd"] = address;
 
   String sendResetData;
   serializeJson(jsonDoc, sendResetData);
