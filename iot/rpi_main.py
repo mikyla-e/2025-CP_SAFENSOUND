@@ -190,7 +190,7 @@ def discover_web_ip(timeout):
 
 
 # audio recording and receiving --------------------
-def get_room_id_from_web(device_address: str) -> int:
+def get_room_id_from_web(device_address: str):
     """Query the web dashboard to get the room_id for a device address"""
     global web_ip
     
@@ -243,33 +243,32 @@ def receive_audio_data():
                 print(f"Received packet too small from {addr}: {len(data)} bytes")
                 continue
 
-            device_add = int.from_bytes(data[0:4], 'little')
+            device_add = str.from_bytes(data[0:4], 'little')
             room_id = int.from_bytes(data[4:8], 'little')
             timestamp = int.from_bytes(data[8:12], 'little')
             chunk_samples = int.from_bytes(data[12:16], 'little')
             
-            device_address = str(device_add) 
             current_time = time.time()
 
-            if device_address in device_room_cache:
-                if current_time - cache_timestamps.get(device_address, 0) < cache_timeout:
-                    verified_room_id = device_room_cache[device_address]
+            if device_add in device_room_cache:
+                if current_time - cache_timestamps.get(device_add, 0) < cache_timeout:
+                    verified_room_id = device_room_cache[device_add]
                 else:
                     # Cache expired, refresh
-                    verified_room_id = get_room_id_from_web(device_address)
+                    verified_room_id = get_room_id_from_web(device_add)
                     if verified_room_id is not None:
-                        device_room_cache[device_address] = verified_room_id
-                        cache_timestamps[device_address] = current_time
+                        device_room_cache[device_add] = verified_room_id
+                        cache_timestamps[device_add] = current_time
             else:
                 # Not in cache, query web
-                verified_room_id = get_room_id_from_web(device_address)
+                verified_room_id = get_room_id_from_web(device_add)
                 if verified_room_id is not None:
-                    device_room_cache[device_address] = verified_room_id
-                    cache_timestamps[device_address] = current_time
+                    device_room_cache[device_add] = verified_room_id
+                    cache_timestamps[device_add] = current_time
 
             # Use verified room_id or skip if invalid
             if verified_room_id is None or verified_room_id == 0:
-                print(f"Device {device_address} has no valid room assignment, skipping")
+                print(f"Device {device_add} has no valid room assignment, skipping")
                 continue
                 
             room_id = verified_room_id
