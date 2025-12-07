@@ -168,7 +168,7 @@ def discover_web_ip(timeout):
             print(f"Received response from {addr}: {data}")
 
             if response.startswith("SAFENSOUND WEB DASHBOARD HERE:"):
-                web_ip = response.split(":")[1]
+                web_ip = response.split(": ")[1]
                 print(f"Discovered Web Dashboard IP: {web_ip}")
                 sock.close()
                 break
@@ -179,7 +179,7 @@ def discover_web_ip(timeout):
             print(f"Web discoverer error: {e}")
 
     sock.close()
-    print("WEb discovery server stopped.")
+    print("Web discovery server stopped.")
 
 
 # audio recording and receiving --------------------
@@ -719,8 +719,8 @@ async def main_loop():
 
 if __name__ == "__main__":
     print("Starting SafeNSound Raspberry Pi Application...\n")
-    
-    if discover_web_ip(timeout=100):
+    web_ip = discover_web_ip(timeout=100)
+    if web_ip:
         discovery_server = RPIDiscoverServer()
         discovery_server.start()
         
