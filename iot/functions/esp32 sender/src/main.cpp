@@ -631,6 +631,7 @@ void pollRoomAssignment() {
   http.begin(url);
   int httpResponseCode = http.GET();
   if (httpResponseCode == 200) {
+    Serial.println("Getting room assignment.");
     String response = http.getString();
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, response);
@@ -677,7 +678,7 @@ void startCaptivePortal() {
 bool discoverRPIIP(){
   WiFiUDP discIP;
   const uint16_t srcPort = 61234;
-  const char* msg = "SENDER HERE";
+  const char* msg = "SENDER_HERE";
 
   if (!discIP.begin(srcPort)) {
     Serial.println("UDP begin failed");
@@ -705,22 +706,24 @@ bool discoverRPIIP(){
       buf[n] = 0;
 
       String s(buf);
+      Serial.println("Received: " + s);
+
       if (s.startsWith("RPI_HERE:")) {
         int commaIndex = s.indexOf(',');
 
         if(commaIndex > 0) {
           String rpi = s.substring(0,commaIndex);
-          String rpi_ip = s.substring(strlen("RPI_HERE:"));
+          rpi_ip = rpi.substring(strlen("RPI_HERE:"));
           rpi_ip.trim();
 
           String web = s.substring(commaIndex + 1);
-          if (s.startsWith("WEB_HERE:")) {
-            String web_ip = s.substring(strlen("RPI_HERE:"));
+          if (web.startsWith("WEB_HERE:")) {
+            web_ip = web.substring(strlen("WEB_HERE:"));
             web_ip.trim();
           }
         }
 
-        if (rpi_ip.length() > 0 && rpi_ip != "0.0.0.0" && web_ip.length() > 0 && web_ip != "0.0.0.0") {
+        if (rpi_ip.length() > 0 && rpi_ip != "0.0.0.0" || web_ip.length() > 0 && web_ip != "0.0.0.0") {
           EEPROM.writeString(RPI_IP, rpi_ip);
           EEPROM.writeString(WEB_IP, web_ip);
           EEPROM.commit();
@@ -730,6 +733,7 @@ bool discoverRPIIP(){
           discIP.stop();
           return true;
         }
+
       } else {
         Serial.printf("Ignoring reply: '%s'\n", s.c_str());
       }
