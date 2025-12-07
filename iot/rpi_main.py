@@ -254,8 +254,6 @@ def receive_audio_data():
             timestamp = int.from_bytes(data[10:14], 'little')
             chunk_samples = int.from_bytes(data[14:18], 'little')
 
-            print(f"DEBUG: Received from device_add='{device_add}', room_id={room_id}, samples={chunk_samples}")
-
             if not device_add or device_add == "00:00:00:00:00:00":
                 print(f"Invalid MAC address received: {device_add}")
                 continue
@@ -422,9 +420,8 @@ def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=Non
     frame_length = 1024
     hop_length = 200
 
-    print(f"DEBUG: device add = {device_add}")
+    print(f"process_audio DEBUG: device add = {device_add}")
 
-    
     y_i16 = np.asarray(audio_data_int16, dtype=np.int16)
     y = y_i16.astype(np.float32) / 32768.0
     y = y - np.mean(y)
@@ -535,7 +532,7 @@ def inference(audio, wav_name, device_add=None, room_id=None):
     # print(f"\nProcessing audio for inference: {wav_name}")
     # save_wav(f"processed_audio/{wav_name}.wav", audio, sample_rate)
 
-    print(f"DEBUG: device add = {device_add}")
+    print(f"inference DEBUG: device add = {device_add}")
     audio_features = extract_features(audio, sample_rate).astype(np.float32)
     features = np.expand_dims(audio_features, axis=0)
 
@@ -590,7 +587,7 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 def trigger_alarm(device_add=None, room_id=None):
     global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_rpi
 
-    print(f"DEBUG: device add = {device_add}")
+    print(f"trigger_alarm DEBUG: device add = {device_add}")
 
     alarming_count = 0
     emergency_count = 0
@@ -731,7 +728,7 @@ async def send_alert_rpi(device_add, room_id, action=None):
 
     device_id = get.fetch_device_id(device_add)
     print(f"Device ID for alert: {device_id}")
-    print(f"DEBUG: device add = {device_add}")
+    print(f"send_alert_rpi DEBUG: device add = {device_add}")
 
     if action is None:
         print("No action specified for RPI alert.")
@@ -773,7 +770,7 @@ async def send_reset_rpi(device_add, action=None):
 
     device_id = get.fetch_device_id(device_add)
     print(f"Device ID for reset: {device_id}")
-    print(f"DEBUG: device add = {device_add}")
+    print(f"send_reset_rpi DEBUG: device add = {device_add}")
 
     if action is None:
         print("No action specified for RPI alert.")
