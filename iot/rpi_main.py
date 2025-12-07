@@ -149,11 +149,13 @@ def discover_web_ip(timeout):
     global web_ip
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('0.0.0.0', web_port))
+    # sock.bind(('0.0.0.0', web_port))
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     sock.settimeout(1.0)
 
     message = "SAFENSOUND RASPBERRY PI HERE".encode('utf-8')
-    broadcast_address = ("<broadcast>", web_port)
+    broadcast_address = ("255.255.255.255", web_port)
 
     start_time = time.time()
 
