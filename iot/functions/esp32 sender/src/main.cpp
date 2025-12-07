@@ -26,6 +26,7 @@ const uint16_t timeoutMs = 4000;
 String stored_ssid = "";
 String stored_password = "";
 String rpi_ip = "";
+String web_ip = "";
 String auth_token = "";
 bool wifi_configured = false;
 unsigned long lastPoll = 0;
@@ -34,10 +35,11 @@ String address = "";
 
 #define SSID_ADDR 0
 #define PASS_ADDR 32
-#define IP_ADDR 64
-#define CONFIG_FLAG_ADDR 96
-#define TOKEN_ADDR 128
-#define ROOM_ID_ADDR 160
+#define RPI_IP 64
+#define WEB_IP 96
+#define CONFIG_FLAG_ADDR 128
+#define TOKEN_ADDR 160
+#define ROOM_ID_ADDR 192
 
 typedef struct {
   int16_t audioData[16000];
@@ -68,7 +70,8 @@ void saveRoomID() {
 void saveWiFiCredentials() {
   EEPROM.writeString(SSID_ADDR, stored_ssid);
   EEPROM.writeString(PASS_ADDR, stored_password);
-  EEPROM.writeString(IP_ADDR, rpi_ip);
+  EEPROM.writeString(RPI_IP, rpi_ip);
+  EEPROM.writeString(WEB_IP, web_ip);
   EEPROM.writeBool(CONFIG_FLAG_ADDR, true);
   EEPROM.commit();
 
@@ -82,7 +85,8 @@ void loadWiFiCredentials() {
   if (wifi_configured) {
     stored_ssid = EEPROM.readString(SSID_ADDR);
     stored_password = EEPROM.readString(PASS_ADDR);
-    rpi_ip = EEPROM.readString(IP_ADDR);
+    rpi_ip = EEPROM.readString(RPI_IP);
+    web_ip = EEPROM.readString(WEB_IP);
     
     Serial.println("📖 Loaded saved credentials");
   }
@@ -589,12 +593,12 @@ void handleCSS() {
 /////////////////////////////////////////////////////////
 
 bool postRegisterDevice() {
-  if (rpi_ip.length() == 0) {
+  if (web_ip.length() == 0) {
     Serial.println("Missing data for registration.");
     return false;
   }
   HTTPClient http;
-  String url = "http://" + rpi_ip + ":8000/api/devices/register";
+  String url = "http://" + web_ip + ":8000/api/devices/register";
 
   JsonDocument doc;
   doc["address"] = address;
@@ -616,13 +620,13 @@ bool postRegisterDevice() {
 }
 
 void pollRoomAssignment() {
-  if (rpi_ip.length() == 0) {
-    Serial.println("No RPI IP for polling.");
+  if (web_ip.length() == 0) {
+    Serial.println("No Web IP for polling.");
     return;
   }
 
   HTTPClient http;
-  String url = "http://" + rpi_ip + ":8000/api/devices/config?address=" + address;
+  String url = "http://" + web_ip + ":8000/api/devices/config?address=" + address;
 
   http.begin(url);
   int httpResponseCode = http.GET();
@@ -673,7 +677,7 @@ void startCaptivePortal() {
 bool discoverRPIIP(){
   WiFiUDP discIP;
   const uint16_t srcPort = 61234;
-  const char* msg = "DISCOVER_MAIN_DEVICE";
+  const char* msg = "SENDER HERE";
 
   if (!discIP.begin(srcPort)) {
     Serial.println("UDP begin failed");
@@ -691,7 +695,7 @@ bool discoverRPIIP(){
   discIP.endPacket();
 
   unsigned long start = millis();
-  char buf[128];
+  char buf[256];
 
   while (millis() - start < timeoutMs) {
     int packetSize = discIP.parsePacket();
@@ -701,14 +705,28 @@ bool discoverRPIIP(){
       buf[n] = 0;
 
       String s(buf);
-      if (s.startsWith("MAIN_DEVICE_HERE:")) {
-        String ip = s.substring(strlen("MAIN_DEVICE_HERE:"));
-        ip.trim();
-        if (ip.length()) {
-          rpi_ip = ip;
-          EEPROM.writeString(IP_ADDR, rpi_ip);
+      if (s.startsWith("RPI_HERE:")) {
+        int commaIndex = s.indexOf(',');
+
+        if(commaIndex > 0) {
+          String rpi = s.substring(0,commaIndex);
+          String rpi_ip = s.substring(strlen("RPI_HERE:"));
+          rpi_ip.trim();
+
+          String web = s.substring(commaIndex + 1);
+          if (s.startsWith("WEB_HERE:")) {
+            String web_ip = s.substring(strlen("RPI_HERE:"));
+            web_ip.trim();
+          }
+        }
+
+        if (rpi_ip.length() > 0 && rpi_ip != "0.0.0.0" && web_ip.length() > 0 && web_ip != "0.0.0.0") {
+          EEPROM.writeString(RPI_IP, rpi_ip);
+          EEPROM.writeString(WEB_IP, web_ip);
           EEPROM.commit();
+
           Serial.printf("Discovery: Saving %s as RPI IP.\n", rpi_ip.c_str());
+          Serial.printf("Discovery: Saving %s as Web IP.\n", web_ip.c_str());
           discIP.stop();
           return true;
         }
@@ -750,7 +768,7 @@ void setup() { // esp setup
     Serial.println("Room ID: " + String(room_id));
 
     delay(500);
-    if (rpi_ip.length() == 0 || rpi_ip == "0.0.0.0") {
+    if (rpi_ip.length() == 0 || rpi_ip == "0.0.0.0" || web_ip.length() == 0 || web_ip == "0.0.0.0") {
       while (!discoverRPIIP()){
         Serial.println("Discovering RPI IP failed.");
       }

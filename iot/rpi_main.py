@@ -111,6 +111,7 @@ class RPIDiscoverServer:
             return "localhost"
         
     def discovery_listener(self):
+        global web_ip
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(('0.0.0.0', disc_port))
@@ -123,10 +124,14 @@ class RPIDiscoverServer:
                 message = data.decode('utf-8').strip()
                 print(f"Received discovery message from {addr[0]}: {message}")
 
-                if message == "DISCOVER_MAIN_DEVICE":
-                    response = f"MAIN_DEVICE_HERE:{self.RPI_ip}"
+                if message == "SENDER_HERE":
+                    if web_ip:
+                        response = f"RPI_HERE:{self.RPI_ip},WEB_HERE:{web_ip}"
+                    else:
+                        response = f"RPI_HERE:{self.RPI_ip},WEB_HERE:{web_ip}"
+
                     sock.sendto(response.encode('utf-8'), addr)
-                    print(f"Sent response to {addr[0]}: {self.RPI_ip}")
+                    print(f"Sent response to {addr[0]}: {response}")
             
             except Exception as e:
                 if self.running:
@@ -149,9 +154,10 @@ def discover_web_ip(timeout):
     global web_ip
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # sock.bind(('0.0.0.0', web_port))
+    
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock.bind(('0.0.0.0', web_port))
     sock.settimeout(1.0)
 
     message = "SAFENSOUND RASPBERRY PI HERE".encode('utf-8')
