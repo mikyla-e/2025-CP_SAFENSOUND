@@ -532,7 +532,7 @@ def inference(audio, wav_name, device_add=None, room_id=None):
     # print(f"\nProcessing audio for inference: {wav_name}")
     # save_wav(f"processed_audio/{wav_name}.wav", audio, sample_rate)
 
-    print(f"inference DEBUG: device add = {device_add}")
+    # print(f"inference DEBUG: device add = {device_add}")
     audio_features = extract_features(audio, sample_rate).astype(np.float32)
     features = np.expand_dims(audio_features, axis=0)
 
@@ -587,7 +587,7 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 def trigger_alarm(device_add=None, room_id=None):
     global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_rpi
 
-    print(f"trigger_alarm DEBUG: device add = {device_add}")
+    # print(f"trigger_alarm DEBUG: device add = {device_add}")
 
     alarming_count = 0
     emergency_count = 0
@@ -728,7 +728,7 @@ async def send_alert_rpi(device_add, room_id, action=None):
 
     device_id = get.fetch_device_id(device_add)
     print(f"Device ID for alert: {device_id}")
-    print(f"send_alert_rpi DEBUG: device add = {device_add}")
+    # print(f"send_alert_rpi DEBUG: device add = {device_add}")
 
     if action is None:
         print("No action specified for RPI alert.")
@@ -770,7 +770,7 @@ async def send_reset_rpi(device_add, action=None):
 
     device_id = get.fetch_device_id(device_add)
     print(f"Device ID for reset: {device_id}")
-    print(f"send_reset_rpi DEBUG: device add = {device_add}")
+    # print(f"send_reset_rpi DEBUG: device add = {device_add}")
 
     if action is None:
         print("No action specified for RPI alert.")
