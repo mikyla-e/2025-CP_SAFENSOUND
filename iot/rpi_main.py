@@ -190,8 +190,10 @@ def discover_web_ip(timeout):
 
 
 # audio recording and receiving --------------------
+def bytes_to_mac_string(mac_bytes: bytes) -> str:
+    return ':'.join(f'{b:02X}' for b in mac_bytes)
+
 def get_room_id_from_web(device_address: str):
-    """Query the web dashboard to get the room_id for a device address"""
     global web_ip
     
     if not web_ip:
@@ -243,10 +245,11 @@ def receive_audio_data():
                 print(f"Received packet too small from {addr}: {len(data)} bytes")
                 continue
 
-            device_add = str.from_bytes(data[0:4], 'little')
-            room_id = int.from_bytes(data[4:8], 'little')
-            timestamp = int.from_bytes(data[8:12], 'little')
-            chunk_samples = int.from_bytes(data[12:16], 'little')
+            mac_add = data[0:6]                                    # bytes 0-5: MAC address
+            device_add = bytes_to_mac_string(mac_add)   
+            room_id = int.from_bytes(data[8:12], 'little')
+            timestamp = int.from_bytes(data[12:16], 'little')
+            chunk_samples = int.from_bytes(data[16:20], 'little')
             
             current_time = time.time()
 
@@ -281,7 +284,7 @@ def receive_audio_data():
                 print(f"Invalid chunk size from Room ID {room_id}: {chunk_samples} samples")
                 continue
 
-            audio_chunk = np.frombuffer(data[16:], dtype=np.int16)
+            audio_chunk = np.frombuffer(data[20:], dtype=np.int16)
 
             if room_id not in audio_chunks:
                 audio_chunks[room_id] = []
@@ -311,6 +314,7 @@ def receive_audio_data():
                 del audio_chunks[room_id]
                 del chunk_timestamps[room_id]
 
+            last_packet_time = time.time()
             for room_id in list(chunk_timestamps.keys()):
                 if last_packet_time - chunk_timestamps[room_id] > 10:
                     print(f"Timeout: Discarding incomplete recording from room id {room_id}")

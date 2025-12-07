@@ -31,7 +31,10 @@ String auth_token = "";
 bool wifi_configured = false;
 unsigned long lastPoll = 0;
 const unsigned long pollIntervalMs = 10000;
+
+uint8_t macAddress[6];
 String address = "";
+
 
 #define SSID_ADDR 0
 #define PASS_ADDR 32
@@ -759,6 +762,7 @@ void setup() { // esp setup
   Serial.begin(115200);
   EEPROM.begin(512);
 
+  WiFi.macAddress(macAddress);
   address = WiFi.macAddress();
   Serial.println("Device ID: " + address);
 
@@ -805,7 +809,7 @@ void sendData() {
   if (audioReady && WiFi.status() == WL_CONNECTED) {
 
     size_t maxPacketSize = 1400;
-    size_t maxAudioSize = maxPacketSize - 16;
+    size_t maxAudioSize = maxPacketSize - 20;
     size_t maxSamplesPerPacket = maxAudioSize / sizeof(int16_t);
 
     size_t totalSamples = audioRecording.sampleCount;
@@ -821,11 +825,11 @@ void sendData() {
         return;
       }
 
-      memcpy(buffer, &address, 4);
-      memcpy(buffer + 4, &room_id, 4);
-      memcpy(buffer + 8, &audioRecording.timestamp, 4);
-      memcpy(buffer + 12, &samplesToSend, 4);
-      memcpy(buffer + 16, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
+      memcpy(buffer, &address, 6);
+      memcpy(buffer + 8, &room_id, 4);
+      memcpy(buffer + 12, &audioRecording.timestamp, 4);
+      memcpy(buffer + 16, &samplesToSend, 4);
+      memcpy(buffer + 20, audioRecording.audioData + samplesSent, samplesToSend * sizeof(int16_t));
       udp.beginPacket(rpi_ip.c_str(), audio_port);
       udp.write(buffer, packetSize);
       udp.endPacket();
