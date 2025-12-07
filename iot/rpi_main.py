@@ -731,12 +731,15 @@ async def send_alert_rpi(device_add, room_id, action=None):
                 case 1:
                     led1_active = True
                     led_pin_1.blink(on_time=0.5, off_time=0.5)
+                    print("LED 1 activated.")
                 case 2:
                     led2_active = True
                     led_pin_2.blink(on_time=0.5, off_time=0.5)
+                    print("LED 2 activated.")
                 case 3:
                     led3_active = True
                     led_pin_3.blink(on_time=0.5, off_time=0.5)
+                    print("LED 3 activated.")
 
             if alerted_rpi is False and (led1_active or led2_active or led3_active):
                 alerted_rpi = True
@@ -757,6 +760,7 @@ async def send_reset_rpi(device_add, action=None):
 
     device_id = get.fetch_device_id(device_add)
     print(f"Device ID for reset: {device_id}")
+    print(f"Device ID for reset: {device_add}")
 
     if action is None:
         print("No action specified for RPI alert.")
@@ -768,12 +772,15 @@ async def send_reset_rpi(device_add, action=None):
                 case 1:
                     led1_active = False
                     led_pin_1.off()
+                    print("LED 1 deactivated.")
                 case 2:
                     led2_active = False
                     led_pin_2.off()
+                    print("LED 2 deactivated.")
                 case 3:
                     led3_active = False
                     led_pin_3.off()
+                    print("LED 3 deactivated.")
 
             if (not led1_active and not led2_active and not led3_active):
                 alerted_rpi = False
