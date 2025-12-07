@@ -12,6 +12,7 @@ import struct
 import socket
 # import paho.mqtt.client as mqtt
 import threading
+import requests
 import serial
 import aiohttp
 import asyncio
@@ -189,6 +190,32 @@ def discover_web_ip(timeout):
 
 
 # audio recording and receiving --------------------
+def get_room_id_from_web(device_address: str) -> int:
+    """Query the web dashboard to get the room_id for a device address"""
+    global web_ip
+    
+    if not web_ip:
+        print("Web IP not discovered yet")
+        return None
+    
+    try:
+        url = f"http://{web_ip}:8000/api/devices/config?address={device_address}"
+        response = requests.get(url, timeout=5)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("registered"):
+                return data.get("room_id", 0)
+            else:
+                print(f"Device {device_address} not registered")
+                return 0
+        else:
+            print(f"Failed to get device config: HTTP {response.status_code}")
+            return None
+            
+    except requests.RequestException as e:
+        print(f"Error querying web dashboard: {e}")
+        return None
 
 def receive_audio_data():
     from database.db_connection import Database
@@ -204,6 +231,10 @@ def receive_audio_data():
 
     last_packet_time = time.time()
 
+    device_room_cache = {}
+    cache_timeout = 60  # seconds
+    cache_timestamps = {}
+
     while not stop_event.is_set():
         try:
             data, addr = sock.recvfrom(65536)
@@ -217,12 +248,31 @@ def receive_audio_data():
             timestamp = int.from_bytes(data[8:12], 'little')
             chunk_samples = int.from_bytes(data[12:16], 'little')
             
-            get_room = get.fetch_rooms()
-            rooms_list = [room[0] for room in get_room]
+            device_address = str(device_add) 
+            current_time = time.time()
 
-            if room_id not in rooms_list:
-                print(f"Unknown room ID from {addr}: Room ID {room_id}")
+            if device_address in device_room_cache:
+                if current_time - cache_timestamps.get(device_address, 0) < cache_timeout:
+                    verified_room_id = device_room_cache[device_address]
+                else:
+                    # Cache expired, refresh
+                    verified_room_id = get_room_id_from_web(device_address)
+                    if verified_room_id is not None:
+                        device_room_cache[device_address] = verified_room_id
+                        cache_timestamps[device_address] = current_time
+            else:
+                # Not in cache, query web
+                verified_room_id = get_room_id_from_web(device_address)
+                if verified_room_id is not None:
+                    device_room_cache[device_address] = verified_room_id
+                    cache_timestamps[device_address] = current_time
+
+            # Use verified room_id or skip if invalid
+            if verified_room_id is None or verified_room_id == 0:
+                print(f"Device {device_address} has no valid room assignment, skipping")
                 continue
+                
+            room_id = verified_room_id
 
             if device_add is None or room_id is None or timestamp is None or chunk_samples is None:
                 print(f"Incomplete data received from {addr}: Room ID{room_id}")
@@ -261,8 +311,6 @@ def receive_audio_data():
 
                 del audio_chunks[room_id]
                 del chunk_timestamps[room_id]
-
-            last_packet_time = time.time()
 
             for room_id in list(chunk_timestamps.keys()):
                 if last_packet_time - chunk_timestamps[room_id] > 10:

@@ -1742,7 +1742,7 @@
                 const roomToDevice = {};
                 devices.forEach(d => {
                     if (d.room_id !== 0) {
-                        roomToDevice[d.room_id] = d.device_id;
+                        roomToDevice[d.room_id] = d.address;
                     }
                 });
                 
@@ -1758,11 +1758,11 @@
                 }
                 
                 let sensorCounter = 1;
-                const deviceLabels = {}; // Map device_id -> "Sensor #X"
+                const deviceLabels = {}; // Map address -> "Sensor #X"
                 
                 // First pass: label all devices
                 devices.forEach(d => {
-                    deviceLabels[d.device_id] = `Sensor #${sensorCounter++}`;
+                    deviceLabels[d.address] = `Sensor #${sensorCounter++}`;
                 });
                 
                 tbody.innerHTML = sortedRoomIds.map(roomId => {
@@ -1781,7 +1781,7 @@
                                     <option value="" style="color: #015382;">Select Sensor</option>
                                     ${assignedDeviceId ? `<option value="${assignedDeviceId}" selected>${deviceLabels[assignedDeviceId]}</option>` : ''}
                                     ${availableDevices.map(d => 
-                                        `<option value="${d.device_id}">${deviceLabels[d.device_id]}</option>`
+                                        `<option value="${d.address}">${deviceLabels[d.address]}</option>`
                                     ).join('')}
                                     ${assignedDeviceId ? '<option value="unassign">Remove Sensor</option>' : ''}
                                 </select>
@@ -1877,7 +1877,7 @@
                     const currentDevice = devices.find(d => d.room_id === roomId);
                     
                     if (currentDevice) {
-                        const resp = await fetch(`/api/devices/${encodeURIComponent(currentDevice.device_id)}/assign_room`, {
+                        const resp = await fetch(`/api/devices/${encodeURIComponent(currentDevice.address)}/assign_room`, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({room_id: 0}) // Unassign

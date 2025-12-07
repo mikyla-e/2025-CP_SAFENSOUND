@@ -1,4 +1,5 @@
 import threading
+import traceback
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -312,7 +313,7 @@ async def delete_room(room_id: int):
     try:
         # Check if room exists
         rooms = db.fetch_rooms()
-        room_ids = [room[0] for room in rooms]  # Extract room IDs from tuples
+        room_ids = [room[0] for room in rooms] 
         
         if room_id not in room_ids:
             raise HTTPException(status_code=404, detail="Room not found")
@@ -348,9 +349,11 @@ async def register_device(data: DeviceRegister):
         if record is None:
             db.register_device(address)
             record = db.fetch_device(address)
-            room_id = record[-1] if record else 0
+        
+        room_id = record[2] if record else 0
         return {"success": True, "address": address, "room_id": room_id}
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/devices")
@@ -360,10 +363,10 @@ async def list_devices():
 
 @app.post("/api/devices/{address}/assign_room")
 async def assign_device(address: str, data: DeviceAssign):
+    if not address or address == "undefined" or address == "null":
+        raise HTTPException(status_code=400, detail="Invalid device address")
     try:
         record = db.fetch_device(address)
-        if record is None:
-            db.register_device(address)
         db.assign_device(address, data.room_id)
 
         await manager.broadcast({
@@ -381,7 +384,7 @@ async def device_config(address: str):
     record = db.fetch_device(address)
     if record is None:
         return {"registered": False, "room_id": 0}
-    room_id = record[1]
+    room_id = record[2]
     return {"registered": True, "room_id": room_id}
     
 # MONTHLY EMERGENCIES

@@ -805,7 +805,7 @@ void sendData() {
   if (audioReady && WiFi.status() == WL_CONNECTED) {
 
     size_t maxPacketSize = 1400;
-    size_t maxAudioSize = maxPacketSize - 12;
+    size_t maxAudioSize = maxPacketSize - 16;
     size_t maxSamplesPerPacket = maxAudioSize / sizeof(int16_t);
 
     size_t totalSamples = audioRecording.sampleCount;
@@ -813,7 +813,7 @@ void sendData() {
 
     while (samplesSent < totalSamples) {
       size_t samplesToSend = min(maxSamplesPerPacket, totalSamples - samplesSent);
-      size_t packetSize = 12 + samplesToSend * sizeof(int16_t);
+      size_t packetSize = 16 + samplesToSend * sizeof(int16_t);
 
       uint8_t* buffer = (uint8_t*)malloc(packetSize);
       if (!buffer) {
