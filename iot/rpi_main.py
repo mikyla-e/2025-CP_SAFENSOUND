@@ -349,6 +349,7 @@ def receive_reset_signals():
 
             room_id = reset_data.get('roomID')
             action = reset_data.get('action')
+            device_add = reset_data.get('device_add')
             if not room_id or not action:
                 print(f"Incomplete reset data received from Room {room_id}: {reset_data}")
                 continue
@@ -359,7 +360,7 @@ def receive_reset_signals():
                 retry = 0
                 try:
                     while retry < 3:
-                        success_rpi = asyncio.run(send_reset_rpi(room_id, operation))
+                        success_rpi = asyncio.run(send_reset_rpi(device_add, room_id, operation))
                         success_web = asyncio.run(send_reset_web(room_id, operation))
                         # success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
                         if success_rpi and success_web:
@@ -714,10 +715,14 @@ async def send_alert_rpi(device_add, room_id, action=None):
     global alerted_rpi, led1_active, led2_active, led3_active
     from database.db_connection import Database
     get = Database()
-    
-    device_id = get.fetch_device(device_add)
-    
     success_rpi = False
+
+    device_id = get.fetch_device_by_id(device_add)
+    print(f"Device ID for alert: {device_id}")    
+
+    if action is None:
+        print("No action specified for RPI alert.")
+        return success_rpi
 
     if "Emergency Detected" in action:
         try:
@@ -736,6 +741,8 @@ async def send_alert_rpi(device_add, room_id, action=None):
             if alerted_rpi is False and (led1_active or led2_active or led3_active):
                 alerted_rpi = True
                 buzzer_pin.beep(on_time=0.5, off_time=0.5)
+            
+            success_rpi = True
         except Exception as e:
             print("Failed to send alert to Raspberry Pi:", e)
 
@@ -744,8 +751,17 @@ async def send_alert_rpi(device_add, room_id, action=None):
 
 async def send_reset_rpi(device_add, room_id, action=None):
     global alerted_rpi, led1_active, led2_active, led3_active
+    from database.db_connection import Database
+    get = Database()
     success_rpi = False
 
+    device_id = get.fetch_device_by_id(device_add)
+    print(f"Device ID for alert: {device_id}")
+
+    if action is None:
+        print("No action specified for RPI alert.")
+        return success_rpi
+    
     if "Alert Acknowledged" in action:
         try:
             match device_add:
@@ -762,6 +778,8 @@ async def send_reset_rpi(device_add, room_id, action=None):
             if (not led1_active and not led2_active and not led3_active):
                 alerted_rpi = False
                 buzzer_pin.off()
+
+            success_rpi = True
         except Exception as e:
             print("Failed to send reset command to ESP32 receiver:", e)
     
