@@ -153,10 +153,13 @@ class Database:
             cursor = self.conn.execute('SELECT * FROM device WHERE address = ?', (address,))
             return cursor.fetchone()
         
-    def fetch_device_by_id(self, address: str):
+    def fetch_device_id(self, address: str) -> int:
         with self.conn:
             cursor = self.conn.execute('SELECT device_id FROM device WHERE address = ?', (address,))
-            return cursor.fetchone()
+            result = cursor.fetchone()
+        if result:
+            return result[0]
+        return None
     
     def fetch_devices(self):
         with self.conn:

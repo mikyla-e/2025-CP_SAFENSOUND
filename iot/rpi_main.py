@@ -360,7 +360,7 @@ def receive_reset_signals():
                 retry = 0
                 try:
                     while retry < 3:
-                        success_rpi = asyncio.run(send_reset_rpi(device_add, room_id, operation))
+                        success_rpi = asyncio.run(send_reset_rpi(device_add, operation))
                         success_web = asyncio.run(send_reset_web(room_id, operation))
                         # success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
                         if success_rpi and success_web:
@@ -370,7 +370,7 @@ def receive_reset_signals():
                             print("Failed to send reset command. Retrying...")
                             sleep(2)
                             retry += 1
-                            success_rpi = asyncio.run(send_reset_rpi(room_id, operation))
+                            success_rpi = asyncio.run(send_reset_rpi(device_add, operation))
                             success_web = asyncio.run(send_reset_web(room_id, operation))
                             # success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
                             if retry == 3 and not success_web and not success_rpi:
@@ -717,7 +717,7 @@ async def send_alert_rpi(device_add, room_id, action=None):
     get = Database()
     success_rpi = False
 
-    device_id = get.fetch_device_by_id(device_add)
+    device_id = get.fetch_device_id(device_add)
     print(f"Device ID for alert: {device_id}")    
 
     if action is None:
@@ -749,14 +749,14 @@ async def send_alert_rpi(device_add, room_id, action=None):
     return success_rpi
 
 
-async def send_reset_rpi(device_add, room_id, action=None):
+async def send_reset_rpi(device_add, action=None):
     global alerted_rpi, led1_active, led2_active, led3_active
     from database.db_connection import Database
     get = Database()
     success_rpi = False
 
-    device_id = get.fetch_device_by_id(device_add)
-    print(f"Device ID for alert: {device_id}")
+    device_id = get.fetch_device_id(device_add)
+    print(f"Device ID for reset: {device_id}")
 
     if action is None:
         print("No action specified for RPI alert.")
@@ -764,7 +764,7 @@ async def send_reset_rpi(device_add, room_id, action=None):
     
     if "Alert Acknowledged" in action:
         try:
-            match device_add:
+            match device_id:
                 case 1:
                     led1_active = False
                     led_pin_1.off()
