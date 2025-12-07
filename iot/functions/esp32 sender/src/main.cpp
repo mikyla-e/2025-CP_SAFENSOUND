@@ -817,7 +817,7 @@ void sendData() {
 
     while (samplesSent < totalSamples) {
       size_t samplesToSend = min(maxSamplesPerPacket, totalSamples - samplesSent);
-      size_t packetSize = 16 + samplesToSend * sizeof(int16_t);
+      size_t packetSize = 18 + samplesToSend * sizeof(int16_t);
 
       uint8_t* buffer = (uint8_t*)malloc(packetSize);
       if (!buffer) {
@@ -838,7 +838,7 @@ void sendData() {
 
       samplesSent += samplesToSend;
           
-      delay(0);
+      delay(1);
     }
 
     // Serial.println("All packets sent");

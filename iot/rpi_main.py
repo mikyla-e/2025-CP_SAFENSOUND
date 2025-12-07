@@ -29,6 +29,9 @@ import librosa as lb
 # import sounddevice as sd
 import soundfile as sf
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="numpy")
+
 
 # hardware control ---------------------------------
 from gpiozero import LED, Buzzer
