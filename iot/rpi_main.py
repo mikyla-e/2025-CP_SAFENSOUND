@@ -440,9 +440,9 @@ def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=Non
         if active_ms >= 600:
             inference(y_i16, f"Room{room_id}_{timestamp}", device_add, room_id)
             return True
-        # if active_ms >= 4500:
-        #     trigger_alarm(room_id)
-        #     return True
+        if active_ms >= 4500:
+            trigger_alarm(room_id)
+            return True
         else:
             print("Skipping inference (background).")
             return False
@@ -558,14 +558,14 @@ def inference(audio, wav_name, device_add=None, room_id=None):
             emergency_detected = True
             trigger_alarm(device_add, room_id)
         
-        elif alarming_count >= 1 and emergency_count >= 2:
+        elif alarming_count >= 2 and emergency_count >= 1:
             emergency_detected = True
             trigger_alarm(device_add, room_id)
 
     elif predicted_class == 2:
         emergency_count += 1
         print("EMERGENCY sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
-        if emergency_count >= 2:
+        if emergency_count >= 1:
             emergency_detected = True
             trigger_alarm(device_add, room_id)
 
