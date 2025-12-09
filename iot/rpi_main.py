@@ -16,6 +16,8 @@ import requests
 import serial
 import aiohttp
 import asyncio
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json
 
 # --- audio processing ---
 import joblib
@@ -93,6 +95,7 @@ web_port= 63429
 disc_port = 60123
 audio_port = 54321
 reset_port = 58080
+shutdown_port = 58081
 
 web_ip = None
 
@@ -153,6 +156,47 @@ class RPIDiscoverServer:
     def stop(self):
         self.running = False
         print("RPI Discovery listener stopped.")
+
+class ShutdownHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        if self.path == "/shutdown":
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                if data.get("confirm"):
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": True, "message": "Shutting down..."}).encode())
+                    
+                    print("\n*** REMOTE SHUTDOWN REQUESTED ***")
+                    stop_event.set()
+                else:
+                    self.send_response(400)
+                    self.end_headers()
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def log_message(self, format, *args):
+        pass
+
+def run_shutdown_server():
+    server = HTTPServer(('0.0.0.0', shutdown_port), ShutdownHandler)
+    server.timeout = 1.0
+    
+    print(f"Shutdown listener started on port {shutdown_port}")
+    
+    while not stop_event.is_set():
+        server.handle_request()
+    
+    server.server_close()
+    print("Shutdown server stopped.")
 
 def discover_web_ip(timeout):
     global web_ip
@@ -304,10 +348,6 @@ def receive_audio_data():
                 full_audio = np.concatenate(audio_chunks[room_id])[:EXPECTED_TOTAL_SAMPLES]
                 # audio16 = np.asarray(full_audio, dtype=np.int16)
                 
-                # datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-                # wav_filename = f"recorded_audio/ID{room_id}_{datetime_str}.wav"
-                # save_wav(wav_filename, full_audio, sample_rate) #audio for testing
-                
                 # thread = threading.Thread(
                 #     target=inference,
                 #     args=(audio16, f"Room{room_id}_{timestamp_str}", room_id)
@@ -440,8 +480,8 @@ def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=Non
         if active_ms >= 600:
             inference(y_i16, f"Room{room_id}_{timestamp}", device_add, room_id)
             return True
-        if active_ms >= 4500:
-            trigger_alarm(room_id)
+        if active_ms >= 3100:
+            trigger_alarm(y_i16, device_add, room_id)
             return True
         else:
             print("Skipping inference (background).")
@@ -556,22 +596,22 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 
         if alarming_count >= 3:
             emergency_detected = True
-            trigger_alarm(device_add, room_id)
+            trigger_alarm(audio, device_add, room_id)
         
         elif alarming_count >= 2 and emergency_count >= 1:
             emergency_detected = True
-            trigger_alarm(device_add, room_id)
+            trigger_alarm(audio, device_add, room_id)
 
     elif predicted_class == 2:
         emergency_count += 1
         print("EMERGENCY sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
         if emergency_count >= 1:
             emergency_detected = True
-            trigger_alarm(device_add, room_id)
+            trigger_alarm(audio, device_add, room_id)
 
         elif emergency_count >= 1 and alarming_count >= 2:
             emergency_detected = True
-            trigger_alarm(device_add, room_id)
+            trigger_alarm(audio, device_add, room_id)
 
     elif predicted_class == 0:
         print("No emergency detected.")
@@ -584,10 +624,12 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 
 
 # alarm triggering -----------------------------------
-def trigger_alarm(device_add=None, room_id=None):
+def trigger_alarm(audio, device_add=None, room_id=None):
     global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_rpi
 
-    # print(f"trigger_alarm DEBUG: device add = {device_add}")
+    datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    wav_filename = f"recorded_audio/ID{room_id}_{datetime_str}.wav"
+    save_wav(wav_filename, audio, sample_rate) #audio for testing
 
     alarming_count = 0
     emergency_count = 0
@@ -783,7 +825,7 @@ async def send_reset_rpi(device_add, action=None):
                     led1_active = False
                     led_pin_1.off()
                     print("LED 1 deactivated.")
-                case 2:
+                case 5:
                     led2_active = False
                     led_pin_2.off()
                     print("LED 2 deactivated.")
@@ -825,6 +867,9 @@ if __name__ == "__main__":
 
         reset_thread = threading.Thread(target=receive_reset_signals, daemon=True)
         reset_thread.start()
+
+        shutdown_thread = threading.Thread(target=run_shutdown_server, daemon=True)
+        shutdown_thread.start()
         
         print("=" * 60)
         print(f"Raspberry Pi IP: {discovery_server.RPI_ip}")
@@ -889,10 +934,14 @@ if __name__ == "__main__":
             print("\nExiting...")
             stop_event.set()
             discovery_server.stop()
-            audio_thread.join()
-            reset_thread.join()
-            # if esp32_serial and esp32_serial.is_open:
-            #     esp32_serial.close()
+            audio_thread.join(timeout=2)
+            reset_thread.join(timeout=2)
+            shutdown_thread.join(timeout=2)
+
+            led_pin_1.off()
+            led_pin_2.off()
+            led_pin_3.off()
+            buzzer_pin.off()
             print("\nPorts closed successfully.")
     else:
         print("Could not determine laptop IP. Exiting...")
