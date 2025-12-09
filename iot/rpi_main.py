@@ -172,6 +172,7 @@ class ShutdownHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"success": True, "message": "Shutting down..."}).encode())
                     
                     print("\n*** REMOTE SHUTDOWN REQUESTED ***")
+                    cleanup()
                     stop_event.set()
                 else:
                     self.send_response(400)
@@ -255,9 +256,9 @@ signal.signal(signal.SIGINT, signal_handler)
 #     print("Web discovery server stopped.")
 
 
-# audio recording and receiving --------------------
-def bytes_to_mac_string(mac_bytes: bytes) -> str:
-    return ':'.join(f'{b:02X}' for b in mac_bytes)
+# # audio recording and receiving --------------------
+# def bytes_to_mac_string(mac_bytes: bytes) -> str:
+#     return ':'.join(f'{b:02X}' for b in mac_bytes)
 
 # def get_room_id_from_web(device_address: str):
 #     global web_ip

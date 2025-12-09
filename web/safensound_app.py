@@ -504,13 +504,12 @@ async def shutdown_system(data: ShutdownRequest):
     
     try:
         if data.target in ["all"]:
-            rpi_address = os.environ.get("RPI_IP", "localhost")  
             # if rpi_ip:
             try:
                 import aiohttp
                 async with aiohttp.ClientSession() as session:
                     async with session.post(
-                        f"http://{rpi_address}:58081/shutdown",
+                        f"http://localhost:58081/shutdown",
                         json={"confirm": True},
                         timeout=5
                     ) as response:
