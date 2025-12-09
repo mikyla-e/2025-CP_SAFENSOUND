@@ -199,7 +199,7 @@ async def get_rooms():
         devices = db.fetch_devices()
         
         # Create a map of room_id -> has_sensor
-        rooms_with_sensors = set(device[1] for device in devices if device[1] != 0)
+        rooms_with_sensors = set(device[2] for device in devices if device[2] != 0)
         
         # Separate and sort rooms
         assigned_rooms = []
