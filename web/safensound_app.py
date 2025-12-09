@@ -8,12 +8,12 @@ import sys
 import os
 import asyncio
 import json
-import socket
+# import socket
 from typing import List
 from datetime import datetime
 import uvicorn
 import signal
-import threading
+# import threading
 import traceback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -27,7 +27,7 @@ class ShutdownRequest(BaseModel):
     target: str
     confirm: bool = False
 
-rpi_ip = None
+# rpi_ip = None
 
 class RoomRename(BaseModel):
     new_name: str
@@ -81,63 +81,63 @@ class ConnectionManager:
 manager = ConnectionManager()
 room_status = {1:0, 2:0, 3:0}
 
-web_port = 63429
-stop_event = threading.Event()
+# web_port = 63429
+# stop_event = threading.Event()
 
-class WebDiscoverServer:
-    def __init__(self):
-        self.running = True
-        self.web_ip = self.get_web_ip()
+# class WebDiscoverServer:
+#     def __init__(self):
+#         self.running = True
+#         self.web_ip = self.get_web_ip()
 
-    def get_web_ip(self):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-            s.close()
-            return ip
-        except Exception as e:
-            print("Error getting web IP:", e)
-            return "localhost"
+#     def get_web_ip(self):
+#         try:
+#             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#             s.connect(("8.8.8.8", 80))
+#             ip = s.getsockname()[0]
+#             s.close()
+#             return ip
+#         except Exception as e:
+#             print("Error getting web IP:", e)
+#             return "localhost"
         
-    def discovery_listener(self):
-        global rpi_ip
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(('0.0.0.0', web_port))
+#     def discovery_listener(self):
+#         global rpi_ip
+#         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+#         sock.bind(('0.0.0.0', web_port))
 
-        print(f"Discovery server listening on {self.web_ip}:{web_port}")
+#         print(f"Discovery server listening on {self.web_ip}:{web_port}")
 
-        while self.running and not stop_event.is_set():
-            try:
-                data, addr = sock.recvfrom(1024)
-                message = data.decode('utf-8').strip()
-                print(f"Received discovery message from {addr[0]}: {message}")
+#         while self.running and not stop_event.is_set():
+#             try:
+#                 data, addr = sock.recvfrom(1024)
+#                 message = data.decode('utf-8').strip()
+#                 print(f"Received discovery message from {addr[0]}: {message}")
 
-                if message == "SAFENSOUND RASPBERRY PI HERE":
-                    rpi_ip = addr[0]
-                    response = f"SAFENSOUND WEB DASHBOARD HERE: {self.web_ip}"
-                    sock.sendto(response.encode('utf-8'), addr)
-                    print(f"Sent response to {addr[0]}: {self.web_ip}")
+#                 if message == "SAFENSOUND RASPBERRY PI HERE":
+#                     rpi_ip = addr[0]
+#                     response = f"SAFENSOUND WEB DASHBOARD HERE: {self.web_ip}"
+#                     sock.sendto(response.encode('utf-8'), addr)
+#                     print(f"Sent response to {addr[0]}: {self.web_ip}")
             
-            except Exception as e:
-                if self.running:
-                    print(f"Error in discovery listener: {e}")
+#             except Exception as e:
+#                 if self.running:
+#                     print(f"Error in discovery listener: {e}")
 
-        sock.close()
+#         sock.close()
 
-    def start(self):
-        discovery_thread = threading.Thread(target=self.discovery_listener, daemon=True)
-        discovery_thread.start()
-        print(f"Discovery server started on {self.web_ip}:{web_port}.")
+#     def start(self):
+#         discovery_thread = threading.Thread(target=self.discovery_listener, daemon=True)
+#         discovery_thread.start()
+#         print(f"Discovery server started on {self.web_ip}:{web_port}.")
 
-        return discovery_thread
+#         return discovery_thread
     
-    def stop(self):
-        self.running = False
-        print("Discovery listener stopped.")
+#     def stop(self):
+#         self.running = False
+#         print("Discovery listener stopped.")
 
-web_discover_server = WebDiscoverServer()
+# web_discover_server = WebDiscoverServer()
 
 async def periodic_updates():
     while True:
@@ -152,16 +152,17 @@ async def periodic_updates():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    web_discover_server.start()
+    # web_discover_server.start()
 
     task = asyncio.create_task(periodic_updates())
     print("FastAPI SafeNSound started!")
-    print(f"Homepage available at: http://{web_discover_server.web_ip}:8000")
+    # print(f"Homepage available at: http://{web_discover_server.web_ip}:8000")
+    print(f"Homepage available at: http://localhost:8000")
     print("API Documentation at: http://localhost:8000/docs")
 
     yield
     print("Shutting down...")
-    web_discover_server.stop()
+    # web_discover_server.stop()
     task.cancel()
     try:
         await task
@@ -503,21 +504,22 @@ async def shutdown_system(data: ShutdownRequest):
     
     try:
         if data.target in ["all"]:
-            if rpi_ip:
-                try:
-                    import aiohttp
-                    async with aiohttp.ClientSession() as session:
-                        async with session.post(
-                            f"http://{rpi_ip}:58081/shutdown",
-                            json={"confirm": True},
-                            timeout=5
-                        ) as response:
-                            if response.status == 200:
-                                print("Shutdown signal sent to RPI")
-                except Exception as e:
-                    print(f"Failed to send shutdown to RPI: {e}")
-            else:
-                print("RPI IP not known, cannot send shutdown signal")
+            rpi_address = os.environ.get("RPI_IP", "localhost")  
+            # if rpi_ip:
+            try:
+                import aiohttp
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"http://{rpi_ip}:58081/shutdown",
+                        json={"confirm": True},
+                        timeout=5
+                    ) as response:
+                        if response.status == 200:
+                            print("Shutdown signal sent to RPI")
+            except Exception as e:
+                print(f"Failed to send shutdown to RPI: {e}")
+            # else:
+            #     print("RPI IP not known, cannot send shutdown signal")
         
         asyncio.create_task(shutdown_web_server())
         return {"success": True, "message": "Web server shutting down..."}
