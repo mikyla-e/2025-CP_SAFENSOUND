@@ -510,7 +510,7 @@ async def shutdown_system(data: ShutdownRequest):
                 import aiohttp
                 async with aiohttp.ClientSession() as session:
                     async with session.post(
-                        f"http://{rpi_ip}:58081/shutdown",
+                        f"http://{rpi_address}:58081/shutdown",
                         json={"confirm": True},
                         timeout=5
                     ) as response:
