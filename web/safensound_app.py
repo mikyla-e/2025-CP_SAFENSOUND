@@ -101,6 +101,7 @@ class WebDiscoverServer:
             return "localhost"
         
     def discovery_listener(self):
+        global rpi_ip
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(('0.0.0.0', web_port))
@@ -114,6 +115,7 @@ class WebDiscoverServer:
                 print(f"Received discovery message from {addr[0]}: {message}")
 
                 if message == "SAFENSOUND RASPBERRY PI HERE":
+                    rpi_ip = addr[0]
                     response = f"SAFENSOUND WEB DASHBOARD HERE: {self.web_ip}"
                     sock.sendto(response.encode('utf-8'), addr)
                     print(f"Sent response to {addr[0]}: {self.web_ip}")
