@@ -1,5 +1,3 @@
-import threading
-import traceback
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -14,6 +12,9 @@ import socket
 from typing import List
 from datetime import datetime
 import uvicorn
+import signal
+import threading
+import traceback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from database.db_connection import Database
@@ -21,6 +22,12 @@ from datetime import datetime #for date format (separation)
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
+
+class ShutdownRequest(BaseModel):
+    target: str
+    confirm: bool = False
+
+rpi_ip = None
 
 class RoomRename(BaseModel):
     new_name: str
@@ -35,7 +42,6 @@ class DeviceAssign(BaseModel):
     room_id: int
 
 device_room_map: dict[str, int] = {}
-
 
 class AlertData(BaseModel):
     room_id: int
@@ -487,6 +493,39 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"WebSocket error: {e}")
         manager.disconnect(websocket)
+
+@app.post("/api/shutdown")
+async def shutdown_system(data: ShutdownRequest):
+    if not data.confirm:
+        raise HTTPException(status_code=400, detail="Shutdown not confirmed")
+    
+    try:
+        if data.target in ["all"]:
+            if rpi_ip:
+                try:
+                    import aiohttp
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(
+                            f"http://{rpi_ip}:58081/shutdown",
+                            json={"confirm": True},
+                            timeout=5
+                        ) as response:
+                            if response.status == 200:
+                                print("Shutdown signal sent to RPI")
+                except Exception as e:
+                    print(f"Failed to send shutdown to RPI: {e}")
+            else:
+                print("RPI IP not known, cannot send shutdown signal")
+        
+        asyncio.create_task(shutdown_web_server())
+        return {"success": True, "message": "Web server shutting down..."}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+async def shutdown_web_server():
+    await asyncio.sleep(1)
+    os.kill(os.getpid(), signal.SIGTERM)
 
 # ========================================================
 # DASHBOARD PRINT
