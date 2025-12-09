@@ -174,6 +174,15 @@ class ShutdownHandler(BaseHTTPRequestHandler):
                     print("\n*** REMOTE SHUTDOWN REQUESTED ***")
                     cleanup()
                     stop_event.set()
+
+                    def _poweroff():
+                        try:
+                            time.sleep(0.5)
+                            os.system("sudo shutdown -h now")
+                        except Exception as e:
+                            print(f"Failed to shutdown system: {e}")
+
+                    threading.Thread(target=_poweroff, daemon=True).start()
                 else:
                     self.send_response(400)
                     self.end_headers()
@@ -257,8 +266,8 @@ signal.signal(signal.SIGINT, signal_handler)
 
 
 # # audio recording and receiving --------------------
-# def bytes_to_mac_string(mac_bytes: bytes) -> str:
-#     return ':'.join(f'{b:02X}' for b in mac_bytes)
+def bytes_to_mac_string(mac_bytes: bytes) -> str:
+    return ':'.join(f'{b:02X}' for b in mac_bytes)
 
 # def get_room_id_from_web(device_address: str):
 #     global web_ip
