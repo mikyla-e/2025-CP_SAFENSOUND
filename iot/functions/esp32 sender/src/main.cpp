@@ -26,7 +26,7 @@ const uint16_t timeoutMs = 4000;
 String stored_ssid = "";
 String stored_password = "";
 String rpi_ip = "";
-String web_ip = "";
+// String web_ip = "";
 String auth_token = "";
 bool wifi_configured = false;
 unsigned long lastPoll = 0;
@@ -39,10 +39,13 @@ String address = "";
 #define SSID_ADDR 0
 #define PASS_ADDR 32
 #define RPI_IP 64
-#define WEB_IP 96
-#define CONFIG_FLAG_ADDR 128
-#define TOKEN_ADDR 160
-#define ROOM_ID_ADDR 192
+// #define WEB_IP 96
+// #define CONFIG_FLAG_ADDR 128
+// #define TOKEN_ADDR 160
+// #define ROOM_ID_ADDR 192
+#define CONFIG_FLAG_ADDR 96
+#define TOKEN_ADDR 128
+#define ROOM_ID_ADDR 160
 
 typedef struct {
   int16_t audioData[16000];
@@ -74,7 +77,7 @@ void saveWiFiCredentials() {
   EEPROM.writeString(SSID_ADDR, stored_ssid);
   EEPROM.writeString(PASS_ADDR, stored_password);
   EEPROM.writeString(RPI_IP, rpi_ip);
-  EEPROM.writeString(WEB_IP, web_ip);
+  // EEPROM.writeString(WEB_IP, web_ip);
   EEPROM.writeBool(CONFIG_FLAG_ADDR, true);
   EEPROM.commit();
 
@@ -89,7 +92,7 @@ void loadWiFiCredentials() {
     stored_ssid = EEPROM.readString(SSID_ADDR);
     stored_password = EEPROM.readString(PASS_ADDR);
     rpi_ip = EEPROM.readString(RPI_IP);
-    web_ip = EEPROM.readString(WEB_IP);
+    // web_ip = EEPROM.readString(WEB_IP);
     
     Serial.println("📖 Loaded saved credentials");
   }
@@ -596,12 +599,12 @@ void handleCSS() {
 /////////////////////////////////////////////////////////
 
 bool postRegisterDevice() {
-  if (web_ip.length() == 0) {
+  if (rpi_ip.length() == 0) {
     Serial.println("Missing data for registration.");
     return false;
   }
   HTTPClient http;
-  String url = "http://" + web_ip + ":8000/api/devices/register";
+  String url = "http://" + rpi_ip + ":8000/api/devices/register";
 
   JsonDocument doc;
   doc["address"] = address;
@@ -623,13 +626,13 @@ bool postRegisterDevice() {
 }
 
 void pollRoomAssignment() {
-  if (web_ip.length() == 0) {
+  if (rpi_ip.length() == 0) {
     Serial.println("No Web IP for polling.");
     return;
   }
 
   HTTPClient http;
-  String url = "http://" + web_ip + ":8000/api/devices/config?address=" + address;
+  String url = "http://" + rpi_ip + ":8000/api/devices/config?address=" + address;
 
   http.begin(url);
   int httpResponseCode = http.GET();
@@ -712,30 +715,41 @@ bool discoverRPIIP(){
       Serial.println("Received: " + s);
 
       if (s.startsWith("RPI_HERE:")) {
-        int commaIndex = s.indexOf(',');
+        rpi_ip = s.substring(strlen("RPI_HERE:"));
+        rpi_ip.trim();
 
-        if(commaIndex > 0) {
-          String rpi = s.substring(0,commaIndex);
-          rpi_ip = rpi.substring(strlen("RPI_HERE:"));
-          rpi_ip.trim();
-
-          String web = s.substring(commaIndex + 1);
-          if (web.startsWith("WEB_HERE:")) {
-            web_ip = web.substring(strlen("WEB_HERE:"));
-            web_ip.trim();
-          }
-        }
-
-        if (rpi_ip.length() > 0 && rpi_ip != "0.0.0.0" || web_ip.length() > 0 && web_ip != "0.0.0.0") {
+        if (rpi_ip.length() > 0 && rpi_ip != "0.0.0.0") {
           EEPROM.writeString(RPI_IP, rpi_ip);
-          EEPROM.writeString(WEB_IP, web_ip);
           EEPROM.commit();
 
           Serial.printf("Discovery: Saving %s as RPI IP.\n", rpi_ip.c_str());
-          Serial.printf("Discovery: Saving %s as Web IP.\n", web_ip.c_str());
           discIP.stop();
           return true;
         }
+        // int commaIndex = s.indexOf(',');
+
+        // if(commaIndex > 0) {
+        //   String rpi = s.substring(0,commaIndex);
+        //   rpi_ip = rpi.substring(strlen("RPI_HERE:"));
+        //   rpi_ip.trim();
+
+        //   String web = s.substring(commaIndex + 1);
+        //   if (web.startsWith("WEB_HERE:")) {
+        //     web_ip = web.substring(strlen("WEB_HERE:"));
+        //     web_ip.trim();
+        //   }
+        // }
+
+        // if (rpi_ip.length() > 0 && rpi_ip != "0.0.0.0" || web_ip.length() > 0 && web_ip != "0.0.0.0") {
+        //   EEPROM.writeString(RPI_IP, rpi_ip);
+        //   EEPROM.writeString(WEB_IP, web_ip);
+        //   EEPROM.commit();
+
+        //   Serial.printf("Discovery: Saving %s as RPI IP.\n", rpi_ip.c_str());
+        //   Serial.printf("Discovery: Saving %s as Web IP.\n", web_ip.c_str());
+        //   discIP.stop();
+        //   return true;
+        // }
 
       } else {
         Serial.printf("Ignoring reply: '%s'\n", s.c_str());
@@ -776,7 +790,7 @@ void setup() { // esp setup
     Serial.println("Room ID: " + String(room_id));
 
     delay(500);
-    if (rpi_ip.length() == 0 || rpi_ip == "0.0.0.0" || web_ip.length() == 0 || web_ip == "0.0.0.0") {
+    if (rpi_ip.length() == 0 || rpi_ip == "0.0.0.0") {
       while (!discoverRPIIP()){
         Serial.println("Discovering RPI IP failed.");
       }
