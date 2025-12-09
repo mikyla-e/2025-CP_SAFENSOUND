@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 import wave
 import struct
+import signal
 
 # --- networking ---
 import socket
@@ -196,6 +197,25 @@ def run_shutdown_server():
     
     server.server_close()
     print("Shutdown server stopped.")
+
+def cleanup():
+    """Turn off all GPIO devices"""
+    print("\nCleaning up GPIO...")
+    led_pin_1.off()
+    led_pin_2.off()
+    led_pin_3.off()
+    buzzer_pin.off()
+    print("GPIO cleanup complete.")
+
+def signal_handler(signum, frame):
+    """Handle termination signals (SIGTERM, SIGINT)"""
+    print(f"\nReceived signal {signum}, shutting down gracefully...")
+    stop_event.set()
+    cleanup()
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
 
 # def discover_web_ip(timeout):
 #     global web_ip
@@ -934,14 +954,15 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nExiting...")
         stop_event.set()
+        cleanup()
         discovery_server.stop()
         audio_thread.join(timeout=2)
         reset_thread.join(timeout=2)
         shutdown_thread.join(timeout=2)
 
-        led_pin_1.off()
-        led_pin_2.off()
-        led_pin_3.off()
-        buzzer_pin.off()
+        # led_pin_1.off()
+        # led_pin_2.off()
+        # led_pin_3.off()
+        # buzzer_pin.off()
         print("\nPorts closed successfully.")
 
