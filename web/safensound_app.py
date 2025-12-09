@@ -199,7 +199,7 @@ async def get_rooms():
         devices = db.fetch_devices()
         
         # Create a map of room_id -> has_sensor
-        rooms_with_sensors = set(device[1] for device in devices if device[1] != 0)
+        rooms_with_sensors = set(device[2] for device in devices if device[2] != 0)
         
         # Separate and sort rooms
         assigned_rooms = []
@@ -504,13 +504,12 @@ async def shutdown_system(data: ShutdownRequest):
     
     try:
         if data.target in ["all"]:
-            rpi_address = os.environ.get("RPI_IP", "localhost")  
             # if rpi_ip:
             try:
                 import aiohttp
                 async with aiohttp.ClientSession() as session:
                     async with session.post(
-                        f"http://{rpi_address}:58081/shutdown",
+                        f"http://localhost:58081/shutdown",
                         json={"confirm": True},
                         timeout=5
                     ) as response:
