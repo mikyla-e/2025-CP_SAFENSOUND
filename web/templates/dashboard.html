@@ -902,7 +902,6 @@
             </div>
             <div class="audio-modal-body">
                 <div class="audio-modal-info">
-                    <p><strong id="audio-room-name">Room 1</strong></p>
                     <p id="audio-datetime">01/15/26 at 2:30:45 PM</p>
                 </div>
                 <audio controls id="audio-player">
@@ -1030,7 +1029,6 @@
             const modal = document.getElementById('audio-modal-overlay');
             const roomName = roomData[roomId]?.name || `Room ${roomId}`;
             
-            document.getElementById('audio-room-name').textContent = roomName;
             document.getElementById('audio-datetime').textContent = `${historyEntry.date} at ${historyEntry.time}`;
             
             // Set audio source

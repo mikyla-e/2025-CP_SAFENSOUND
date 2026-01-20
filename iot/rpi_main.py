@@ -6,7 +6,7 @@ from time import sleep
 from datetime import datetime
 import json
 import wave
-import struct
+# import struct
 import signal
 
 # --- networking ---
@@ -21,7 +21,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 
 # --- audio processing ---
-import joblib
+# import joblib
 from tensorflow import keras
 
 import numpy as np
@@ -97,6 +97,17 @@ shutdown_port = 58081
 # web_ip = None
 
 stop_event = threading.Event()
+
+def init_esp32_serial():
+    global esp32_serial
+    try:
+        esp32_serial = serial.Serial(esp32_port, 115200, timeout=1)
+        print(f"ESP32 serial connected on {esp32_port}")
+        return True
+    except Exception as e:
+        print(f"Could not open ESP32 serial port: {e}")
+        esp32_serial = None
+        return False
 
 class RPIDiscoverServer:
     def __init__(self):
@@ -481,7 +492,7 @@ loud_threshold_ms = 5000 #5 seconds
 loud_duration_ms = 0
 
 def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=None):
-    global loud_duration_ms
+    global loud_duration_ms, emergency_detected
     frame_length = 1024
     hop_length = 200
 
@@ -503,11 +514,15 @@ def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=Non
 
     try:
         if active_ms >= 3100:
+            emergency_detected = True
             trigger_alert(y_i16, device_add, room_id)
             return True
-        else:
+        if active_ms > 20 and active_ms < 3100:
             inference(y_i16, f"Room{room_id}_{timestamp}", device_add, room_id)
             return True
+        else:
+            print("Audio too quiet, skipping inference.")
+            return False
     except Exception as e:
         print(f"Error processing audio: {e}")
 
@@ -655,6 +670,7 @@ def trigger_alert(audio, device_add=None, room_id=None):
     if (emergency_detected == True):
         print(f"\nALERT TRIGGERED")
         action = "Emergency Alert Detected"
+        print(action)
 
         try:
             retry = 0
@@ -677,6 +693,8 @@ def trigger_alert(audio, device_add=None, room_id=None):
                     
                     if retry > 3:
                         print("Failed to send alert after 3 attempts.")
+
+            emergency_detected = False
 
         except Exception as e:
             print(f"Error sending alert: {e}")
@@ -707,12 +725,15 @@ def trigger_alert(audio, device_add=None, room_id=None):
                     if retry > 3:
                         print("Failed to send alert after 3 attempts.")
 
+            alarming_detected = False
+
         except Exception as e:
             print(f"Error sending alert: {e}")
 
 async def send_alert_web(room_id, action=None, recording_path=None):
     # global web_ip
     success_web = False
+    print(action)
 
     if "Emergency Alert Detected" in action or "Alarming Alert Detected" in action:
         # web
@@ -910,6 +931,8 @@ if __name__ == "__main__":
     # if discover_web_ip and web_ip:
     discovery_server = RPIDiscoverServer()
     discovery_server.start()
+
+    init_esp32_serial()
     
     audio_thread = threading.Thread(target=receive_audio_data, daemon=True)
     audio_thread.start()
@@ -921,7 +944,8 @@ if __name__ == "__main__":
     shutdown_thread.start()
     
     print("=" * 60)
-    print(f"Raspberry Pi IP: {discovery_server.RPI_ip}")
+    # print(f"Raspberry Pi IP: {discovery_server.RPI_ip}")
+    print(f"Receiver Port: {audio_port}")
     print("=" * 60)
 
     print("System is running.\n")

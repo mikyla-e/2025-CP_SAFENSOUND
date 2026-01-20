@@ -48,7 +48,7 @@ device_room_map: dict[str, int] = {}
 class AlertData(BaseModel):
     room_id: int
     action: str
-    recording_path: None
+    recording_path: str = None
 
 class AudioData(BaseModel):
     room_id: int
@@ -521,11 +521,7 @@ async def handle_alert(data: AlertData):
         current_date = datetime.now().strftime("%Y-%m-%d")
         formatted_date = datetime.now().strftime("%m/%d/%y")
 
-        if data.action == "Emergency Alert Detected":
-            # Set status to 1 (emergency active) - bell will blink
-            room_status[data.room_id] = 1
-
-        if data.action == "Alarming Alert Detected":
+        if data.action == "Emergency Alert Detected" or data.action == "Alarming Alert Detected":
             # Set status to 1 (emergency active) - bell will blink
             room_status[data.room_id] = 1
 
