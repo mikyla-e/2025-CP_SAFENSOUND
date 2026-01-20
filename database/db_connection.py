@@ -67,8 +67,9 @@ class Database:
                     date DATE,
                     time TIME,
                     room_id INTEGER,
+                    recording_path TEXT,
                     FOREIGN KEY (room_id) REFERENCES room (room_id),
-                    CHECK (action IN ('Alert Acknowledged', 'Emergency Detected'))
+                    CHECK (action IN ('Alert Acknowledged', 'Emergency Alert Detected', 'Alarming Alert Detected'))
                 )
             ''')
 
@@ -97,12 +98,12 @@ class Database:
                 VALUES (?)
             ''', (room_name,))
 
-    def insert_history(self, action, date, time, room_id):
+    def insert_history(self, action, date, time, room_id, recording_path):
         with self.conn:
             self.conn.execute('''
-                INSERT INTO history (action, date, time, room_id)
-                VALUES (?, ?, ?, ?)
-            ''', (action, date, time, room_id))
+                INSERT INTO history (action, date, time, room_id, recording_path)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (action, date, time, room_id, recording_path))
         
     def assign_device(self, address, room_id):
         with self.conn:
@@ -148,6 +149,14 @@ class Database:
             )
             return cursor.fetchall()
         
+    def fetch_recording(self, history_id):
+        with self.conn:
+            cursor = self.conn.execute(
+                'SELECT recording_path FROM history WHERE history_id = ?',
+                (history_id,)
+            )
+            return cursor.fetchone()
+                
     def fetch_device(self, address: str):
         with self.conn:
             cursor = self.conn.execute('SELECT * FROM device WHERE address = ?', (address,))
@@ -166,6 +175,8 @@ class Database:
             cursor = self.conn.execute('SELECT * FROM device')
             return cursor.fetchall()
         
+    
+        
     # monthly emergencies
     def fetch_monthly_emergencies(self, year):
         """Fetch emergency count per month for a specific year"""
@@ -175,7 +186,7 @@ class Database:
                     strftime('%m', date) as month,
                     COUNT(*) as count
                 FROM history
-                WHERE action = 'Emergency Detected'
+                WHERE (action = 'Emergency Alert Detected' OR action = 'Alarming Alert Detected')
                 AND strftime('%Y', date) = ?
                 GROUP BY month
                 ORDER BY month
@@ -195,7 +206,7 @@ class Database:
             cursor = self.conn.execute('''
                 SELECT DISTINCT strftime('%Y', date) as year
                 FROM history
-                WHERE action = 'Emergency Detected'
+                WHERE action = 'Emergency Alert Detected' OR action = 'Alarming Alert Detected'
                 ORDER BY year DESC
             ''')
             return [row[0] for row in cursor.fetchall()]
@@ -210,7 +221,7 @@ class Database:
                 SELECT 
                     r.room_id,
                     r.room_name,
-                    COUNT(CASE WHEN h.action = 'Emergency Detected' THEN 1 END) as count
+                    COUNT(CASE WHEN h.action = 'Emergency Alert Detected' OR h.action = 'Alarming Alert Detected' THEN 1 END) as count
                 FROM room r
                 LEFT JOIN history h ON r.room_id = h.room_id
             '''

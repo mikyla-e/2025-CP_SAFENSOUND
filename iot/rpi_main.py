@@ -22,6 +22,7 @@ import json
 
 # --- audio processing ---
 import joblib
+from tensorflow import keras
 
 import numpy as np
 # import pandas as pd
@@ -37,13 +38,13 @@ warnings.filterwarnings("ignore", category=UserWarning, module="numpy")
 
 
 # hardware control ---------------------------------
-from gpiozero import LED, Buzzer
+# from gpiozero import LED, Buzzer
 
-led_pin_1 = LED(17)
-led_pin_2 = LED(27)
-led_pin_3 = LED(22)
+# led_pin_1 = LED(17)
+# led_pin_2 = LED(27)
+# led_pin_3 = LED(22)
 
-buzzer_pin = Buzzer(23)
+# buzzer_pin = Buzzer(23)
 
 
 # functions -----------------------------------------
@@ -58,24 +59,18 @@ print("Database connected successfully.")
 # ml model
 # model = joblib.load("ml/ml models/mfcc_rf_model.joblib") # mfcc + random forest
 
-# model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
+model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
 
-import tflite_runtime.interpreter as tflite
+# import tflite_runtime.interpreter as tflite
 
-# Remove on-device conversion; load a compatible TFLite file produced offline
-def load_tflite_model():
-    try:
-        interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite")
-        interpreter.allocate_tensors()
-        print("Model loaded successfully.")
-        return interpreter
-    except Exception as e:
-        print("Failed to load TFLite model:", e)
-        raise
 
-interpreter = load_tflite_model()
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+# interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite")
+# interpreter.allocate_tensors()
+# print("Model loaded successfully.")
+
+# interpreter = load_tflite_model()
+# input_details = interpreter.get_input_details()
+# output_details = interpreter.get_output_details()
 
 
 audio_data = None
@@ -87,10 +82,11 @@ alarming_count = 0
 emergency_count = 0
 nonemergency_count = 0
 emergency_detected = False
+alarming_detected = False
 alerted_rpi = False
 
-# esp32_serial = None
-# esp32_port = ""
+esp32_serial = None
+esp32_port = "COM9"
 
 # web_port= 63429
 disc_port = 60123
@@ -172,7 +168,7 @@ class ShutdownHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"success": True, "message": "Shutting down..."}).encode())
                     
                     print("\n*** REMOTE SHUTDOWN REQUESTED ***")
-                    cleanup()
+                    # cleanup() 
                     stop_event.set()
 
                     def _poweroff():
@@ -208,20 +204,20 @@ def run_shutdown_server():
     server.server_close()
     print("Shutdown server stopped.")
 
-def cleanup():
-    """Turn off all GPIO devices"""
-    print("\nCleaning up GPIO...")
-    led_pin_1.off()
-    led_pin_2.off()
-    led_pin_3.off()
-    buzzer_pin.off()
-    print("GPIO cleanup complete.")
+# def cleanup():
+#     """Turn off all GPIO devices"""
+#     print("\nCleaning up GPIO...")
+#     led_pin_1.off()
+#     led_pin_2.off()
+#     led_pin_3.off()
+#     buzzer_pin.off()
+#     print("GPIO cleanup complete.")
 
 def signal_handler(signum, frame):
     """Handle termination signals (SIGTERM, SIGINT)"""
     print(f"\nReceived signal {signum}, shutting down gracefully...")
     stop_event.set()
-    cleanup()
+    # cleanup()
     sys.exit(0)
 
 signal.signal(signal.SIGTERM, signal_handler)
@@ -433,20 +429,20 @@ def receive_reset_signals():
                 retry = 0
                 try:
                     while retry < 3:
-                        success_rpi = asyncio.run(send_reset_rpi(device_add, operation))
+                        # success_rpi = asyncio.run(send_reset_rpi(device_add, operation))
                         success_web = asyncio.run(send_reset_web(room_id, operation))
-                        # success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
-                        if success_rpi and success_web:
+                        success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
+                        if success_esp32 and success_web:
                             print(f"Sent reset command from Room {room_id}")
                             break
                         else:
                             print("Failed to send reset command. Retrying...")
                             sleep(2)
                             retry += 1
-                            success_rpi = asyncio.run(send_reset_rpi(device_add, operation))
+                            # success_rpi = asyncio.run(send_reset_rpi(device_add, operation))
                             success_web = asyncio.run(send_reset_web(room_id, operation))
-                            # success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
-                            if retry == 3 and not success_web and not success_rpi:
+                            success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
+                            if retry == 3 and not success_web and not success_esp32:
                                 print("Failed to send reset command after 3 attempts.")
                 except Exception as e:
                     print(f"Error sending reset command: {e}")
@@ -506,15 +502,12 @@ def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=Non
     print(f"Activity={active_ms:.0f} ms")
 
     try:
-        if active_ms >= 600:
-            inference(y_i16, f"Room{room_id}_{timestamp}", device_add, room_id)
-            return True
         if active_ms >= 3100:
-            trigger_alarm(y_i16, device_add, room_id)
+            trigger_alert(y_i16, device_add, room_id)
             return True
         else:
-            print("Skipping inference (background).")
-            return False
+            inference(y_i16, f"Room{room_id}_{timestamp}", device_add, room_id)
+            return True
     except Exception as e:
         print(f"Error processing audio: {e}")
 
@@ -596,7 +589,7 @@ def extract_features(audio, sample_rate, hop_length=200, win_length=400,frame_ms
     # return np.concatenate(extracted_features)
 
 def inference(audio, wav_name, device_add=None, room_id=None):
-    global emergency_count, alarming_count, nonemergency_count, emergency_detected
+    global emergency_count, alarming_count, nonemergency_count, emergency_detected, alarming_detected
 
     # print(f"\nProcessing audio for inference: {wav_name}")
     # save_wav(f"processed_audio/{wav_name}.wav", audio, sample_rate)
@@ -605,42 +598,35 @@ def inference(audio, wav_name, device_add=None, room_id=None):
     audio_features = extract_features(audio, sample_rate).astype(np.float32)
     features = np.expand_dims(audio_features, axis=0)
 
-    # prediction = model.predict(features) # cnn
+    prediction = model.predict(features) # cnn
     # predicted_class = prediction[0] #random forest
 
-    interpreter.set_tensor(input_details[0]['index'], features)
-    interpreter.invoke()
-    prediction = interpreter.get_tensor(output_details[0]['index']) #tflite
+    # interpreter.set_tensor(input_details[0]['index'], features)
+    # interpreter.invoke()
+    # prediction = interpreter.get_tensor(output_details[0]['index']) #tflite
 
     predicted_class = np.argmax(prediction[0]) if prediction.ndim == 2 else int(prediction[0]) #cnn
 
-    # alarming sound = 3 times before emergency is confirmed
-    # emergency sound = 2 times after emergency is confirmed
+    # to be changed
+    # alarming sound = 2 times before alarming is confirmed
+    # emergency sound = 1 times after emergency is confirmed
 
     print(f"\nPrediction for {wav_name}: {predicted_class}")
 
     if predicted_class == 1:
         alarming_count += 1
-        print("ALARMING sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
+        print("ALARMING sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
 
-        if alarming_count >= 3:
-            emergency_detected = True
-            trigger_alarm(audio, device_add, room_id)
-        
-        elif alarming_count >= 2 and emergency_count >= 1:
-            emergency_detected = True
-            trigger_alarm(audio, device_add, room_id)
+        if alarming_count >= 2:
+            alarming_detected = True
+            trigger_alert(audio, device_add, room_id)
 
     elif predicted_class == 2:
         emergency_count += 1
-        print("EMERGENCY sound detected. \nAlarm count:", alarming_count, "\nEmergency count:", emergency_count)
+        print("EMERGENCY sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
         if emergency_count >= 1:
             emergency_detected = True
-            trigger_alarm(audio, device_add, room_id)
-
-        elif emergency_count >= 1 and alarming_count >= 2:
-            emergency_detected = True
-            trigger_alarm(audio, device_add, room_id)
+            trigger_alert(audio, device_add, room_id)
 
     elif predicted_class == 0:
         print("No emergency detected.")
@@ -652,30 +638,32 @@ def inference(audio, wav_name, device_add=None, room_id=None):
             print("System reset due to consecutive non-emergency sounds.")
 
 
-# alarm triggering -----------------------------------
-def trigger_alarm(audio, device_add=None, room_id=None):
-    global emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_rpi
+# alert triggering -----------------------------------
+def trigger_alert(audio, device_add=None, room_id=None):
+    global alarming_detected, emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_esp32
 
     datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     wav_filename = f"recorded_audio/ID{room_id}_{datetime_str}.wav"
-    save_wav(wav_filename, audio, sample_rate) #audio for testing
+    wav_path = os.path.abspath(wav_filename)
+    
+    save_wav(wav_filename, audio, sample_rate)
 
     alarming_count = 0
     emergency_count = 0
     nonemergency_count = 0
 
     if (emergency_detected == True):
-        print(f"\nALARM TRIGGERED")
-        action = "Emergency Detected"
+        print(f"\nALERT TRIGGERED")
+        action = "Emergency Alert Detected"
 
         try:
             retry = 0
             while retry < 3:
-                # success_esp32 = asyncio.run(send_alert_esp(room_id, action))
-                success_web = asyncio.run(send_alert_web(room_id, action))
-                success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
+                success_esp32 = asyncio.run(send_alert_esp(room_id, action))
+                success_web = asyncio.run(send_alert_web(room_id, action, wav_path))
+                # success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
                 
-                if success_rpi and success_web:
+                if success_esp32 and success_web:
                     print(f"Sent emergency alert from Room {room_id}")
                     break
                 else:
@@ -683,9 +671,9 @@ def trigger_alarm(audio, device_add=None, room_id=None):
                     sleep(2)
 
                     retry += 1
-                    success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
-                    success_web = asyncio.run(send_alert_web(room_id, action))
-                    # success_esp32 = asyncio.run(send_alert_esp(room_id, action))
+                    # success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
+                    success_web = asyncio.run(send_alert_web(room_id, action, wav_path))
+                    success_esp32 = asyncio.run(send_alert_esp(room_id, action))
                     
                     if retry > 3:
                         print("Failed to send alert after 3 attempts.")
@@ -693,16 +681,46 @@ def trigger_alarm(audio, device_add=None, room_id=None):
         except Exception as e:
             print(f"Error sending alert: {e}")
 
-async def send_alert_web(room_id, action=None):
+    if (alarming_detected == True):
+        print(f"\nALERT TRIGGERED")
+        action = "Alarming Alert Detected"
+
+        try:
+            retry = 0
+            while retry < 3:
+                success_esp32 = asyncio.run(send_alert_esp(room_id, action))
+                success_web = asyncio.run(send_alert_web(room_id, action, wav_path))
+                # success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
+                
+                if success_esp32 and success_web:
+                    print(f"Sent alarming alert from Room {room_id}")
+                    break
+                else:
+                    print("Failed to send alert. Retrying...")
+                    sleep(2)
+
+                    retry += 1
+                    # success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
+                    success_web = asyncio.run(send_alert_web(room_id, action, wav_path))
+                    success_esp32 = asyncio.run(send_alert_esp(room_id, action))
+                    
+                    if retry > 3:
+                        print("Failed to send alert after 3 attempts.")
+
+        except Exception as e:
+            print(f"Error sending alert: {e}")
+
+async def send_alert_web(room_id, action=None, recording_path=None):
     # global web_ip
     success_web = False
 
-    if "Emergency Detected" in action:
+    if "Emergency Alert Detected" in action or "Alarming Alert Detected" in action:
         # web
         try:
             payload_web = {
                 "room_id": room_id,
-                "action": action
+                "action": action,
+                "recording_path": recording_path
             }
 
             async with aiohttp.ClientSession() as session:
@@ -741,139 +759,139 @@ async def send_reset_web(room_id, action=None):
     
     return success_web
 
-# async def send_alert_esp(room_id, action=None):
-#     success_esp32 = False
+async def send_alert_esp(room_id, action=None):
+    success_esp32 = False
 
-#     if "Emergency Detected" in action:
-#         try:
-#             if esp32_serial and esp32_serial.is_open:
-#                 command = f"ALERT: {room_id}\n"
-#                 esp32_serial.write(command.encode())
+    if "Emergency Alert Detected" in action or "Alarming Alert Detected" in action:
+        try:
+            if esp32_serial and esp32_serial.is_open:
+                command = f"ALERT: {room_id}\n"
+                esp32_serial.write(command.encode())
 
-#                 responses = []
-#                 responses.append(esp32_serial.readline().decode().strip())
-#                 if responses:
-#                     for response in responses:
-#                         print(f"Received from ESP32: {response}")
+                responses = []
+                responses.append(esp32_serial.readline().decode().strip())
+                if responses:
+                    for response in responses:
+                        print(f"Received from ESP32: {response}")
 
-#                 success_esp32 = True
-#             else:
-#                 print("Serial port not open.")
+                success_esp32 = True
+            else:
+                print("Serial port not open.")
 
-#         except Exception as e:
-#             print("Failed to send alert to ESP32 receiver:", e)
+        except Exception as e:
+            print("Failed to send alert to ESP32 receiver:", e)
 
-#     return success_esp32
+    return success_esp32
 
 
-# async def send_reset_esp(room_id, action=None):
-#     success_esp32 = False
+async def send_reset_esp(room_id, action=None):
+    success_esp32 = False
 
-#     if "Alert Acknowledged" in action:
-#         try:
-#             if esp32_serial and esp32_serial.is_open:
-#                 command = f"RESET: {room_id}\n"
-#                 esp32_serial.write(command.encode())
+    if "Alert Acknowledged" in action:
+        try:
+            if esp32_serial and esp32_serial.is_open:
+                command = f"RESET: {room_id}\n"
+                esp32_serial.write(command.encode())
                 
-#                 responses = []
-#                 responses.append(esp32_serial.readline().decode().strip())
-#                 if responses:
-#                     for response in responses:
-#                         print(f"Received from ESP32: {response}")
+                responses = []
+                responses.append(esp32_serial.readline().decode().strip())
+                if responses:
+                    for response in responses:
+                        print(f"Received from ESP32: {response}")
 
-#                 success_esp32 = True
-#             else:
-#                 print("Serial port not open.")
-#         except Exception as e:
-#             print("Failed to send reset command to ESP32 receiver:", e)
+                success_esp32 = True
+            else:
+                print("Serial port not open.")
+        except Exception as e:
+            print("Failed to send reset command to ESP32 receiver:", e)
     
-#     return success_esp32
+    return success_esp32
 
 led1_active = False
 led2_active = False
 led3_active = False
 
-async def send_alert_rpi(device_add, room_id, action=None):
-    global alerted_rpi, led1_active, led2_active, led3_active
-    from database.db_connection import Database
-    get = Database()
-    success_rpi = False
+# async def send_alert_rpi(device_add, room_id, action=None):
+#     global alerted_rpi, led1_active, led2_active, led3_active
+#     from database.db_connection import Database
+#     get = Database()
+#     success_rpi = False
 
-    device_id = get.fetch_device_id(device_add)
-    print(f"Device ID for alert: {device_id}")
-    # print(f"send_alert_rpi DEBUG: device add = {device_add}")
+#     device_id = get.fetch_device_id(device_add)
+#     print(f"Device ID for alert: {device_id}")
+#     # print(f"send_alert_rpi DEBUG: device add = {device_add}")
 
-    if action is None:
-        print("No action specified for RPI alert.")
-        return success_rpi
+#     if action is None:
+#         print("No action specified for RPI alert.")
+#         return success_rpi
 
-    if "Emergency Detected" in action:
-        try:
-            await asyncio.sleep(1)
-            match device_id:
-                case 1:
-                    led1_active = True
-                    led_pin_1.blink(on_time=0.5, off_time=0.5)
-                    print("LED 1 activated.")
-                case 2:
-                    led2_active = True
-                    led_pin_2.blink(on_time=0.5, off_time=0.5)
-                    print("LED 2 activated.")
-                case 3:
-                    led3_active = True
-                    led_pin_3.blink(on_time=0.5, off_time=0.5)
-                    print("LED 3 activated.")
+#     if "Emergency Alert Detected" in action or "Alarming Alert Detected" in action:
+#         try:
+#             await asyncio.sleep(1)
+#             match device_id:
+#                 case 1:
+#                     led1_active = True
+#                     led_pin_1.blink(on_time=0.5, off_time=0.5)
+#                     print("LED 1 activated.")
+#                 case 2:
+#                     led2_active = True
+#                     led_pin_2.blink(on_time=0.5, off_time=0.5)
+#                     print("LED 2 activated.")
+#                 case 3:
+#                     led3_active = True
+#                     led_pin_3.blink(on_time=0.5, off_time=0.5)
+#                     print("LED 3 activated.")
 
-            if alerted_rpi is False and (led1_active or led2_active or led3_active):
-                alerted_rpi = True
-                buzzer_pin.beep(on_time=0.5, off_time=0.5)
+#             if alerted_rpi is False and (led1_active or led2_active or led3_active):
+#                 alerted_rpi = True
+#                 buzzer_pin.beep(on_time=0.5, off_time=0.5)
             
-            success_rpi = True
-        except Exception as e:
-            print("Failed to send alert to Raspberry Pi:", e)
+#             success_rpi = True
+#         except Exception as e:
+#             print("Failed to send alert to Raspberry Pi:", e)
 
-    return success_rpi
+#     return success_rpi
 
 
-async def send_reset_rpi(device_add, action=None):
-    global alerted_rpi, led1_active, led2_active, led3_active
-    from database.db_connection import Database
-    get = Database()
-    success_rpi = False
+# async def send_reset_rpi(device_add, action=None):
+#     global alerted_rpi, led1_active, led2_active, led3_active
+#     from database.db_connection import Database
+#     get = Database()
+#     success_rpi = False
 
-    device_id = get.fetch_device_id(device_add)
-    print(f"Device ID for reset: {device_id}")
-    # print(f"send_reset_rpi DEBUG: device add = {device_add}")
+#     device_id = get.fetch_device_id(device_add)
+#     print(f"Device ID for reset: {device_id}")
+#     # print(f"send_reset_rpi DEBUG: device add = {device_add}")
 
-    if action is None:
-        print("No action specified for RPI alert.")
-        return success_rpi
+#     if action is None:
+#         print("No action specified for RPI alert.")
+#         return success_rpi
     
-    if "Alert Acknowledged" in action:
-        try:
-            match device_id:
-                case 1:
-                    led1_active = False
-                    led_pin_1.off()
-                    print("LED 1 deactivated.")
-                case 5:
-                    led2_active = False
-                    led_pin_2.off()
-                    print("LED 2 deactivated.")
-                case 3:
-                    led3_active = False
-                    led_pin_3.off()
-                    print("LED 3 deactivated.")
+#     if "Alert Acknowledged" in action:
+#         try:
+#             match device_id:
+#                 case 1:
+#                     led1_active = False
+#                     led_pin_1.off()
+#                     print("LED 1 deactivated.")
+#                 case 5:
+#                     led2_active = False
+#                     led_pin_2.off()
+#                     print("LED 2 deactivated.")
+#                 case 3:
+#                     led3_active = False
+#                     led_pin_3.off()
+#                     print("LED 3 deactivated.")
 
-            if (not led1_active and not led2_active and not led3_active):
-                alerted_rpi = False
-                buzzer_pin.off()
+#             if (not led1_active and not led2_active and not led3_active):
+#                 alerted_rpi = False
+#                 buzzer_pin.off()
 
-            success_rpi = True
-        except Exception as e:
-            print("Failed to send reset command to ESP32 receiver:", e)
+#             success_rpi = True
+#         except Exception as e:
+#             print("Failed to send reset command to ESP32 receiver:", e)
     
-    return success_rpi
+#     return success_rpi
     
 
 # main loop -----------------------------------------
@@ -964,7 +982,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nExiting...")
         stop_event.set()
-        cleanup()
+        # cleanup()
         discovery_server.stop()
         audio_thread.join(timeout=2)
         reset_thread.join(timeout=2)

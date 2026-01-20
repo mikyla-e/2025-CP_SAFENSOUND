@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ import sys
 import os
 import asyncio
 import json
+import glob
 # import socket
 from typing import List
 from datetime import datetime
@@ -22,6 +23,7 @@ from datetime import datetime #for date format (separation)
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
+recordings_dir = os.path.join(os.path.dirname(__file__), "..", "recorded_audio")
 
 class ShutdownRequest(BaseModel):
     target: str
@@ -46,6 +48,7 @@ device_room_map: dict[str, int] = {}
 class AlertData(BaseModel):
     room_id: int
     action: str
+    recording_path: None
 
 class AudioData(BaseModel):
     room_id: int
@@ -246,7 +249,7 @@ async def get_recent_emergency():
         query = """
             SELECT action, date, time, room_id
             FROM history
-            WHERE action = 'Emergency Detected'
+            WHERE action = 'Emergency Alert Detected' or action = 'Alarming Alert Detected'
             ORDER BY date DESC, time DESC
             LIMIT 1
         """
@@ -274,10 +277,19 @@ async def get_history(room_id: int):
         for record in history:
             # Format date as MM/DD/YY
             formatted_date = datetime.strptime(record[2], "%Y-%m-%d").strftime("%m/%d/%y")
+            recording_path = record[4] if len(record) > 4 else None
+            has_recording = False
+
+            if recording_path and os.path.exists(recording_path):
+                has_recording = True
+            
             formatted_history.append({
+                "history_id": record[0],
                 "action": record[1],
                 "date": formatted_date,
-                "time": strip_leading_zero_hour(record[3])            
+                "time": strip_leading_zero_hour(record[3]),
+                "has_recording": has_recording,
+                "recording_path": recording_path           
             })
         return formatted_history
     except Exception as e:
@@ -395,6 +407,82 @@ async def device_config(address: str):
         return {"registered": False, "room_id": 0}
     room_id = record[2]
     return {"registered": True, "room_id": room_id}
+
+# RECORDINGS
+@app.get("/api/recordings/{filename}")
+async def get_recording(filename: str):
+    b_filename = os.path.basename(filename)
+    file_path = os.path.join(recordings_dir, b_filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Recording not found")
+    
+    return FileResponse(file_path, media_type="audio/wav", filename=b_filename)
+
+@app.get("/api/history/{history_id}/recording")
+async def get_recording_by_id(history_id: int):
+    try:
+        recording_path = db.get_recording(history_id)
+
+        if not recording_path or not os.path.exists(recording_path):
+            raise HTTPException(status_code=404, detail="Recording not found")
+        
+        filename = os.path.basename(recording_path)
+        return FileResponse(recording_path, media_type="audio/wav", filename=filename)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/api/recordings")
+async def list_recordings():
+    try:
+        if not os.path.exists(recordings_dir):
+            return[]
+        
+        recordings = []
+        for filepath in glob.glob(os.path.join(recordings_dir, "*.wav")):
+            filename = os.path.basename(filepath)
+            stat = os.stat(filename)
+            room_id = None
+            room_name = "Unknown"
+
+            try:
+                if filename.startswith("ID"):
+                    room_id = int(filename.split("_")[0][2:])
+                    rooms = db.fetch_rooms()
+                    for room in rooms:
+                        if room[0] == room_id:
+                            room_name = room[1]
+                            break
+            except:
+                pass
+
+            recordings.append({
+                "filename": filename,
+                "room_id": room_id,
+                "room_name": room_name,
+                "size": round(stat.st_size / 1024, 1),
+                "created_at": datetime.fromtimestamp(stat.st_mtime).strftime("%m/%d/%y %I:%M %p")
+            })
+
+        recordings.sort(key=lambda x: x["created_at"], reverse=True)
+        return recordings
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.delete("/api/recordings/{filename}")
+async def delete_recording(filename: str):
+    b_filename = os.path.basename(filename)
+    file_path = os.path.join(recordings_dir, b_filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Recording not found")
+    
+    try:
+        os.remove(file_path)
+        return {"success": True, "message": "Recording deleted successfully."}
+    except Exception as e:
+        return HTTPException(status_code=500, detail=str(e))
+
     
 # MONTHLY EMERGENCIES
 @app.get("/api/monthly_emergencies/{year}")
@@ -433,10 +521,14 @@ async def handle_alert(data: AlertData):
         current_date = datetime.now().strftime("%Y-%m-%d")
         formatted_date = datetime.now().strftime("%m/%d/%y")
 
-        if data.action == "Emergency Detected":
+        if data.action == "Emergency Alert Detected":
             # Set status to 1 (emergency active) - bell will blink
             room_status[data.room_id] = 1
-            
+
+        if data.action == "Alarming Alert Detected":
+            # Set status to 1 (emergency active) - bell will blink
+            room_status[data.room_id] = 1
+
         elif data.action == "Alert Acknowledged":
             # Set status to 0 (normal) - bell will stop blinking
             room_status[data.room_id] = 0
@@ -444,9 +536,9 @@ async def handle_alert(data: AlertData):
         else:
             raise HTTPException(status_code=400, detail="Invalid action.")
 
-        db.insert_history(data.action, current_date, current_time, data.room_id)
+        db.insert_history(data.action, current_date, current_time, data.room_id, data.recording_path)
         
-        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Status: {room_status[data.room_id]}")
+        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
 
         await manager.broadcast({
             "type": "alert_update",
@@ -454,7 +546,8 @@ async def handle_alert(data: AlertData):
             "status": room_status[data.room_id],
             "action": data.action,
             "date": formatted_date,
-            "time": strip_leading_zero_hour(current_time)
+            "time": strip_leading_zero_hour(current_time),
+            "has_recording": data.recording_path is not None
         })
         
         return {"success": True, "message": "Alert processed successfully."}
@@ -552,7 +645,7 @@ async def get_report_data(
             SELECT h.action, h.date, h.time, h.room_id, r.room_name
             FROM history h
             JOIN room r ON h.room_id = r.room_id
-            WHERE h.action = 'Emergency Detected'
+            WHERE h.action = 'Emergency Alert Detected' or h.action = 'Alarming Alert Detected'
         """
         
         conditions = []

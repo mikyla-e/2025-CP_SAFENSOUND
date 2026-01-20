@@ -585,6 +585,158 @@
             25% { transform: rotate(-10deg); }
             75% { transform: rotate(10deg); }
         }
+        
+
+        .history-row.has_audio {
+            cursor: pointer;
+            transition : background-color 0.2s;
+        }
+
+        .history-row.has_audio:hover {
+            background-color: rgba(1, 83, 130, 0.08);
+        }
+
+        .action-cell {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .play-icon {
+            width: 14px;
+            height: 14px;
+            fill: var(--second);
+            flex-shrink: 0;
+            opacity: 0.7;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .history-row.has-audio:hover .play-icon {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .action-text {
+            flex: 1;
+        }
+
+        /* Audio Modal */
+        .audio-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .audio-modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .audio-modal {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+            transform: scale(0.9);
+            transition: transform 0.2s ease;
+        }
+
+        .audio-modal-overlay.show .audio-modal {
+            transform: scale(1);
+        }
+
+        .audio-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .audio-modal-header h3 {
+            margin: 0;
+            color: var(--second);
+            font-size: 1.1rem;
+        }
+
+        .audio-modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            line-height: 1;
+        }
+
+        .audio-modal-close:hover {
+            color: #333;
+        }
+
+        .audio-modal-body {
+            text-align: center;
+        }
+
+        .audio-modal-info {
+            margin-bottom: 16px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .audio-modal-info p {
+            margin: 4px 0;
+        }
+
+        .audio-modal audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .audio-modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            justify-content: center;
+        }
+
+        .btn-audio-action {
+            padding: 8px 16px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-family: "DM Sans", sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-download-audio {
+            background: var(--second);
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-download-audio:hover {
+            background: var(--second-light);
+        }
+
+        .btn-close-audio {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .btn-close-audio:hover {
+            background: #dee2e6;
+        }
+        
     </style>
     
 </body>
@@ -761,7 +913,7 @@
         <div class="emergency-banner" id="aside-emergency-banner">
             <span class="emergency-icon">🚨</span>
             <div class="emergency-text">
-                <h4>EMERGENCY DETECTED!</h4>
+                <h4>ALERT DETECTED!</h4>
                 <p id="aside-emergency-time">Just now</p>
             </div>
             <button class="btn-acknowledge" onclick="acknowledgeAlert('aside')">Acknowledge</button>
@@ -798,7 +950,7 @@
         <div class="emergency-banner" id="popup-emergency-banner">
             <span class="emergency-icon">🚨</span>
             <div class="emergency-text">
-                <h4>EMERGENCY DETECTED!</h4>
+                <h4>ALERT DETECTED!</h4>
                 <p id="popup-emergency-time">Just now</p>
             </div>
             <button class="btn-acknowledge" onclick="acknowledgeAlert('popup')">Acknowledge</button>
@@ -826,6 +978,33 @@
             <path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zM432 248a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/>
         </svg>
     </a>
+
+    <div class="audio-modal-overlay" id="audio-modal-overlay" onclick="closeAudioModal()">
+        <div class="audio-modal" onclick="event.stopPropagation()">
+            <div class="audio-modal-header">
+                <h3>Emergency Recording</h3>
+                <button class="audio-modal-close" onclick="closeAudioModal()">×</button>
+            </div>
+            <div class="audio-modal-body">
+                <div class="audio-modal-info">
+                    <p><strong id="audio-room-name">Room 1</strong></p>
+                    <p id="audio-datetime">01/15/26 at 2:30:45 PM</p>
+                </div>
+                <audio controls id="audio-player">
+                    <source src="" type="audio/wav">
+                    Your browser does not support the audio element.
+                </audio>
+                <div class="audio-modal-actions">
+                    <a href="#" class="btn-audio-action btn-download-audio" id="audio-download" download>
+                        Download
+                    </a>
+                    <button class="btn-audio-action btn-close-audio" onclick="closeAudioModal()">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         // REAL-TIME DATE AND TIME
@@ -925,6 +1104,56 @@
             updateAlertStates();
         };
 
+        let currentAudioHistory = null;
+
+        function openAudioModal(roomId, historyEntry) {
+            if (!historyEntry.has_recording) {
+                alert('No recording available for this alert.');
+                return;
+            }
+
+            const modal = document.getElementById('audio-modal-overlay');
+            const roomName = roomData[roomId]?.name || `Room ${roomId}`;
+            
+            document.getElementById('audio-room-name').textContent = roomName;
+            document.getElementById('audio-datetime').textContent = `${historyEntry.date} at ${historyEntry.time}`;
+            
+            // Set audio source
+            const audioPlayer = document.getElementById('audio-player');
+            const audioUrl = `/api/history/${historyEntry.history_id}/recording`;
+            audioPlayer.src = audioUrl;
+            
+            // Set download link
+            const downloadLink = document.getElementById('audio-download');
+            downloadLink.href = audioUrl;
+            downloadLink.download = `emergency_room${roomId}_${historyEntry.date.replace(/\//g, '-')}.wav`;
+            
+            modal.classList.add('show');
+            currentAudioHistoryId = historyEntry.history_id;
+            
+            // Auto-play
+            audioPlayer.play().catch(e => console.log('Autoplay prevented:', e));
+        }
+
+        function closeAudioModal() {
+            const modal = document.getElementById('audio-modal-overlay');
+            const audioPlayer = document.getElementById('audio-player');
+            
+            audioPlayer.pause();
+            audioPlayer.currentTime = 0;
+            modal.classList.remove('show');
+            currentAudioHistoryId = null;
+        }
+
+        // Close modal on ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAudioModal();
+                closeAdminModal();
+                closePopup();
+            }
+        });
+
         // select room
         async function selectRoom(roomNumber, roomElement) {
             currentSelectedRoom = roomNumber;
@@ -967,9 +1196,62 @@
                 tableBody.deleteRow(1);
             }
 
+            if (history.length == 0) {
+                const row = tableBody.insertRow();
+                const cell = row.insertCell(0);
+                cell.colSpan = 3;
+                cell.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: #999;">
+                        <p style="margin: 0; font-size: 0.95rem;">No alert history yet</p>
+                        <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: #bbb;">Emergencies will appear here when detected</p>
+                    </div>
+                `;
+
+                const pageInfo = document.querySelector(
+                    container === 'aside' ? '#aside-page-info' : '#popup-page-info'
+                );
+
+                pageInfo.textContent = '0 of 0';
+                
+                const prevBtn = document.querySelector(
+                    container === 'aside' ? '#aside-prev' : '#popup-prev'
+                );
+                const nextBtn = document.querySelector(
+                    container === 'aside' ? '#aside-next' : '#popup-next'
+                );
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+
+                return;
+            }
+
             pagedHistory.forEach(entry => {
                 const row = tableBody.insertRow();
-                row.insertCell(0).textContent = entry.action;
+                row.className = 'history-row';
+                
+                const isEmergency = entry.action === "Emergency Alert Detected" || entry.action === "Alarming Alert Detected";
+                const hasRecording = entry.has_recording;
+                
+                if (isEmergency && hasRecording) {
+                    row.classList.add('has-audio');
+                    row.title = 'Click to play recording';
+                    row.onclick = () => openAudioModal(roomNumber, entry);
+                }
+
+                const actionCell = row.insertCell(0);
+                if (isEmergency && hasRecording) {
+                    actionCell.innerHTML = `
+                        <div class="action-cell">
+                            <svg class="play-icon" viewBox="0 0 384 512">
+                                <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
+                            </svg>
+                            <span class="action-text">${entry.action}</span>
+                        </div>
+                    `;
+                } else {
+                    actionCell.textContent = entry.action;
+                }
+
                 row.insertCell(1).textContent = entry.date;
                 row.insertCell(2).textContent = entry.time;
             });
@@ -1213,9 +1495,9 @@
                 if (history && history.length > 0) {
                     const latestAction = history[0].action; // Most recent record
                     
-                    if (latestAction === "Emergency Detected") {
+                    if (latestAction === "Emergency Alert Detected" || latestAction === "Alarming Alert Detected") {
                         roomStatus[roomId] = 1; // Bell should animate
-                        console.log(`Room ${roomId} latest: Emergency Detected - bell animating`);
+                        console.log(`Room ${roomId} latest: Alert Detected - bell animating`);
                     } else if (latestAction === "Alert Acknowledged") {
                         roomStatus[roomId] = 0; // Bell should stop
                         console.log(`Room ${roomId} latest: Alert Acknowledged - bell stopped`);
@@ -1359,7 +1641,7 @@
                     console.log(`Room ${roomId} card found, status: ${statusValue}`);
                     
                     if (statusValue === 1) {
-                        // Latest history is "Emergency Detected" - bell should blink
+                        // Latest history is "Emergency Alert Detected" or "Alarming Alert Detected" - bell should blink
                         roomCard.classList.add('alert-active');
                         console.log(`Room ${roomId} set to alert-active - bell blinking`);
                     } else {
