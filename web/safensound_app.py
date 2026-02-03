@@ -48,7 +48,7 @@ device_room_map: dict[str, int] = {}
 class AlertData(BaseModel):
     room_id: int
     action: str
-    sound_type: str
+    sound_type: str = None
     recording_path: str = None
 
 class AudioData(BaseModel):
@@ -532,27 +532,43 @@ async def handle_alert(data: AlertData):
             # Set status to 1 (emergency active) - bell will blink
             room_status[data.room_id] = 1
 
+            db.insert_history(data.action, data.sound_type, current_date, current_time, data.room_id, data.recording_path)
+        
+            print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Type: {data.sound_type}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
+
+            await manager.broadcast({
+                "type": "alert_update",
+                "room_id": data.room_id,
+                "status": room_status[data.room_id],
+                "action": data.action,
+                "sound_type": data.sound_type,
+                "date": formatted_date,
+                "time": strip_leading_zero_hour(current_time),
+                "has_recording": data.recording_path is not None
+            })
+
         elif data.action == "Alert Acknowledged":
             # Set status to 0 (normal) - bell will stop blinking
             room_status[data.room_id] = 0
+
+            db.insert_history(data.action, data.sound_type, current_date, current_time, data.room_id, data.recording_path)
+            
+            print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
+
+            await manager.broadcast({
+                "type": "alert_update",
+                "room_id": data.room_id,
+                "status": room_status[data.room_id],
+                "action": data.action,
+                "sound_type": data.sound_type,
+                "date": formatted_date,
+                "time": strip_leading_zero_hour(current_time),
+                "has_recording": data.recording_path is not None
+            })
             
         else:
             raise HTTPException(status_code=400, detail="Invalid action.")
 
-        db.insert_history(data.action, data.sound_type, current_date, current_time, data.room_id, data.recording_path)
-        
-        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Type: {data.sound_type}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
-
-        await manager.broadcast({
-            "type": "alert_update",
-            "room_id": data.room_id,
-            "status": room_status[data.room_id],
-            "action": data.action,
-            "sound_type": data.sound_type,
-            "date": formatted_date,
-            "time": strip_leading_zero_hour(current_time),
-            "has_recording": data.recording_path is not None
-        })
         
         return {"success": True, "message": "Alert processed successfully."}
     except Exception as e:

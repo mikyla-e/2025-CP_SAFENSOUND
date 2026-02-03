@@ -597,8 +597,6 @@ def extract_features(audio, sample_rate, hop_length=200, win_length=400,frame_ms
     # return np.concatenate(extracted_features)
 
 def noise_classification(audio, sample_rate):
-    global sound_type
-
     noise_features = extract_features(audio, sample_rate).astype(np.float32)
     noise_features = np.expand_dims(noise_features, axis=0)
 
@@ -606,19 +604,21 @@ def noise_classification(audio, sample_rate):
     noise_class = np.argmax(noise_prediction[0]) if noise_prediction.ndim == 2 else int(noise_prediction[0])
 
     if noise_class == 0:
-        sound_type = "Environment Sounds"
+        sound_class = "Environment Sounds"
         print("Environment sound detected.")
 
-    if noise_class == 1:
-        sound_type = "Defensive Speech"
+    elif noise_class == 1:
+        sound_class = "Defensive Speech"
         print("Defensive speech detected.")
         
-    if noise_class == 2:
-        sound_type = "Hostile Speech"
+    elif noise_class == 2:
+        sound_class = "Hostile Speech"
         print("Hostile speech detected.")
 
     else:
-        sound_type = "Unknown"
+        sound_class = "Unknown"
+
+    return sound_class
 
 
 def inference(audio, wav_name, device_add=None, room_id=None):
@@ -652,7 +652,8 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 
         if alarming_count >= 2:
             alarming_detected = True
-            noise_classification(audio, sample_rate)
+            sound_type = noise_classification(audio, sample_rate)
+            print(f"Determined sound type: {sound_type}")
             trigger_alert(audio, sound_type, device_add, room_id)
 
     elif predicted_class == 2:
@@ -660,8 +661,9 @@ def inference(audio, wav_name, device_add=None, room_id=None):
         print("EMERGENCY sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
         if emergency_count >= 1:
             emergency_detected = True
-            noise_classification(audio, sample_rate)
-            trigger_alert(audio, sound_type,device_add, room_id)
+            sound_type = noise_classification(audio, sample_rate)
+            print(f"Determined sound type: {sound_type}")
+            trigger_alert(audio, sound_type, device_add, room_id)
 
     elif predicted_class == 0:
         print("No emergency detected.")
@@ -753,7 +755,7 @@ def trigger_alert(audio, sound_type=None, device_add=None, room_id=None):
 async def send_alert_web(room_id, action=None, sound_type=None, recording_path=None):
     # global web_ip
     success_web = False
-    print(action)
+    print(sound_type)
 
     if "Emergency Alert Detected" in action or "Alarming Alert Detected" in action:
         # web
@@ -786,7 +788,8 @@ async def send_reset_web(room_id, action=None):
         try:
             payload_web = {
                 "room_id": room_id,
-                "action": action
+                "action": action,
+                "sound_type": "",
             }
 
             async with aiohttp.ClientSession() as session:
