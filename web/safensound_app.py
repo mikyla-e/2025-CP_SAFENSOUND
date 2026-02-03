@@ -1,9 +1,10 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Depends, Form
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
+from starlette.middleware.sessions import SessionMiddleware
 import sys
 import os
 import asyncio
@@ -16,6 +17,7 @@ import uvicorn
 import signal
 # import threading
 import traceback
+import secrets
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from database.db_connection import Database
@@ -48,7 +50,6 @@ device_room_map: dict[str, int] = {}
 class AlertData(BaseModel):
     room_id: int
     action: str
-    sound_type: str = None
     recording_path: str = None
 
 class AudioData(BaseModel):
@@ -174,6 +175,10 @@ async def lifespan(app: FastAPI):
         print("Periodic updates cancelled.")
 
 app = FastAPI(title="SafeNSound Homepage", version="1.0", lifespan=lifespan)
+
+# middleware
+app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
+
 app.mount("/static", StaticFiles(directory=static_dir), name="static")  
 templates = Jinja2Templates(directory=templates_dir)
 
@@ -188,16 +193,58 @@ def strip_leading_zero_hour(t: str) -> str:
 
 connected_websockets: List[WebSocket] = []
 
+# Authentication dependency
+def get_current_user(request: Request):
+    """Check if user is logged in"""
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return user
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     return templates.TemplateResponse("homepage.html", {"request": request})
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    # If already logged in, redirect to dashboard
+    if request.session.get("user"):
+        return RedirectResponse(url="/dashboard", status_code=303)
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/login")
+async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+    user = db.verify_user(username, password)
+    if user:
+        request.session["user"] = {"user_id": user[0], "username": user[1]}
+        return RedirectResponse(url="/dashboard", status_code=303)
+    else:
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": "Invalid username or password"
+        })
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=303)
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_alias(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    # Check if user is logged in
+    user = request.session.get("user")
+    if not user:
+        # Redirect to login page if not authenticated
+        return RedirectResponse(url="/login", status_code=303)
+    
+    # If authenticated, show dashboard
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "username": user["username"]
+    })
 
 @app.get("/api/rooms")
-async def get_rooms():
+async def get_rooms(user: dict = Depends(get_current_user)):
     try:
         rooms = db.fetch_rooms()
         devices = db.fetch_devices()
@@ -271,35 +318,43 @@ async def get_recent_emergency():
 
 # HISTORY FOR A ROOM 
 @app.get("/api/history/{room_id}")
-async def get_history(room_id: int):
+async def get_history(room_id: int, user: dict = Depends(get_current_user)):
     try:
         history = db.fetch_history(room_id)
         formatted_history = []
         for record in history:
-            # Format date as MM/DD/YY
-            formatted_date = datetime.strptime(record[3], "%Y-%m-%d").strftime("%m/%d/%y")
+            # record structure: (history_id, action, sound_type, date, time, room_id, recording_path)
+            history_id = record[0]
+            action = record[1]
+            sound_type = record[2]
+            date_str = record[3]
+            time_str = record[4]
+            room_id_db = record[5]
             recording_path = record[6] if len(record) > 6 else None
+            
+            # Format date as MM/DD/YY
+            formatted_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%m/%d/%y")
             has_recording = False
 
             if recording_path and os.path.exists(recording_path):
                 has_recording = True
             
             formatted_history.append({
-                "history_id": record[0],
-                "action": record[1],
-                "sound_type": record[2],
+                "history_id": history_id,
+                "action": action,
                 "date": formatted_date,
-                "time": strip_leading_zero_hour(record[4]),
+                "time": strip_leading_zero_hour(time_str),
                 "has_recording": has_recording,
-                "recording_path": recording_path           
+                "recording_path": recording_path        
             })
         return formatted_history
     except Exception as e:
+        print(f"Error fetching history: {e}")  # Add logging
         raise HTTPException(status_code=500, detail=str(e))
 
 # ROOM UPDATES
 @app.post("/api/rooms")
-async def create_room(data: NewRoom):
+async def create_room(data: NewRoom, user: dict = Depends(get_current_user)):
     try:
         db.insert_room(data.room_name)
         cursor = db.conn.execute('SELECT last_insert_rowid()')
@@ -415,7 +470,6 @@ async def device_config(address: str):
 async def get_recording(filename: str):
     b_filename = os.path.basename(filename)
     file_path = os.path.join(recordings_dir, b_filename)
-    # file_path = os.path.join("../recorded_audio", b_filename)
 
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Recording not found")
@@ -425,17 +479,13 @@ async def get_recording(filename: str):
 @app.get("/api/history/{history_id}/recording")
 async def get_recording_by_id(history_id: int):
     try:
-        recording_path = db.fetch_recording(history_id)
-        if recording_path:
-            print(recording_path)
+        recording_path = db.get_recording(history_id)
 
         if not recording_path or not os.path.exists(recording_path):
             raise HTTPException(status_code=404, detail="Recording not found")
         
         filename = os.path.basename(recording_path)
-        # return FileResponse(recording_path, media_type="audio/wav", filename=filename)
-        return FileResponse(recording_path, media_type="audio/wav", filename=recording_path)
-
+        return FileResponse(recording_path, media_type="audio/wav", filename=filename)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -529,46 +579,33 @@ async def handle_alert(data: AlertData):
         formatted_date = datetime.now().strftime("%m/%d/%y")
 
         if data.action == "Emergency Alert Detected" or data.action == "Alarming Alert Detected":
-            # Set status to 1 (emergency active) - bell will blink
             room_status[data.room_id] = 1
-
-            db.insert_history(data.action, data.sound_type, current_date, current_time, data.room_id, data.recording_path)
-        
-            print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Type: {data.sound_type}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
-
-            await manager.broadcast({
-                "type": "alert_update",
-                "room_id": data.room_id,
-                "status": room_status[data.room_id],
-                "action": data.action,
-                "sound_type": data.sound_type,
-                "date": formatted_date,
-                "time": strip_leading_zero_hour(current_time),
-                "has_recording": data.recording_path is not None
-            })
-
         elif data.action == "Alert Acknowledged":
-            # Set status to 0 (normal) - bell will stop blinking
             room_status[data.room_id] = 0
-
-            db.insert_history(data.action, data.sound_type, current_date, current_time, data.room_id, data.recording_path)
-            
-            print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
-
-            await manager.broadcast({
-                "type": "alert_update",
-                "room_id": data.room_id,
-                "status": room_status[data.room_id],
-                "action": data.action,
-                "sound_type": data.sound_type,
-                "date": formatted_date,
-                "time": strip_leading_zero_hour(current_time),
-                "has_recording": data.recording_path is not None
-            })
-            
         else:
             raise HTTPException(status_code=400, detail="Invalid action.")
 
+        # Fix: Pass parameters in correct order: action, sound_type, date, time, room_id, recording_path
+        db.insert_history(
+            action=data.action,
+            sound_type="Unknown",  # or get from data if available
+            date=current_date,
+            time=current_time,
+            room_id=data.room_id,
+            recording_path=data.recording_path
+        )
+        
+        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
+
+        await manager.broadcast({
+            "type": "alert_update",
+            "room_id": data.room_id,
+            "status": room_status[data.room_id],
+            "action": data.action,
+            "date": formatted_date,
+            "time": strip_leading_zero_hour(current_time),
+            "has_recording": data.recording_path is not None
+        })
         
         return {"success": True, "message": "Alert processed successfully."}
     except Exception as e:

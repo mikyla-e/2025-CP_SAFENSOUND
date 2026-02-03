@@ -1,6 +1,7 @@
 import sqlite3
 import os
 from datetime import datetime
+import hashlib
 
 class Database:
     def __init__(self, db_name="safensound.db"):
@@ -10,7 +11,39 @@ class Database:
         self.create_room()
         self.create_device()
         self.create_history()
+        self.create_users()
         # self.initialize_rooms()
+
+    # USER
+    def create_users(self):
+        with self.conn:
+            self.conn.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+    
+    # User authentication methods
+    def add_user(self, username, password):
+        """Add a new user with hashed password"""
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        with self.conn:
+            self.conn.execute('''
+                INSERT INTO users (username, password_hash)
+                VALUES (?, ?)
+            ''', (username, password_hash))
+    
+    def verify_user(self, username, password):
+        """Verify user credentials"""
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        cursor = self.conn.execute('''
+            SELECT user_id, username FROM users
+            WHERE username = ? AND password_hash = ?
+        ''', (username, password_hash))
+        return cursor.fetchone()
 
     # create tables
     def create_room(self):
