@@ -50,6 +50,7 @@ device_room_map: dict[str, int] = {}
 class AlertData(BaseModel):
     room_id: int
     action: str
+    sound_type: str = None
     recording_path: str = None
 
 class AudioData(BaseModel):
@@ -342,6 +343,7 @@ async def get_history(room_id: int, user: dict = Depends(get_current_user)):
             formatted_history.append({
                 "history_id": history_id,
                 "action": action,
+                "sound_type": sound_type,
                 "date": formatted_date,
                 "time": strip_leading_zero_hour(time_str),
                 "has_recording": has_recording,
@@ -480,6 +482,8 @@ async def get_recording(filename: str):
 async def get_recording_by_id(history_id: int):
     try:
         recording_path = db.get_recording(history_id)
+        if recording_path:
+            print(recording_path)
 
         if not recording_path or not os.path.exists(recording_path):
             raise HTTPException(status_code=404, detail="Recording not found")
@@ -579,16 +583,18 @@ async def handle_alert(data: AlertData):
         formatted_date = datetime.now().strftime("%m/%d/%y")
 
         if data.action == "Emergency Alert Detected" or data.action == "Alarming Alert Detected":
+            # Set status to 1 (emergency active) - bell will blink
             room_status[data.room_id] = 1
         elif data.action == "Alert Acknowledged":
+            # Set status to 0 (normal) - bell will stop blinking
             room_status[data.room_id] = 0
         else:
             raise HTTPException(status_code=400, detail="Invalid action.")
 
-        # Fix: Pass parameters in correct order: action, sound_type, date, time, room_id, recording_path
+        # Pass parameters in correct order: action, sound_type, date, time, room_id, recording_path
         db.insert_history(
             action=data.action,
-            sound_type="Unknown",  # or get from data if available
+            sound_type=data.sound_type,
             date=current_date,
             time=current_time,
             room_id=data.room_id,

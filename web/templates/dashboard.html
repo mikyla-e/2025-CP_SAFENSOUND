@@ -226,6 +226,21 @@
         .btn-manage:hover {
             background: var(--second-light);
         }
+
+        /* logout button */
+        .btn-logout {
+            background: var(--red); 
+            color: var(--primary);
+            border: none;
+            border-radius: 5px;
+            padding: 7.5px 16px;
+            cursor: pointer;
+            /* box-shadow: 0 2px 8px rgba(45,51,107,0.2); */
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .btn-logout:hover {
+            background: #ee3e47;
+        }
         
         /* TABLE */
         .device-section {
@@ -688,9 +703,9 @@
             <p class="time" id="current-time">00:00 AM</p>
         </div>
         <div class="admin-launch" style="margin:20px 0; display: flex; gap: 10px; align-items: center;">
-            <span style="color: var(--text-light); font-size: 0.9rem;">{{ username }}</span>
+            <!-- <span style="color: var(--text-light); font-size: 0.9rem;">{{ username }}</span> -->
             <button type="button" class="btn-manage" onclick="openAdminModal()"><span>Manage </span>Rooms & Devices</button>
-            <a href="/logout" class="btn-manage" style="text-decoration: none; background: var(--red);" title="Logout">
+            <a href="/logout" class="btn-logout" title="Logout">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="white" style="width: 16px; height: 16px; vertical-align: middle;">
                     <path d="M377.9 105.9L500.7 228.7c7.2 7.2 11.3 17.1 11.3 27.3s-4.1 20.1-11.3 27.3L377.9 406.1c-6.4 6.4-15 9.9-24 9.9c-18.7 0-33.9-15.2-33.9-33.9l0-62.1-128 0c-17.7 0-32-14.3-32-32l0-64c0-17.7 14.3-32 32-32l128 0 0-62.1c0-18.7 15.2-33.9 33.9-33.9c9 0 17.6 3.6 24 9.9zM160 96L96 96c-17.7 0-32 14.3-32 32l0 256c0 17.7 14.3 32 32 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-64 0c-53 0-96-43-96-96L0 128C0 75 43 32 96 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z"/>
                 </svg>
@@ -849,7 +864,17 @@
             <i class="fa-solid fa-pen" onclick="renameCurrentRoom(event)">✎</i>
         </header>
 
-        <p class="title">Alert History</p>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <p class="title">Alert History</p>
+            <button 
+                id="toggle-sound-type" 
+                onclick="toggleSoundType()" 
+                style="background: transparent; border: none; cursor: pointer; font-size: 1.1rem; color: var(--second); padding: 5px;" 
+                title="Toggle sound type">
+                ℹ️
+            </button>
+        </div>
+        
         <div class="table-div">
             <table>
                 <tr>
@@ -877,7 +902,17 @@
             <span class="fa-solspand fa-times popup-close" onclick="closePopup()">x</i>
         </header>
 
-        <p class="title">Alert History</p>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <p class="title">Alert History</p>
+            <button 
+                id="toggle-sound-type-popup" 
+                onclick="toggleSoundType()" 
+                style="background: transparent; border: none; cursor: pointer; font-size: 1.1rem; color: var(--second); padding: 5px;" 
+                title="view sound type">
+                ℹ️
+            </button>
+        </div>
+        
         <div class="table-div">
             <table>
                 <tr>
@@ -968,6 +1003,16 @@
             'aside': 1,
             '.popup-aside': 1
         };
+
+        let showSoundType = false;
+
+        window.toggleSoundType = function() {
+        console.log('toggleSoundType called! Current state:', showSoundType);
+        showSoundType = !showSoundType;
+        console.log('New state:', showSoundType);
+        updateHistoryTable(currentSelectedRoom, 'aside');
+        updateHistoryTable(currentSelectedRoom, '.popup-aside');
+    };
 
         // Fetch room data from API
         async function fetchRoomData() {
@@ -1158,17 +1203,24 @@
                 }
 
                 const actionCell = row.insertCell(0);
+                
+                // Prepare action text with optional sound_type
+                let actionHTML = entry.action;
+                if (showSoundType && entry.sound_type) {
+                    actionHTML += ` <span style="color: var(--second-light);"> -${entry.sound_type}</span>`;
+                }
+                
                 if (isEmergency && hasRecording) {
                     actionCell.innerHTML = `
                         <div class="action-cell">
                             <svg class="play-icon" viewBox="0 0 384 512">
                                 <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
                             </svg>
-                            <span class="action-text">${entry.action}</span>
+                            <span class="action-text">${actionHTML}</span>
                         </div>
                     `;
                 } else {
-                    actionCell.textContent = entry.action;
+                    actionCell.innerHTML = actionHTML;
                 }
 
                 row.insertCell(1).textContent = entry.date;
