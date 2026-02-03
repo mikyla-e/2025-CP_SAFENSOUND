@@ -64,6 +64,7 @@ class Database:
                 CREATE TABLE IF NOT EXISTS history (
                     history_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     action TEXT,
+                    sound_type TEXT,
                     date DATE,
                     time TIME,
                     room_id INTEGER,
@@ -98,12 +99,12 @@ class Database:
                 VALUES (?)
             ''', (room_name,))
 
-    def insert_history(self, action, date, time, room_id, recording_path):
+    def insert_history(self, action, sound_type, date, time, room_id, recording_path):
         with self.conn:
             self.conn.execute('''
-                INSERT INTO history (action, date, time, room_id, recording_path)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (action, date, time, room_id, recording_path))
+                INSERT INTO history (action, sound_type, date, time, room_id, recording_path)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (action, sound_type, date, time, room_id, recording_path))
         
     def assign_device(self, address, room_id):
         with self.conn:
@@ -155,7 +156,9 @@ class Database:
                 'SELECT recording_path FROM history WHERE history_id = ?',
                 (history_id,)
             )
-            return cursor.fetchone()
+            path = cursor.fetchone()
+            return path[0] if path else None
+
                 
     def fetch_device(self, address: str):
         with self.conn:

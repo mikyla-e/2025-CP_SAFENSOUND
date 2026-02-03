@@ -59,19 +59,11 @@ print("Database connected successfully.")
 # ml model
 # model = joblib.load("ml/ml models/mfcc_rf_model.joblib") # mfcc + random forest
 
-model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
+# model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
+# model = keras.models.load_model("ml/ml models/lsms_cnn_model_2.keras") # lsms + cnn
+model = keras.models.load_model("ml/ml models/emergency_classification/lsms_cnn_model_3.keras") # lsms + cnn
 
-# import tflite_runtime.interpreter as tflite
-
-
-# interpreter = tflite.Interpreter(model_path="ml/ml models/lsms_cnn_model.tflite")
-# interpreter.allocate_tensors()
-# print("Model loaded successfully.")
-
-# interpreter = load_tflite_model()
-# input_details = interpreter.get_input_details()
-# output_details = interpreter.get_output_details()
-
+noise_classifier = keras.models.load_model("ml/ml models/noise_classification/lsms_cnn_model.keras") # noise cnn
 
 audio_data = None
 audio_wav = None
@@ -83,6 +75,7 @@ emergency_count = 0
 nonemergency_count = 0
 emergency_detected = False
 alarming_detected = False
+sound_type = None
 alerted_rpi = False
 
 esp32_serial = None
@@ -517,7 +510,7 @@ def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=Non
             emergency_detected = True
             trigger_alert(y_i16, device_add, room_id)
             return True
-        if active_ms > 20 and active_ms < 3100:
+        if active_ms > 100 and active_ms < 3100:
             inference(y_i16, f"Room{room_id}_{timestamp}", device_add, room_id)
             return True
         else:
@@ -603,8 +596,33 @@ def extract_features(audio, sample_rate, hop_length=200, win_length=400,frame_ms
 
     # return np.concatenate(extracted_features)
 
+def noise_classification(audio, sample_rate):
+    global sound_type
+
+    noise_features = extract_features(audio, sample_rate).astype(np.float32)
+    noise_features = np.expand_dims(noise_features, axis=0)
+
+    noise_prediction = noise_classifier.predict(noise_features)
+    noise_class = np.argmax(noise_prediction[0]) if noise_prediction.ndim == 2 else int(noise_prediction[0])
+
+    if noise_class == 0:
+        sound_type = "Environment Sounds"
+        print("Environment sound detected.")
+
+    if noise_class == 1:
+        sound_type = "Defensive Speech"
+        print("Defensive speech detected.")
+        
+    if noise_class == 2:
+        sound_type = "Hostile Speech"
+        print("Hostile speech detected.")
+
+    else:
+        sound_type = "Unknown"
+
+
 def inference(audio, wav_name, device_add=None, room_id=None):
-    global emergency_count, alarming_count, nonemergency_count, emergency_detected, alarming_detected
+    global emergency_count, alarming_count, nonemergency_count, emergency_detected, alarming_detected, sound_type
 
     # print(f"\nProcessing audio for inference: {wav_name}")
     # save_wav(f"processed_audio/{wav_name}.wav", audio, sample_rate)
@@ -634,14 +652,16 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 
         if alarming_count >= 2:
             alarming_detected = True
-            trigger_alert(audio, device_add, room_id)
+            noise_classification(audio, sample_rate)
+            trigger_alert(audio, sound_type, device_add, room_id)
 
     elif predicted_class == 2:
         emergency_count += 1
         print("EMERGENCY sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
         if emergency_count >= 1:
             emergency_detected = True
-            trigger_alert(audio, device_add, room_id)
+            noise_classification(audio, sample_rate)
+            trigger_alert(audio, sound_type,device_add, room_id)
 
     elif predicted_class == 0:
         print("No emergency detected.")
@@ -654,7 +674,7 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 
 
 # alert triggering -----------------------------------
-def trigger_alert(audio, device_add=None, room_id=None):
+def trigger_alert(audio, sound_type=None, device_add=None, room_id=None):
     global alarming_detected, emergency_detected, emergency_count, alarming_count, nonemergency_count, success_web, success_esp32
 
     datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -676,7 +696,7 @@ def trigger_alert(audio, device_add=None, room_id=None):
             retry = 0
             while retry < 3:
                 success_esp32 = asyncio.run(send_alert_esp(room_id, action))
-                success_web = asyncio.run(send_alert_web(room_id, action, wav_path))
+                success_web = asyncio.run(send_alert_web(room_id, action, sound_type, wav_path))
                 # success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
                 
                 if success_esp32 and success_web:
@@ -688,7 +708,7 @@ def trigger_alert(audio, device_add=None, room_id=None):
 
                     retry += 1
                     # success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
-                    success_web = asyncio.run(send_alert_web(room_id, action, wav_path))
+                    success_web = asyncio.run(send_alert_web(room_id, action, sound_type, wav_path))
                     success_esp32 = asyncio.run(send_alert_esp(room_id, action))
                     
                     if retry > 3:
@@ -707,7 +727,7 @@ def trigger_alert(audio, device_add=None, room_id=None):
             retry = 0
             while retry < 3:
                 success_esp32 = asyncio.run(send_alert_esp(room_id, action))
-                success_web = asyncio.run(send_alert_web(room_id, action, wav_path))
+                success_web = asyncio.run(send_alert_web(room_id, action, sound_type, wav_path))
                 # success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
                 
                 if success_esp32 and success_web:
@@ -719,7 +739,7 @@ def trigger_alert(audio, device_add=None, room_id=None):
 
                     retry += 1
                     # success_rpi = asyncio.run(send_alert_rpi(device_add, room_id, action))
-                    success_web = asyncio.run(send_alert_web(room_id, action, wav_path))
+                    success_web = asyncio.run(send_alert_web(room_id, action, sound_type, wav_path))
                     success_esp32 = asyncio.run(send_alert_esp(room_id, action))
                     
                     if retry > 3:
@@ -730,7 +750,7 @@ def trigger_alert(audio, device_add=None, room_id=None):
         except Exception as e:
             print(f"Error sending alert: {e}")
 
-async def send_alert_web(room_id, action=None, recording_path=None):
+async def send_alert_web(room_id, action=None, sound_type=None, recording_path=None):
     # global web_ip
     success_web = False
     print(action)
@@ -741,6 +761,7 @@ async def send_alert_web(room_id, action=None, recording_path=None):
             payload_web = {
                 "room_id": room_id,
                 "action": action,
+                "sound_type": sound_type,
                 "recording_path": recording_path
             }
 

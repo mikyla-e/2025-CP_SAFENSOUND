@@ -48,6 +48,7 @@ device_room_map: dict[str, int] = {}
 class AlertData(BaseModel):
     room_id: int
     action: str
+    sound_type: str
     recording_path: str = None
 
 class AudioData(BaseModel):
@@ -276,8 +277,8 @@ async def get_history(room_id: int):
         formatted_history = []
         for record in history:
             # Format date as MM/DD/YY
-            formatted_date = datetime.strptime(record[2], "%Y-%m-%d").strftime("%m/%d/%y")
-            recording_path = record[4] if len(record) > 4 else None
+            formatted_date = datetime.strptime(record[3], "%Y-%m-%d").strftime("%m/%d/%y")
+            recording_path = record[6] if len(record) > 6 else None
             has_recording = False
 
             if recording_path and os.path.exists(recording_path):
@@ -286,8 +287,9 @@ async def get_history(room_id: int):
             formatted_history.append({
                 "history_id": record[0],
                 "action": record[1],
+                "sound_type": record[2],
                 "date": formatted_date,
-                "time": strip_leading_zero_hour(record[3]),
+                "time": strip_leading_zero_hour(record[4]),
                 "has_recording": has_recording,
                 "recording_path": recording_path           
             })
@@ -413,6 +415,7 @@ async def device_config(address: str):
 async def get_recording(filename: str):
     b_filename = os.path.basename(filename)
     file_path = os.path.join(recordings_dir, b_filename)
+    # file_path = os.path.join("../recorded_audio", b_filename)
 
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Recording not found")
@@ -422,13 +425,17 @@ async def get_recording(filename: str):
 @app.get("/api/history/{history_id}/recording")
 async def get_recording_by_id(history_id: int):
     try:
-        recording_path = db.get_recording(history_id)
+        recording_path = db.fetch_recording(history_id)
+        if recording_path:
+            print(recording_path)
 
         if not recording_path or not os.path.exists(recording_path):
             raise HTTPException(status_code=404, detail="Recording not found")
         
         filename = os.path.basename(recording_path)
-        return FileResponse(recording_path, media_type="audio/wav", filename=filename)
+        # return FileResponse(recording_path, media_type="audio/wav", filename=filename)
+        return FileResponse(recording_path, media_type="audio/wav", filename=recording_path)
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -532,15 +539,16 @@ async def handle_alert(data: AlertData):
         else:
             raise HTTPException(status_code=400, detail="Invalid action.")
 
-        db.insert_history(data.action, current_date, current_time, data.room_id, data.recording_path)
+        db.insert_history(data.action, data.sound_type, current_date, current_time, data.room_id, data.recording_path)
         
-        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
+        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Type: {data.sound_type}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
 
         await manager.broadcast({
             "type": "alert_update",
             "room_id": data.room_id,
             "status": room_status[data.room_id],
             "action": data.action,
+            "sound_type": data.sound_type,
             "date": formatted_date,
             "time": strip_leading_zero_hour(current_time),
             "has_recording": data.recording_path is not None
