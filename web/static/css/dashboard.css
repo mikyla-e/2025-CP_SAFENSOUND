@@ -675,6 +675,14 @@ aside .title,
     font-size: clamp(0.9rem, 2vw, 1rem);
 }
 
+aside #toggle-sound-type,
+.popup-aside #toggle-sound-type-popup{
+    margin-right: 10px;
+    margin-top: 25px;
+    margin-bottom: 5px;
+}
+
+
 /* table header */
 aside table th,
 .popup-aside table th{
