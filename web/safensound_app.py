@@ -10,12 +10,12 @@ import os
 import asyncio
 import json
 import glob
-# import socket
+import socket
 from typing import List
 from datetime import datetime
 import uvicorn
 import signal
-# import threading
+import threading
 import traceback
 import secrets
 
@@ -31,7 +31,7 @@ class ShutdownRequest(BaseModel):
     target: str
     confirm: bool = False
 
-# rpi_ip = None
+rpi_ip = None
 
 class RoomRename(BaseModel):
     new_name: str
@@ -87,63 +87,63 @@ class ConnectionManager:
 manager = ConnectionManager()
 room_status = {1:0, 2:0, 3:0}
 
-# web_port = 63429
-# stop_event = threading.Event()
+web_port = 63429
+stop_event = threading.Event()
 
-# class WebDiscoverServer:
-#     def __init__(self):
-#         self.running = True
-#         self.web_ip = self.get_web_ip()
+class WebDiscoverServer:
+    def __init__(self):
+        self.running = True
+        self.web_ip = self.get_web_ip()
 
-#     def get_web_ip(self):
-#         try:
-#             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#             s.connect(("8.8.8.8", 80))
-#             ip = s.getsockname()[0]
-#             s.close()
-#             return ip
-#         except Exception as e:
-#             print("Error getting web IP:", e)
-#             return "localhost"
+    def get_web_ip(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception as e:
+            print("Error getting web IP:", e)
+            return "localhost"
         
-#     def discovery_listener(self):
-#         global rpi_ip
-#         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-#         sock.bind(('0.0.0.0', web_port))
+    def discovery_listener(self):
+        global rpi_ip
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('0.0.0.0', web_port))
 
-#         print(f"Discovery server listening on {self.web_ip}:{web_port}")
+        print(f"Discovery server listening on {self.web_ip}:{web_port}")
 
-#         while self.running and not stop_event.is_set():
-#             try:
-#                 data, addr = sock.recvfrom(1024)
-#                 message = data.decode('utf-8').strip()
-#                 print(f"Received discovery message from {addr[0]}: {message}")
+        while self.running and not stop_event.is_set():
+            try:
+                data, addr = sock.recvfrom(1024)
+                message = data.decode('utf-8').strip()
+                print(f"Received discovery message from {addr[0]}: {message}")
 
-#                 if message == "SAFENSOUND RASPBERRY PI HERE":
-#                     rpi_ip = addr[0]
-#                     response = f"SAFENSOUND WEB DASHBOARD HERE: {self.web_ip}"
-#                     sock.sendto(response.encode('utf-8'), addr)
-#                     print(f"Sent response to {addr[0]}: {self.web_ip}")
+                if message == "SAFENSOUND RASPBERRY PI HERE":
+                    rpi_ip = addr[0]
+                    response = f"SAFENSOUND WEB DASHBOARD HERE: {self.web_ip}"
+                    sock.sendto(response.encode('utf-8'), addr)
+                    print(f"Sent response to {addr[0]}: {self.web_ip}")
             
-#             except Exception as e:
-#                 if self.running:
-#                     print(f"Error in discovery listener: {e}")
+            except Exception as e:
+                if self.running:
+                    print(f"Error in discovery listener: {e}")
 
-#         sock.close()
+        sock.close()
 
-#     def start(self):
-#         discovery_thread = threading.Thread(target=self.discovery_listener, daemon=True)
-#         discovery_thread.start()
-#         print(f"Discovery server started on {self.web_ip}:{web_port}.")
+    def start(self):
+        discovery_thread = threading.Thread(target=self.discovery_listener, daemon=True)
+        discovery_thread.start()
+        print(f"Discovery server started on {self.web_ip}:{web_port}.")
 
-#         return discovery_thread
+        return discovery_thread
     
-#     def stop(self):
-#         self.running = False
-#         print("Discovery listener stopped.")
+    def stop(self):
+        self.running = False
+        print("Discovery listener stopped.")
 
-# web_discover_server = WebDiscoverServer()
+web_discover_server = WebDiscoverServer()
 
 async def periodic_updates():
     while True:
@@ -481,7 +481,7 @@ async def get_recording(filename: str):
 @app.get("/api/history/{history_id}/recording")
 async def get_recording_by_id(history_id: int):
     try:
-        recording_path = db.get_recording(history_id)
+        recording_path = db.fetch_recording(history_id)
         if recording_path:
             print(recording_path)
 
@@ -591,7 +591,6 @@ async def handle_alert(data: AlertData):
         else:
             raise HTTPException(status_code=400, detail="Invalid action.")
 
-        # Pass parameters in correct order: action, sound_type, date, time, room_id, recording_path
         db.insert_history(
             action=data.action,
             sound_type=data.sound_type,
@@ -601,13 +600,14 @@ async def handle_alert(data: AlertData):
             recording_path=data.recording_path
         )
         
-        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
+        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Sound Type: {data.sound_type}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
 
         await manager.broadcast({
             "type": "alert_update",
             "room_id": data.room_id,
             "status": room_status[data.room_id],
             "action": data.action,
+            "sound_type": data.sound_type,
             "date": formatted_date,
             "time": strip_leading_zero_hour(current_time),
             "has_recording": data.recording_path is not None
