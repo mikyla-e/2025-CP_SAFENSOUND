@@ -535,6 +535,54 @@
             justify-content: center;
         }
 
+        @keyframes newEmergency {
+            0% {
+                background-color: rgba(181, 46, 52, 0.3)
+            }
+            50% {
+                background-color: rgba(181, 46, 52, 0.15)
+            }
+            100% {
+                background-color: rgba(181, 46, 52, 0.3)
+            }
+        }
+
+        @keyframes newAlarming {
+            0% {
+                background-color: rgba(245, 158, 11, 0.3)
+            }
+            50% {
+                background-color: rgba(245, 158, 11, 0.15)
+            }
+            100% {
+                background-color: rgba(245, 158, 11, 0.3)
+            }
+        }
+
+        .history-row.new-emergency {
+            animation: newEmergency 3s ease;
+            border-left: 3px solid var(--red);
+        }
+
+        .history-row.new-alarming {
+            animation: newAlarming 3s ease;
+            border-left: 3px solid #F59E0B;
+        }
+
+        .history-row.acknowledged-highlight{
+            animation: none;
+            background-color: #10B9811a; /* Green with low opacity */
+            border-left: 3px solid #10B981; /* Green border */
+            transition: background-color 5s ease-out, border-left-color 5s ease-out
+        }
+
+        .history-row.fade-highlight {
+            animation: none;
+            background-color: transparent;
+            border-left: 3px solid transparent;
+            transition: all 0.5s ease-out;
+        }
+
         .history-row.has_audio {
             cursor: pointer;
             transition : background-color 0.2s;
@@ -1222,6 +1270,15 @@
                 return;
             }
 
+            let recentUnacknowledgedAlarmId = null;
+
+            if(history.length > 0) { 
+                const firstEntry = history[0];
+                if (firstEntry.action === "Emergency Alert Detected" || firstEntry.action === "Alarming Alert Detected") {
+                    recentUnacknowledgedAlarmId = firstEntry.history_id;
+                }
+            }
+
             pagedHistory.forEach(entry => {
                 const row = tableBody.insertRow();
                 row.className = 'history-row';
@@ -1231,6 +1288,13 @@
                 const isAcknowledged = entry.action === "Alert Acknowledged";
                 const hasRecording = entry.has_recording;
             
+                if (entry.history_id === recentUnacknowledgedAlarmId) {
+                    if (isEmergency) {
+                        row.classList.add('new-emergency');
+                    } else if (isAlarming) {
+                        row.classList.add('new-alarming');
+                    }
+                }
 
                 const actionCell = row.insertCell(0);
                 
@@ -1586,6 +1650,10 @@
                             
                             // Refresh recent emergency section
                             fetchRecentEmergency();
+
+                            if (data.action === "Alert Acknowledged") {
+                                removeHighlightsInstance(data.room_id);
+                            }
                             
                             // Refresh history for the affected room
                             fetchRoomHistory(data.room_id).then(() => {
@@ -1607,8 +1675,7 @@
                             // Update graphs
                             updateMonthlyGraph();
                             updateTopChart();
-                        }
-                        else if (data.type === 'room_renamed') {
+                        } else if (data.type === 'room_renamed') {
                             console.log('Room renamed:', data);
                             // Update room name in UI
                             const roomCard = document.querySelector(`.room[data-room-id="${data.room_id}"]`);
@@ -1661,6 +1728,28 @@
             } catch (error) {
                 console.error('Error creating WebSocket:', error);
             }
+        }
+
+        function removeHighlightInstance(roomId) {
+            const containers = ['aside', '.popup-aside'];
+    
+            containers.forEach(container => {
+                const rows = document.querySelectorAll(`${container} .history-row.new-emergency, ${container} .history-row.new-alarming`);
+                
+                rows.forEach(row => {
+                    row.classList.remove('new-emergency', 'new-alarming');
+                    row.classList.add('acknowledged-highlight');
+                    
+                    setTimeout(() => {
+                        row.classList.remove('acknowledged-highlight');
+                        row.classList.add('fade-highlight');
+                        
+                        setTimeout(() => {
+                            row.classList.remove('fade-highlight');
+                        }, 500);
+                    }, 2000);
+                });
+            });
         }
 
         function updateAlertStates() {

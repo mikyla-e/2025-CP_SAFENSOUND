@@ -178,7 +178,7 @@ class Database:
     def fetch_history(self, room_id):
         with self.conn:
             cursor = self.conn.execute(
-                'SELECT * FROM history WHERE room_id = ? ORDER BY date DESC, time DESC',
+                'SELECT * FROM history WHERE room_id = ? ORDER BY date DESC, history_id DESC',
                 (room_id,)
             )
             return cursor.fetchall()
