@@ -162,9 +162,9 @@ async def lifespan(app: FastAPI):
 
     task = asyncio.create_task(periodic_updates())
     print("FastAPI SafeNSound started!")
-    # print(f"Homepage available at: http://{web_discover_server.web_ip}:8000")
-    print(f"Homepage available at: http://localhost:8000")
-    print("API Documentation at: http://localhost:8000/docs")
+    # print(f"Homepage available at: http://{web_discover_server.web_ip}:8080")
+    print(f"Homepage available at: http://localhost:8080")
+    print("API Documentation at: http://localhost:8080/docs")
 
     yield
     print("Shutting down...")
@@ -785,5 +785,5 @@ async def get_report_data(
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run("safensound_app:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
+    uvicorn.run("safensound_app:app", host="0.0.0.0", port=8080, reload=True, log_level="info")
     print("SafeNSound FastAPI is running on...")
