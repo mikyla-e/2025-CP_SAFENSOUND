@@ -157,7 +157,7 @@ class RPIDiscoverServer:
             return "localhost"
         
     def discovery_listener(self):
-        # global web_ip
+        global web_ip
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(('0.0.0.0', disc_port))
@@ -171,12 +171,12 @@ class RPIDiscoverServer:
                 print(f"Received discovery message from {addr[0]}: {message}")
 
                 if message == "SENDER_HERE":
-                    # if web_ip:
-                    response = f"RPI_HERE:{self.RPI_ip}"
-                        # response = f"RPI_HERE:{self.RPI_ip},WEB_HERE:{web_ip}"
+                    if web_ip:
+                    # response = f"RPI_HERE:{self.RPI_ip}"
+                        response = f"RPI_HERE:{self.RPI_ip},WEB_HERE:{web_ip}"
 
-                    sock.sendto(response.encode('utf-8'), addr)
-                    print(f"Sent response to {addr[0]}: {response}")
+                        sock.sendto(response.encode('utf-8'), addr)
+                        print(f"Sent response to {addr[0]}: {response}")
             
             except Exception as e:
                 if self.running:
@@ -210,7 +210,7 @@ class ShutdownHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"success": True, "message": "Shutting down..."}).encode())
                     
                     print("\n*** REMOTE SHUTDOWN REQUESTED ***")
-                    # cleanup() 
+                    cleanup() 
                     stop_event.set()
 
                     def _poweroff():
@@ -773,7 +773,7 @@ def trigger_alert(audio, sound_type=None, device_add=None, room_id=None):
             print(f"Error sending alert: {e}")
 
 async def send_alert_web(room_id, action=None, sound_type=None, recording_path=None):
-    # global web_ip
+    global web_ip
     success_web = False
     print(sound_type)
 
@@ -801,7 +801,7 @@ async def send_alert_web(room_id, action=None, sound_type=None, recording_path=N
 
 
 async def send_reset_web(room_id, action=None):
-    # global web_ip
+    global web_ip
     success_web = False
 
     if "Alert Acknowledged" in action:
