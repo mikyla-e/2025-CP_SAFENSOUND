@@ -71,7 +71,6 @@ interpreter = tflite.Interpreter(model_path="ml/ml models/emergency_classificati
 interpreter.allocate_tensors()
 print("Model loaded successfully.")
 
-interpreter = load_tflite_model()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
@@ -80,9 +79,8 @@ noise_classifier = tflite.Interpreter(model_path="ml/ml models/noise_classificat
 noise_classifier.allocate_tensors()
 print("Model loaded successfully.")
 
-noise_classifier = load_tflite_model()
-input_details = noise_classifier.get_input_details()
-output_details = noise_classifier.get_output_details()
+noise_input_details = noise_classifier.get_input_details()
+noise_output_details = noise_classifier.get_output_details()
 
 
 audio_data = None
@@ -595,9 +593,9 @@ def noise_classification(audio, sample_rate):
     # noise_prediction = noise_classifier.predict(noise_features)
     # noise_class = np.argmax(noise_prediction[0]) if noise_prediction.ndim == 2 else int(noise_prediction[0])
 
-    noise_classifier.set_tensor(input_details[0]['index'], noise_features)
+    noise_classifier.set_tensor(noise_input_details[0]['index'], noise_features)
     noise_classifier.invoke()
-    noise_class = noise_classifier.get_tensor(output_details[0]['index']) #tflite
+    noise_class = noise_classifier.get_tensor(noise_output_details[0]['index']) #tflite
 
     if noise_class == 0:
         sound_class = "Environment Sounds"
