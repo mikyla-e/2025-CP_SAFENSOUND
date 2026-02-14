@@ -50,7 +50,7 @@ except Exception as e:
     print(f"Warning: Could not reset pin factory: {e}")
 
 try:
-    led_pin_1 = LED(17)
+    led_pin_1 = LED(27)
     led_pin_2 = LED(23)
     led_pin_3 = LED(25)
 
@@ -61,7 +61,7 @@ except Exception as e:
     subprocess.run(['sudo', 'killall', 'python3'], capture_output=True)
     import time
     time.sleep(1)
-    led_pin_1 = LED(17)
+    led_pin_1 = LED(27)
     led_pin_2 = LED(23)
     led_pin_3 = LED(25)
     buzzer_pin = Buzzer(16)
