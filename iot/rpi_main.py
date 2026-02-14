@@ -596,6 +596,7 @@ def noise_classification(audio, sample_rate):
     noise_classifier.set_tensor(noise_input_details[0]['index'], noise_features)
     noise_classifier.invoke()
     noise_class = noise_classifier.get_tensor(noise_output_details[0]['index']) #tflite
+    noise_class = np.argmax(noise_class[0]) if noise_class.ndim == 2 else int(noise_class[0])
 
     if noise_class == 0:
         sound_class = "Environment Sounds"
