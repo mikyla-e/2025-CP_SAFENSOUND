@@ -38,13 +38,33 @@ warnings.filterwarnings("ignore", category=UserWarning, module="numpy")
 
 
 # hardware control ---------------------------------
-from gpiozero import LED, Buzzer
+from gpiozero import LED, Buzzer, Device
+from gpiozero.pins.lgpio import LGPIOFactory
 
-led_pin_1 = LED(17)
-led_pin_2 = LED(23)
-led_pin_3 = LED(25)
+try:
+    # Close any existing pin factory
+    if Device.pin_factory is not None:
+        Device.pin_factory.close()
+    Device.pin_factory = LGPIOFactory()
+except Exception as e:
+    print(f"Warning: Could not reset pin factory: {e}")
 
-buzzer_pin = Buzzer(16)
+try:
+    led_pin_1 = LED(17)
+    led_pin_2 = LED(23)
+    led_pin_3 = LED(25)
+
+    buzzer_pin = Buzzer(16)
+except Exception as e:
+    print("Attempting cleanup and retry...")
+    import subprocess
+    subprocess.run(['sudo', 'killall', 'python3'], capture_output=True)
+    import time
+    time.sleep(1)
+    led_pin_1 = LED(17)
+    led_pin_2 = LED(23)
+    led_pin_3 = LED(25)
+    buzzer_pin = Buzzer(16)
 
 
 # functions -----------------------------------------
@@ -229,10 +249,17 @@ def run_shutdown_server():
 def cleanup():
     """Turn off all GPIO devices"""
     print("\nCleaning up GPIO...")
-    led_pin_1.off()
-    led_pin_2.off()
-    led_pin_3.off()
-    buzzer_pin.off()
+    try:
+        led_pin_1.off()
+        led_pin_2.off()
+        led_pin_3.off()
+        buzzer_pin.off()
+        led_pin_1.close()
+        led_pin_2.close()
+        led_pin_3.close()
+        buzzer_pin.close()
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
     print("GPIO cleanup complete.")
 
 def signal_handler(signum, frame):
