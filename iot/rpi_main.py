@@ -39,18 +39,18 @@ warnings.filterwarnings("ignore", category=UserWarning, module="numpy")
 
 # hardware control ---------------------------------
 from gpiozero import LED, Buzzer, Device
-from gpiozero.pins.lgpio import LGPIOFactory
+from gpiozero.pins.rpigpio import RPiGPIOFactory
 
 try:
     # Close any existing pin factory
     if Device.pin_factory is not None:
         Device.pin_factory.close()
-    Device.pin_factory = LGPIOFactory()
+    Device.pin_factory = RPiGPIOFactory()
 except Exception as e:
     print(f"Warning: Could not reset pin factory: {e}")
 
 try:
-    led_pin_1 = LED(27)
+    led_pin_1 = LED(17)
     led_pin_2 = LED(23)
     led_pin_3 = LED(25)
 
@@ -61,7 +61,7 @@ except Exception as e:
     subprocess.run(['sudo', 'killall', 'python3'], capture_output=True)
     import time
     time.sleep(1)
-    led_pin_1 = LED(27)
+    led_pin_1 = LED(17)
     led_pin_2 = LED(23)
     led_pin_3 = LED(25)
     buzzer_pin = Buzzer(16)
