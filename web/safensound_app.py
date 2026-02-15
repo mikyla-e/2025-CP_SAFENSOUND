@@ -165,7 +165,7 @@ async def lifespan(app: FastAPI):
     print("FastAPI SafeNSound started!")
     # print(f"Homepage available at: http://{web_discover_server.web_ip}:{sns_port}")
     print(f"Homepage available at: http://localhost:{sns_port}")
-    print("API Documentation at: http://localhost:{sns_port}/docs")
+    print(f"API Documentation at: http://localhost:{sns_port}/docs")
 
     yield
     print("Shutting down...")
