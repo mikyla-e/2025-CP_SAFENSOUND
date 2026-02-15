@@ -119,13 +119,13 @@ alerted_rpi = False
 esp32_serial = None
 esp32_port = "COM9"
 
-web_port= 63429
+# web_port= 63429
 disc_port = 60123
 audio_port = 54321
 reset_port = 58080
 shutdown_port = 58081
 
-web_ip = None
+# web_ip = None
 
 stop_event = threading.Event()
 
@@ -157,7 +157,7 @@ class RPIDiscoverServer:
             return "localhost"
         
     def discovery_listener(self):
-        global web_ip
+        # global web_ip
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(('0.0.0.0', disc_port))
@@ -171,12 +171,12 @@ class RPIDiscoverServer:
                 print(f"Received discovery message from {addr[0]}: {message}")
 
                 if message == "SENDER_HERE":
-                    if web_ip:
-                    # response = f"RPI_HERE:{self.RPI_ip}"
-                        response = f"RPI_HERE:{self.RPI_ip},WEB_HERE:{web_ip}"
+                    # if web_ip:
+                    # response = f"RPI_HERE:{self.RPI_ip},WEB_HERE:{web_ip}"
+                    response = f"RPI_HERE:{self.RPI_ip}"
 
-                        sock.sendto(response.encode('utf-8'), addr)
-                        print(f"Sent response to {addr[0]}: {response}")
+                    sock.sendto(response.encode('utf-8'), addr)
+                    print(f"Sent response to {addr[0]}: {response}")
             
             except Exception as e:
                 if self.running:
@@ -272,73 +272,73 @@ def signal_handler(signum, frame):
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
 
-def discover_web_ip(timeout):
-    global web_ip
+# def discover_web_ip(timeout):
+#     global web_ip
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    sock.bind(('0.0.0.0', web_port))
-    sock.settimeout(1.0)
+#     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+#     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+#     sock.bind(('0.0.0.0', web_port))
+#     sock.settimeout(1.0)
 
-    message = "SAFENSOUND RASPBERRY PI HERE".encode('utf-8')
-    broadcast_address = ("255.255.255.255", web_port)
+#     message = "SAFENSOUND RASPBERRY PI HERE".encode('utf-8')
+#     broadcast_address = ("255.255.255.255", web_port)
 
-    start_time = time.time()
+#     start_time = time.time()
 
-    while time.time() - start_time < timeout:
-        try:
-            sock.sendto(message, broadcast_address)
+#     while time.time() - start_time < timeout:
+#         try:
+#             sock.sendto(message, broadcast_address)
 
-            data, addr = sock.recvfrom(1024)
-            response = data.decode('utf-8').strip()
-            print(f"Received response from {addr}: {data}")
+#             data, addr = sock.recvfrom(1024)
+#             response = data.decode('utf-8').strip()
+#             print(f"Received response from {addr}: {data}")
 
-            if response.startswith("SAFENSOUND WEB DASHBOARD HERE:"):
-                web_ip = response.split(": ")[1]
-                print(f"Discovered Web Dashboard IP: {web_ip}")
-                sock.close()
-                break
+#             if response.startswith("SAFENSOUND WEB DASHBOARD HERE:"):
+#                 web_ip = response.split(": ")[1]
+#                 print(f"Discovered Web Dashboard IP: {web_ip}")
+#                 sock.close()
+#                 break
 
-        except socket.timeout:
-            continue
-        except Exception as e:
-            print(f"Web discoverer error: {e}")
+#         except socket.timeout:
+#             continue
+#         except Exception as e:
+#             print(f"Web discoverer error: {e}")
 
-    sock.close()
-    print("Web discovery server stopped.")
+#     sock.close()
+#     print("Web discovery server stopped.")
 
 
 # # audio recording and receiving --------------------
 def bytes_to_mac_string(mac_bytes: bytes) -> str:
     return ':'.join(f'{b:02X}' for b in mac_bytes)
 
-def get_room_id_from_web(device_address: str):
-    global web_ip
+# def get_room_id_from_web(device_address: str):
+#     global web_ip
     
-    if not web_ip:
-        print("Web IP not discovered yet")
-        return None
+#     if not web_ip:
+#         print("Web IP not discovered yet")
+#         return None
     
-    try:
-        url = f"http://{web_ip}:8000/api/devices/config?address={device_address}"
-        response = requests.get(url, timeout=5)
+#     try:
+#         url = f"http://{web_ip}:8000/api/devices/config?address={device_address}"
+#         response = requests.get(url, timeout=5)
         
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("registered"):
-                return data.get("room_id", 0)
-            else:
-                print(f"Device {device_address} not registered")
-                return 0
-        else:
-            print(f"Failed to get device config: HTTP {response.status_code}")
-            return None
+#         if response.status_code == 200:
+#             data = response.json()
+#             if data.get("registered"):
+#                 return data.get("room_id", 0)
+#             else:
+#                 print(f"Device {device_address} not registered")
+#                 return 0
+#         else:
+#             print(f"Failed to get device config: HTTP {response.status_code}")
+#             return None
             
-    except requests.RequestException as e:
-        print(f"Error querying web dashboard: {e}")
-        return None
+#     except requests.RequestException as e:
+#         print(f"Error querying web dashboard: {e}")
+#         return None
 
 def receive_audio_data():
     from database.db_connection import Database
@@ -773,7 +773,7 @@ def trigger_alert(audio, sound_type=None, device_add=None, room_id=None):
             print(f"Error sending alert: {e}")
 
 async def send_alert_web(room_id, action=None, sound_type=None, recording_path=None):
-    global web_ip
+    # global web_ip
     success_web = False
     print(sound_type)
 
@@ -788,8 +788,8 @@ async def send_alert_web(room_id, action=None, sound_type=None, recording_path=N
             }
 
             async with aiohttp.ClientSession() as session:
-                # async with session.post(f"http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
-                async with session.post(f"http://{web_ip}:8000/api/alert", json=payload_web, timeout=10) as response:
+                async with session.post(f"http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
+                # async with session.post(f"http://{web_ip}:8000/api/alert", json=payload_web, timeout=10) as response:
                     if response.status == 200:
                         print(f"Alert sent to Web Dashboard for Room {room_id}")
                         success_web = True
@@ -801,7 +801,7 @@ async def send_alert_web(room_id, action=None, sound_type=None, recording_path=N
 
 
 async def send_reset_web(room_id, action=None):
-    global web_ip
+    # global web_ip
     success_web = False
 
     if "Alert Acknowledged" in action:
@@ -813,8 +813,8 @@ async def send_reset_web(room_id, action=None):
             }
 
             async with aiohttp.ClientSession() as session:
-                async with session.post(f"http://{web_ip}:8000/api/alert", json=payload_web, timeout=10) as response:
-                # async with session.post(f"http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
+                # async with session.post(f"http://{web_ip}:8000/api/alert", json=payload_web, timeout=10) as response:
+                async with session.post(f"http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
                     if response.status == 200:
                         print(f"Reset command sent to Web Dashboard for Room {room_id}")
                         success_web = True
@@ -970,46 +970,44 @@ async def main_loop():
 
 if __name__ == "__main__":
     print("Starting SafeNSound Raspberry Pi Application...\n")
-    discover_web_ip(timeout=100)
+    # discover_web_ip(timeout=100)
 
-    if discover_web_ip and web_ip:
-        discovery_server = RPIDiscoverServer()
-        discovery_server.start()
+    # if discover_web_ip and web_ip:
+    discovery_server = RPIDiscoverServer()
+    discovery_server.start()
 
-        # init_esp32_serial()
+    # init_esp32_serial()
+    
+    audio_thread = threading.Thread(target=receive_audio_data, daemon=True)
+    audio_thread.start()
+
+    reset_thread = threading.Thread(target=receive_reset_signals, daemon=True)
+    reset_thread.start()
+
+    shutdown_thread = threading.Thread(target=run_shutdown_server, daemon=True)
+    shutdown_thread.start()
+    
+    print("=" * 60)
+    print(f"Raspberry Pi IP: {discovery_server.RPI_ip}")
+    print(f"Receiver Port: {audio_port}")
+    print("=" * 60)
+
+    print("System is running.\n")
+
+    try:
+        asyncio.run(main_loop())
         
-        audio_thread = threading.Thread(target=receive_audio_data, daemon=True)
-        audio_thread.start()
+    except KeyboardInterrupt:
+        print("\nExiting...")
 
-        reset_thread = threading.Thread(target=receive_reset_signals, daemon=True)
-        reset_thread.start()
+    finally:
+        stop_event.set()
 
-        shutdown_thread = threading.Thread(target=run_shutdown_server, daemon=True)
-        shutdown_thread.start()
-        
-        print("=" * 60)
-        print(f"Raspberry Pi IP: {discovery_server.RPI_ip}")
-        print(f"Receiver Port: {audio_port}")
-        print("=" * 60)
+        audio_thread.join(timeout=2)
+        reset_thread.join(timeout=2)
+        shutdown_thread.join(timeout=2)
 
-        print("System is running.\n")
+        discovery_server.stop()
+        cleanup()
 
-        try:
-            asyncio.run(main_loop())
-            
-        except KeyboardInterrupt:
-            print("\nExiting...")
-
-        finally:
-            stop_event.set()
-
-            audio_thread.join(timeout=2)
-            reset_thread.join(timeout=2)
-            shutdown_thread.join(timeout=2)
-
-            discovery_server.stop()
-            cleanup()
-            
-            print("\nPorts closed successfully.")
-    else:
-        print("Failed to discover Web Dashboard IP. Exiting.")
+        print("\nPorts closed successfully.")
