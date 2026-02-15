@@ -210,8 +210,9 @@ class ShutdownHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"success": True, "message": "Shutting down..."}).encode())
                     
                     print("\n*** REMOTE SHUTDOWN REQUESTED ***")
-                    cleanup() 
+                    
                     stop_event.set()
+                    cleanup() 
 
                     def _poweroff():
                         try:
@@ -429,6 +430,8 @@ def receive_reset_signals():
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(('0.0.0.0', reset_port))
     sock.settimeout(1.0)
+
+    
 
     while not stop_event.is_set():
         
@@ -920,11 +923,11 @@ async def send_alert_rpi(device_add, room_id, action=None):
 
 async def send_reset_rpi(device_add, action=None):
     global alerted_rpi, led1_active, led2_active, led3_active
-    # from database.db_connection import Database
-    # get = Database()
+    from database.db_connection import Database
+    get = Database()
     success_rpi = False
 
-    device_id = db.fetch_device_id(device_add)
+    device_id = get.fetch_device_id(device_add)
     print(f"Device ID for reset: {device_id}")
     # print(f"send_reset_rpi DEBUG: device add = {device_add}")
 
