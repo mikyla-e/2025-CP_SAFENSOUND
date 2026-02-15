@@ -123,7 +123,7 @@ esp32_port = "COM9"
 disc_port = 60123
 audio_port = 54321
 reset_port = 58080
-shutdown_port = 52348
+shutdown_port = 52346
 
 # web_ip = None
 
