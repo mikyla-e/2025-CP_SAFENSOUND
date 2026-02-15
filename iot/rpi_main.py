@@ -236,6 +236,7 @@ class ShutdownHandler(BaseHTTPRequestHandler):
 
 def run_shutdown_server():
     server = HTTPServer(('0.0.0.0', shutdown_port), ShutdownHandler)
+    server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.timeout = 1.0
     
     print(f"Shutdown listener started on port {shutdown_port}")
@@ -345,6 +346,7 @@ def receive_audio_data():
     # get = Database()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(('0.0.0.0', audio_port))
     sock.settimeout(1.0)
 
@@ -424,6 +426,7 @@ def receive_audio_data():
 
 def receive_reset_signals():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(('0.0.0.0', reset_port))
     sock.settimeout(1.0)
 
