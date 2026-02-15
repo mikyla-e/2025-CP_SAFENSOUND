@@ -341,8 +341,8 @@ def bytes_to_mac_string(mac_bytes: bytes) -> str:
 #         return None
 
 def receive_audio_data():
-    from database.db_connection import Database
-    get = Database()
+    # from database.db_connection import Database
+    # get = Database()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('0.0.0.0', audio_port))
@@ -460,10 +460,7 @@ def receive_reset_signals():
                             print("Failed to send reset command. Retrying...")
                             sleep(2)
                             retry += 1
-                            success_rpi = asyncio.run(send_reset_rpi(device_add, operation))
-                            success_web = asyncio.run(send_reset_web(room_id, operation))
-                            # success_esp32 = asyncio.run(send_reset_esp(room_id, operation))
-                            if retry == 3 and not success_web and not success_esp32:
+                            if retry == 3 and not success_web and not success_rpi:
                                 print("Failed to send reset command after 3 attempts.")
                 except Exception as e:
                     print(f"Error sending reset command: {e}")
@@ -920,11 +917,11 @@ async def send_alert_rpi(device_add, room_id, action=None):
 
 async def send_reset_rpi(device_add, action=None):
     global alerted_rpi, led1_active, led2_active, led3_active
-    from database.db_connection import Database
-    get = Database()
+    # from database.db_connection import Database
+    # get = Database()
     success_rpi = False
 
-    device_id = get.fetch_device_id(device_add)
+    device_id = db.fetch_device_id(device_add)
     print(f"Device ID for reset: {device_id}")
     # print(f"send_reset_rpi DEBUG: device add = {device_add}")
 
@@ -939,7 +936,7 @@ async def send_reset_rpi(device_add, action=None):
                     led1_active = False
                     led_pin_1.off()
                     print("LED 1 deactivated.")
-                case 5:
+                case 2:
                     led2_active = False
                     led_pin_2.off()
                     print("LED 2 deactivated.")

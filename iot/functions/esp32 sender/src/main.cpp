@@ -784,6 +784,7 @@ void setup() { // esp setup
   delay(500);
 
   loadWiFiCredentials();
+  loadRoomID();
 
   if (wifi_configured && connectToWiFi()) {
     
