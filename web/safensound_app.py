@@ -87,7 +87,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 room_status = {1:0, 2:0, 3:0}
 
-sns_port = 8000
+sns_port = 8080
 # web_port = 63429
 stop_event = threading.Event()
 
