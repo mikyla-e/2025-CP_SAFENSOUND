@@ -996,69 +996,20 @@ if __name__ == "__main__":
 
         try:
             asyncio.run(main_loop())
-
-        # trigger = 0
-        # while True:
-        #     # Main loop for RPI recording
-        #     # audio_data, audio_wav = get_audio_local()
-        #     # if audio_data is not None and audio_wav is not None:
-        #     #     inference(audio_data, audio_wav)
-
-        #     # Main loop for dataset
-        #     while trigger < 4:
-        #         if trigger <= 3:
-        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-        #             audio_wav = "wav name"
-        #             room_no = 1
-
-        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #             inference(audio_data, audio_wav, room_no)
-
-        #             time.sleep(1)
-        #             print(f"Next audio... {trigger}")
-
-        #         if trigger >= 4 and trigger <= 6:
-        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-        #             audio_wav = "wav name"
-        #             room_no = 3
-
-        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #             inference(audio_data, audio_wav, room_no)
-
-        #             time.sleep(1)
-        #             print(f"Next audio... {trigger}")
-
-        #         if trigger >= 7 and trigger <= 9:
-        #             audio_file_path = "ml/datasets/alarming/doorsmash_01.wav"
-        #             audio_wav = "wav name"
-        #             room_no = 2
-
-        #             audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #             inference(audio_data, audio_wav, room_no)
-
-        #             time.sleep(1)
-        #             print(f"Next audio... {trigger}")
-
-        #         trigger += 1
-
-        #     else:
-        #         audio_file_path = "ml/datasets/non-emergency/bg-11.wav"
-
-        #         audio_data, _ = lb.load(audio_file_path, sr=sample_rate)
-        #         inference(audio_data, audio_wav, room_no)
-        #         time.sleep(1)
+            
         except KeyboardInterrupt:
             print("\nExiting...")
+
+        finally:
             stop_event.set()
-            cleanup()
-            discovery_server.stop()
+
             audio_thread.join(timeout=2)
             reset_thread.join(timeout=2)
             shutdown_thread.join(timeout=2)
 
-            led_pin_1.off()
-            led_pin_2.off()
-            led_pin_3.off()
-            buzzer_pin.off()
+            discovery_server.stop()
+            cleanup()
+            
             print("\nPorts closed successfully.")
-
+    else:
+        print("Failed to discover Web Dashboard IP. Exiting.")
