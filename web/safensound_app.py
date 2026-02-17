@@ -603,6 +603,9 @@ async def handle_alert(data: AlertData):
         
         print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Sound Type: {data.sound_type}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
 
+        if hasattr(db.conn, 'commit'):
+            db.conn.commit()
+
         await manager.broadcast({
             "type": "alert_update",
             "room_id": data.room_id,
