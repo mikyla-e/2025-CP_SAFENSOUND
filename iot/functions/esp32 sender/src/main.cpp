@@ -13,6 +13,7 @@
 const int disc_port = 60123;
 const int audio_port = 54321;
 const int reset_port = 58080;
+const int sns_port = 47845;
 
 const char* ssid_ap = "SafeNSound_S"; //ssid
 const char* password_ap = "SafeCapstone25"; //password
@@ -604,7 +605,7 @@ bool postRegisterDevice() {
     return false;
   }
   HTTPClient http;
-  String url = "http://" + rpi_ip + ":8000/api/devices/register";
+  String url = "http://" + rpi_ip + ":" + sns_port + "/api/devices/register";
 
   JsonDocument doc;
   doc["address"] = address;
@@ -632,7 +633,7 @@ void pollRoomAssignment() {
   }
 
   HTTPClient http;
-  String url = "http://" + rpi_ip + ":8000/api/devices/config?address=" + address;
+  String url = "http://" + rpi_ip + ":" + sns_port + "/api/devices/config?address=" + address;
 
   http.begin(url);
   int httpResponseCode = http.GET();

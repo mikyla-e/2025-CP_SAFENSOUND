@@ -119,7 +119,7 @@ alerted_rpi = False
 esp32_serial = None
 esp32_port = "COM9"
 
-sns_port = 47895
+sns_port = 47845
 disc_port = 60123
 audio_port = 54321
 reset_port = 58080
