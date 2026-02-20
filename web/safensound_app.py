@@ -87,7 +87,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 room_status = {1:0, 2:0, 3:0}
 
-sns_port = 8080
+sns_port = 47845
 stop_event = threading.Event()
 
 async def periodic_updates():

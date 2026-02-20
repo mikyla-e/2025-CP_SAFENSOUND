@@ -119,6 +119,7 @@ alerted_rpi = False
 esp32_serial = None
 esp32_port = "COM9"
 
+sns_port = 47895
 disc_port = 60123
 audio_port = 54321
 reset_port = 58080
@@ -749,7 +750,7 @@ async def send_alert_web(room_id, action=None, sound_type=None, recording_path=N
             }
 
             async with aiohttp.ClientSession() as session:
-                async with session.post(f"http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
+                async with session.post(f"http://localhost:{sns_port}/api/alert", json=payload_web, timeout=10) as response:
                     if response.status == 200:
                         print(f"Alert sent to Web Dashboard for Room {room_id}")
                         success_web = True
@@ -772,7 +773,7 @@ async def send_reset_web(room_id, action=None):
             }
 
             async with aiohttp.ClientSession() as session:
-                async with session.post(f"http://localhost:8000/api/alert", json=payload_web, timeout=10) as response:
+                async with session.post(f"http://localhost:{sns_port}/api/alert", json=payload_web, timeout=10) as response:
                     if response.status == 200:
                         print(f"Reset command sent to Web Dashboard for Room {room_id}")
                         success_web = True
