@@ -194,8 +194,9 @@ class ReusableTCPServer(HTTPServer):
     allow_reuse_address = True
 
     def server_bind(self):
+        HTTPServer.server_bind(self)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        super().server_bind()
+        
 
 class ShutdownHandler(BaseHTTPRequestHandler):
     def do_POST(self):
