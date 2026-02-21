@@ -262,7 +262,7 @@ def monitor_web_app():
 
             with urllib.request.urlopen(request, timeout=5) as response:
                 if response.status == 200:
-                    consecutive_failues = 0
+                    consecutive_failures = 0
                     print("Web app is running...")
         except (urllib.error.URLError, urllib.error.HTTPError, Exception) as e:
             consecutive_failures += 1
@@ -273,10 +273,10 @@ def monitor_web_app():
                 stop_event.set()
                 break
 
-            for _ in range(check_interval):
-                if stop_event.is_set():
-                    break
-                time.sleep(1)
+        for _ in range(check_interval):
+            if stop_event.is_set():
+                break
+            time.sleep(1)
 
     print("Web app stopped.")
 

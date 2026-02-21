@@ -606,21 +606,18 @@ async def shutdown_system(data: ShutdownRequest):
     
     try:
         if data.target in ["all"]:
-            if rpi_ip:
-                try:
-                    import aiohttp
-                    async with aiohttp.ClientSession() as session:
-                        async with session.post(
-                            f"http://localhost:58081/shutdown",
-                            json={"confirm": True},
-                            timeout=5
-                        ) as response:
-                            if response.status == 200:
-                                print("Shutdown signal sent to RPI")
-                except Exception as e:
-                    print(f"Failed to send shutdown to RPI: {e}")
-            else:
-                print("RPI IP not known, cannot send shutdown signal")
+            try:
+                import aiohttp
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"http://localhost:58081/shutdown",
+                        json={"confirm": True},
+                        timeout=5
+                    ) as response:
+                        if response.status == 200:
+                            print("Shutdown signal sent to RPI")
+            except Exception as e:
+                print(f"Failed to send shutdown to RPI: {e}")
         
         asyncio.create_task(shutdown_web_server())
         return {"success": True, "message": "Web server shutting down..."}

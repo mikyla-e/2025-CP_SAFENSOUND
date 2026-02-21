@@ -1,8 +1,0 @@
-/usr/bin/python3: No module named uvicorn
-INFO:     Will watch for changes in these directories: ['/root']
-INFO:     Uvicorn running on http://0.0.0.0:47845 (Press CTRL+C to quit)
-INFO:     Started reloader process [688] using StatReload
-Using database at: /home/safe_n_sound/2025-CP_SAFENSOUND/web/../safensound.db
-INFO:     Started server process [1539]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.

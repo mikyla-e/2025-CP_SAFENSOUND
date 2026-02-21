@@ -242,6 +242,8 @@
             background: #ee3e47;
         }
 
+        
+
         /* ROOM AND DEVICES TABLE */
         .device-section {
             padding-top: 20px;
@@ -859,15 +861,18 @@
                 <br>
             </div>
 
-            <!-- <div class="device-section">
+            <div class="device-section">
                 <h3>System Control</h3>
-                <p class="helper-text">Remotely shutdown system components.</p>
+                <p class="helper-text">Remotely shutdown the SafeNSound system.</p>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-                    <button onclick="shutdownSystem('all')" class="btn-action btn-delete">
-                        Shutdown
+                    <button onclick="shutdownSystem('all')" class="btn-action btn-delete" style="padding: 10px 20px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;">
+                            <path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V256c0 17.7 14.3 32 32 32s32-14.3 32-32V32zM143.5 120.6c13.6-11.3 15.4-31.5 4.1-45.1s-31.5-15.4-45.1-4.1C49.7 115.4 16 181.8 16 256c0 132.5 107.5 240 240 240s240-107.5 240-240c0-74.2-33.8-140.6-86.6-184.6c-13.6-11.3-33.8-9.4-45.1 4.1s-9.4 33.8 4.1 45.1c40.5 33.8 66.5 85 66.5 141.4c0 99.5-80.5 180-180 180s-180-80.5-180-180c0-56.4 26-107.6 66.5-141.4z"/>
+                        </svg>
+                        Shutdown System
                     </button>
                 </div>
-            </div> -->
+            </div>
         </div>
     </div>
 
@@ -2714,18 +2719,15 @@
 
         // Shut the system down
         async function shutdownSystem(target) {
-            const targetNames = {
-                'all': 'All Systems'
-            };
             
-            const confirmMsg = `Are you sure you want to shutdown ${targetNames[target]}?\n\nThis will stop the SafeNSound monitoring system.`;
+            const confirmMsg = `Are you sure you want to shutdown?\n\nThis will stop the SafeNSound monitoring system.`;
             
             if (!confirm(confirmMsg)) {
                 return;
             }
             
             // Double confirmation for safety
-            const doubleConfirm = prompt(`Type "SHUTDOWN" to confirm shutting down ${targetNames[target]}:`);
+            const doubleConfirm = prompt(`Type "SHUTDOWN" to confirm shutting down`);
             
             if (doubleConfirm !== "SHUTDOWN") {
                 alert("Shutdown cancelled.");
@@ -2743,11 +2745,17 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    alert(data.message);
-                    
-                    if (target === 'all') {
-                        document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;"><h1>System Shutting Down...</h1></div>';
-                    }
+
+                    document.body.innerHTML = `
+                        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; font-family:'DM Sans', sans-serif; background: var(--primary); color: var(--second);">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" style="width: 80px; height: 80px; margin-bottom: 20px; opacity: 0.7;">
+                                <path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V256c0 17.7 14.3 32 32 32s32-14.3 32-32V32zM143.5 120.6c13.6-11.3 15.4-31.5 4.1-45.1s-31.5-15.4-45.1-4.1C49.7 115.4 16 181.8 16 256c0 132.5 107.5 240 240 240s240-107.5 240-240c0-74.2-33.8-140.6-86.6-184.6c-13.6-11.3-33.8-9.4-45.1 4.1s-9.4 33.8 4.1 45.1c40.5 33.8 66.5 85 66.5 141.4c0 99.5-80.5 180-180 180s-180-80.5-180-180c0-56.4 26-107.6 66.5-141.4z"/>
+                            </svg>
+                            <h1 style="margin: 0;">System Shutting Down...</h1>
+                            <p style="margin-top: 10px; opacity: 0.7;">The SafeNSound system is powering off.</p>
+                            <p style="margin-top: 20px; font-size: 0.9rem; opacity: 0.5;">You may close this browser window.</p>
+                        </div>
+                    `;
                 } else {
                     const error = await response.json();
                     alert(`Shutdown failed: ${error.detail}`);
