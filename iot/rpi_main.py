@@ -244,6 +244,42 @@ class ShutdownHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+def monitor_web_app():
+    import urllib.request
+    import urllib.error
+
+    consecutive_failures = 0
+    max_failures = 5
+    check_interval = 5
+
+    print(f"Waiting for web app to start on {sns_port}...")
+    time.sleep(20)
+
+    while not stop_event.is_set():
+        try:
+            url = f"http://localhost:{sns_port}/api/status"
+            request = urllib.request.Request(url, method='GET')
+
+            with urllib.request.urlopen(request, timeout=5) as response:
+                if response.status == 200:
+                    consecutive_failues = 0
+                    print("Web app is running...")
+        except (urllib.error.URLError, urllib.error.HTTPError, Exception) as e:
+            consecutive_failures += 1
+            print(f"Web app check failed ({consecutive_failures}/{max_failures}): {e}")
+
+            if consecutive_failures >= max_failures:
+                print("Web app is not responding. Initiating shutdown...")
+                stop_event.set()
+                break
+
+            for _ in range(check_interval):
+                if stop_event.is_set():
+                    break
+                time.sleep(1)
+
+    print("Web app stopped.")
+
 def run_shutdown_server():
     try: 
         server = ReusableTCPServer(('0.0.0.0', shutdown_port), ShutdownHandler)    
@@ -389,8 +425,6 @@ def receive_reset_signals():
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(('0.0.0.0', reset_port))
     sock.settimeout(1.0)
-
-    
 
     while not stop_event.is_set():
         
@@ -949,6 +983,9 @@ if __name__ == "__main__":
 
     shutdown_thread = threading.Thread(target=run_shutdown_server, daemon=True)
     shutdown_thread.start()
+
+    web_monitor_thread = threading.Thread(target=monitor_web_app, daemon=True)
+    web_monitor_thread.start()
     
     print("=" * 60)
     print(f"Raspberry Pi IP: {discovery_server.RPI_ip}")
@@ -970,6 +1007,7 @@ if __name__ == "__main__":
         audio_thread.join(timeout=2)
         reset_thread.join(timeout=2)
         shutdown_thread.join(timeout=2)
+        web_monitor_thread.join(timeout=2)
 
         discovery_server.stop()
         cleanup()
