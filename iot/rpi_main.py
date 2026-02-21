@@ -77,17 +77,17 @@ db = Database()
 print("Database connected successfully.")
 
 # ml model
-# model = joblib.load("ml/ml models/mfcc_rf_model.joblib") # mfcc + random forest
+# model = joblib.load("ml/ml_models/mfcc_rf_model.joblib") # mfcc + random forest
 
-# model = keras.models.load_model("ml/ml models/lsms_cnn_model.keras") # lsms + cnn
-# model = keras.models.load_model("ml/ml models/lsms_cnn_model_2.keras") # lsms + cnn
-# model = keras.models.load_model("ml/ml models/emergency_classification/lsms_cnn_model_3.keras") # lsms + cnn
-# noise_classifier = keras.models.load_model("ml/ml models/noise_classification/lsms_cnn_model.keras") # noise cnn
+# model = keras.models.load_model("ml/ml_models/lsms_cnn_model.keras") # lsms + cnn
+# model = keras.models.load_model("ml/ml_models/lsms_cnn_model_2.keras") # lsms + cnn
+# model = keras.models.load_model("ml/ml_models/emergency_classification/lsms_cnn_model_3.keras") # lsms + cnn
+# noise_classifier = keras.models.load_model("ml/ml_models/noise_classification/lsms_cnn_model.keras") # noise cnn
 
 
 import tflite_runtime.interpreter as tflite
 
-interpreter = tflite.Interpreter(model_path="ml/ml models/emergency_classification/lsms_cnn_model_3.tflite")
+interpreter = tflite.Interpreter(model_path="ml/ml_models/emergency_classification/lsms_cnn_model_3.tflite")
 interpreter.allocate_tensors()
 print("Model loaded successfully.")
 
@@ -95,7 +95,7 @@ input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
 
-noise_classifier = tflite.Interpreter(model_path="ml/ml models/noise_classification/lsms_cnn_model.tflite")
+noise_classifier = tflite.Interpreter(model_path="ml/ml_models/noise_classification/lsms_cnn_model.tflite")
 noise_classifier.allocate_tensors()
 print("Model loaded successfully.")
 

@@ -110,7 +110,7 @@ bool connectToWiFi() {
   int attempts = 0;
 
   while (WiFi.status() != WL_CONNECTED && attempts < 50) {
-    delay(500);
+    delay(300);
     Serial.print(".");
     attempts++;
   }
@@ -775,6 +775,11 @@ bool getDeviceConfig() {
 /////////////////////////////////////////////////////////
 
 void setup() { // esp setup
+  pinMode(2, OUTPUT);
+  digitalWrite(2, HIGH);
+  delay(500);
+  digitalWrite(2, LOW);
+
   Serial.begin(115200);
   EEPROM.begin(512);
 
@@ -782,7 +787,7 @@ void setup() { // esp setup
   address = WiFi.macAddress();
   Serial.println("Device ID: " + address);
 
-  delay(500);
+  delay(1000);
 
   loadWiFiCredentials();
   loadRoomID();
