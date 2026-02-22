@@ -609,6 +609,7 @@
             transition: opacity 0.2s, transform 0.2s;
         }
 
+
         .history-row.has-audio:hover .play-icon {
             opacity: 1;
             transform: scale(1.1);
@@ -628,21 +629,8 @@
             flex-shrink: 0;
         }
 
-        .emergency, .alarming{
-            display: inline-flex;
-            align-items: center;
-        }
-
-        .emergency svg {
-            width: 22px;
-            height: 22px;
-            fill: var(--red);
-        }
-
-        .alarming svg {
-            width: 22px;
-            height: 22px;
-            fill: #F59E0B; /* Orange */
+        .action-icon p {
+            font-weight: 600;
         }
 
         .action-icon.acknowledged svg {
@@ -651,6 +639,10 @@
             fill: #10B981; /* Green */
         }
 
+        .action-icon.acknowledged p {
+            font-weight: 300;
+        }
+        
         .action-icon .action-label {
             font-size: 0.75rem;
             opacity: 0.7;
@@ -1253,7 +1245,7 @@
                 cell.innerHTML = `
                     <div style="text-align: center; padding: 40px 20px; color: #999;">
                         <p style="margin: 0; font-size: 0.95rem;">No alert history yet</p>
-                        <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: #bbb;">Emergencies will appear here when detected</p>
+                        <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: #bbb;">Alerts will appear here when detected</p>
                     </div>
                 `;
 
@@ -1291,8 +1283,13 @@
                 const isEmergency = entry.action === "Emergency Alert Detected"
                 const isAlarming = entry.action === "Alarming Alert Detected";
                 const isAcknowledged = entry.action === "Alert Acknowledged";
-                const hasRecording = entry.has_recording;
+                const hasRecording = entry.has_recording === true;
             
+                const hasValidSoundType = entry.sound_type && 
+                                        entry.sound_type !== "Unknown" && 
+                                        entry.sound_type !== "null" && 
+                                        entry.sound_type !== "undefined";
+
                 if (entry.history_id === recentUnacknowledgedAlarmId) {
                     if (isEmergency) {
                         row.classList.add('new-emergency');
@@ -1305,40 +1302,75 @@
                 
                 // Prepare action text with optional sound_type
                 let actionHTML = '';
-                if (isEmergency && entry.sound_type && hasRecording) {
-                    row.classList.add('has-audio');
-                    row.title = 'Click to play recording';
-                    row.onclick = () => openAudioModal(roomNumber, entry);
-                    actionHTML = `
-                        <div class="action-icon">
-                            <svg class="play-icon" viewBox="0 0 384 512">
-                                <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
-                            </svg>
-                            <div class="emergency">
-                                <svg viewBox="0 0 448 512">
-                                    <path d="M224 0c-17.7 0-32 14.3-32 32V51.2C119 66 64 130.6 64 208v18.8c0 47-17.3 92.4-48.5 127.6l-7.4 8.3c-8.4 9.4-10.4 22.9-5.3 34.4S19.4 416 32 416H416c12.6 0 24-7.4 29.2-18.9s3.1-25-5.3-34.4l-7.4-8.3C401.3 319.2 384 273.9 384 226.8V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32zm45.3 493.3c12-12 18.7-28.3 18.7-45.3H224 160c0 17 6.7 33.3 18.7 45.3s28.3 18.7 45.3 18.7s33.3-6.7 45.3-18.7z"/>
+                
+                if (isEmergency) {
+                    if (hasRecording && hasValidSoundType) {
+                        row.classList.add('has-audio');
+                        row.title = 'Click to play recording';
+                        row.onclick = () => openAudioModal(roomNumber, entry);
+                        actionHTML = `
+                            <div class="action-icon">
+                                <svg class="play-icon" viewBox="0 0 384 512">
+                                    <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
                                 </svg>
+                                <p style="color: var(--red);">  ${entry.sound_type} Detected</p>
                             </div>
-                            <p style="color: var(--second-light);">  ${entry.sound_type} Detected</p>
-                        </div>
-                    `;
-                } else if (isAlarming && entry.sound_type && hasRecording) {
-                    row.classList.add('has-audio');
-                    row.title = 'Click to play recording';
-                    row.onclick = () => openAudioModal(roomNumber, entry);
-                    actionHTML = `
-                        <div class="action-icon">
-                            <svg class="play-icon" viewBox="0 0 384 512">
-                                <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
-                            </svg>
-                            <div class="alarming">
-                                <svg viewBox="0 0 448 512">
-                                    <path d="M224 0c-17.7 0-32 14.3-32 32V51.2C119 66 64 130.6 64 208v18.8c0 47-17.3 92.4-48.5 127.6l-7.4 8.3c-8.4 9.4-10.4 22.9-5.3 34.4S19.4 416 32 416H416c12.6 0 24-7.4 29.2-18.9s3.1-25-5.3-34.4l-7.4-8.3C401.3 319.2 384 273.9 384 226.8V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32zm45.3 493.3c12-12 18.7-28.3 18.7-45.3H224 160c0 17 6.7 33.3 18.7 45.3s28.3 18.7 45.3 18.7s33.3-6.7 45.3-18.7z"/>
-                                </svg>
-                            </div>
-                            <p style="color: var(--second-light);">  ${entry.sound_type} Detected</p>
-                        </div>
-                    `;
+                        `;
+                    } else if (hasRecording && !hasValidSoundType) {
+                            row.classList.add('has-audio');
+                            row.title = 'Click to play recording';
+                            row.onclick = () => openAudioModal(roomNumber, entry);
+                            actionHTML = `
+                                <div class="action-icon">
+                                    <svg class="play-icon" viewBox="0 0 384 512">
+                                        <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
+                                    </svg>
+                                    <p style="color: var(--red);">  Unknown Emergency Alert</p>
+                                </div>
+                            `;
+                    } else if (!hasRecording && hasValidSoundType) {
+                        actionHTML = `
+                            <div class="action-icon"><p style="color: var(--red);">  ${entry.sound_type} Detected</p></div>
+                        `;
+                    } else if (!hasRecording && !hasValidSoundType) {
+                        actionHTML = `
+                            <div class="action-icon"><p style="color: var(--red);">  Unknown Emergency Alert</p></div>
+                        `;
+                    }
+                } else if (isAlarming) {
+                    if (hasRecording && hasValidSoundType) {
+                            row.classList.add('has-audio');
+                            row.title = 'Click to play recording';
+                            row.onclick = () => openAudioModal(roomNumber, entry);
+                            actionHTML = `
+                                <div class="action-icon">
+                                    <svg class="play-icon" viewBox="0 0 384 512">
+                                        <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
+                                    </svg>
+                                    <p style="color: #F59E0B;">  ${entry.sound_type} Detected</p>
+                                </div>
+                            `;
+                    } else if (hasRecording && !hasValidSoundType) {
+                            row.classList.add('has-audio');
+                            row.title = 'Click to play recording';
+                            row.onclick = () => openAudioModal(roomNumber, entry);
+                            actionHTML = `
+                                <div class="action-icon">
+                                    <svg class="play-icon" viewBox="0 0 384 512">
+                                        <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
+                                    </svg>
+                                    <p style="color: #F59E0B;">  Unknown Alarming Alert</p>
+                                </div>
+                            `;
+                    } else if (!hasRecording && hasValidSoundType) {
+                        actionHTML = `
+                            <div class="action-icon"><p style="color: #F59E0B;">  ${entry.sound_type} Detected</p></div>
+                        `;
+                    } else if (!hasRecording && !hasValidSoundType) {
+                        actionHTML = `
+                            <div class="action-icon"><p style="color: #F59E0B;">  Unknown Alarming Alert</p></div>
+                        `;
+                    }
                 } else if (isAcknowledged) {
                     actionHTML = `
                         <div class="action-icon acknowledged">
@@ -1663,9 +1695,10 @@
                             // Refresh history for the affected room
                             fetchRoomHistory(data.room_id).then(() => {
                                 // Update the table if we're currently viewing this room
+                                const aside = document.querySelector('aside');
+                                const isDesktop = window.getComputedStyle(aside).display !== 'none';
+
                                 if (currentSelectedRoom === data.room_id) {
-                                    const aside = document.querySelector('aside');
-                                    const isDesktop = window.getComputedStyle(aside).display !== 'none';
                                     if (isDesktop) {
                                         updateHistoryTable(data.room_id, 'aside');
                                     } else {
