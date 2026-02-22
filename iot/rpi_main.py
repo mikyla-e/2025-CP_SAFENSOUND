@@ -1,6 +1,10 @@
 # --- general ---
 import sys
 import os
+
+os.environ["TFLITE_ENABLE_XNNPACK"] = "0"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
 import time
 from time import sleep
 from datetime import datetime
@@ -22,7 +26,7 @@ import json
 
 # --- audio processing ---
 # import joblib
-from tensorflow import keras
+# from tensorflow import keras
 
 import numpy as np
 # import pandas as pd
@@ -83,9 +87,6 @@ print("Database connected successfully.")
 # model = keras.models.load_model("ml/ml_models/lsms_cnn_model_2.keras") # lsms + cnn
 # model = keras.models.load_model("ml/ml_models/emergency_classification/lsms_cnn_model_3.keras") # lsms + cnn
 # noise_classifier = keras.models.load_model("ml/ml_models/noise_classification/lsms_cnn_model.keras") # noise cnn
-
-os.environ["TFLITE_ENABLE_XNNPACK"] = "0"
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 import tflite_runtime.interpreter as tflite
 
