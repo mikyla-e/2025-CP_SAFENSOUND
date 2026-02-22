@@ -95,7 +95,7 @@ input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
 
-noise_classifier = tflite.Interpreter(model_path="ml/ml_models/noise_classification/lsms_cnn_model_2.tflite", num_threads=2)
+noise_classifier = tflite.Interpreter(model_path="ml/ml_models/noise_classification/lsms_cnn_model.tflite", num_threads=2)
 noise_classifier.allocate_tensors()
 print("Model loaded successfully.")
 
@@ -663,6 +663,7 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 
     if predicted_class == 1:
         alarming_count += 1
+        nonemergency_count = 0
         print("ALARMING sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
 
         if alarming_count >= 2:
@@ -673,6 +674,7 @@ def inference(audio, wav_name, device_add=None, room_id=None):
 
     elif predicted_class == 2:
         emergency_count += 1
+        nonemergency_count = 0
         print("EMERGENCY sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
         if emergency_count >= 1:
             emergency_detected = True
