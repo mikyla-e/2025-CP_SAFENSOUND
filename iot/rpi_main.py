@@ -84,6 +84,8 @@ print("Database connected successfully.")
 # model = keras.models.load_model("ml/ml_models/emergency_classification/lsms_cnn_model_3.keras") # lsms + cnn
 # noise_classifier = keras.models.load_model("ml/ml_models/noise_classification/lsms_cnn_model.keras") # noise cnn
 
+os.environ["TFLITE_ENABLE_XNNPACK"] = "0"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 import tflite_runtime.interpreter as tflite
 
