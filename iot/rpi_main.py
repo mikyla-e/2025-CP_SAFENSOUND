@@ -95,7 +95,7 @@ input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
 
-noise_classifier = tflite.Interpreter(model_path="ml/ml_models/noise_classification/lsms_cnn_model.tflite", num_threads=2)
+noise_classifier = tflite.Interpreter(model_path="ml/ml_models/noise_classification/lsms_cnn_model_2.tflite", num_threads=2)
 noise_classifier.allocate_tensors()
 print("Model loaded successfully.")
 
