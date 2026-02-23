@@ -90,7 +90,7 @@ print("Database connected successfully.")
 
 import tflite_runtime.interpreter as tflite
 
-interpreter = tflite.Interpreter(model_path="ml/ml_models/emergency_classification/lsms_cnn_model.tflite", num_threads=2)
+interpreter = tflite.Interpreter(model_path="ml/ml_models/emergency_classification/lsms_cnn_model_4.tflite", num_threads=2)
 interpreter.allocate_tensors()
 print("Model loaded successfully.")
 
@@ -98,7 +98,7 @@ input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
 
-noise_classifier = tflite.Interpreter(model_path="ml/ml_models/noise_classification/lsms_cnn_model_2.tflite", num_threads=2)
+noise_classifier = tflite.Interpreter(model_path="ml/ml_models/noise_classification/lsms_cnn_model_3.tflite", num_threads=2)
 noise_classifier.allocate_tensors()
 print("Model loaded successfully.")
 
@@ -473,6 +473,33 @@ def receive_reset_signals():
     sock.close()
     print("Reset signal receiver stopped.")
 
+def clean_old_wavs(max_recording=100):
+    recording_dir = "recorded_audio"
+    if not os.path.exists(recording_dir):
+        return
+
+    try:
+        wav_files = []
+        for filename in os.listdir(recording_dir):
+            if filename.endswith(".wav"):
+                filepath = os.path.join(recording_dir, filename)
+                mtime = os.path.getmtime(filepath)
+                wav_files.append((filepath, mtime))
+
+        wav_files.sort(key=lambda x: x[1], reverse=True)
+
+        if len(wav_files) > max_recording:
+            for filepath, _ in wav_files[max_recording:]:
+                try:
+                    os.remove(filepath)
+                except Exception as e:
+                    print(f"Failed to delete recording {filepath}: {e}")
+    
+    except Exception as e:
+        print("Error cleaning old .wav files.", e)
+
+
+
 def save_wav(filename, audio_data, sample_rate):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
@@ -487,6 +514,8 @@ def save_wav(filename, audio_data, sample_rate):
             wav_file.writeframes(audio_data.tobytes())
 
         print(f"\nAudio saved: {filename}")
+        clean_old_wavs()
+
         return True
     except Exception as e:
         print(f"Failed to save WAV: {e}")
