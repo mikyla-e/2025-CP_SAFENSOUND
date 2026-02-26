@@ -924,11 +924,11 @@ async def send_alert_rpi(device_add, room_id, action=None):
                     led1_active = True
                     led_pin_1.blink(on_time=0.5, off_time=0.5)
                     print("LED 1 activated.")
-                case 3:
+                case 5:
                     led2_active = True
                     led_pin_2.blink(on_time=0.5, off_time=0.5)
                     print("LED 2 activated.")
-                case 9:
+                case 7:
                     led3_active = True
                     led_pin_3.blink(on_time=0.5, off_time=0.5)
                     print("LED 3 activated.")
@@ -974,11 +974,11 @@ async def send_reset_rpi(device_add, action=None):
                     led1_active = False
                     led_pin_1.off()
                     print("LED 1 deactivated.")
-                case 3:
+                case 5:
                     led2_active = False
                     led_pin_2.off()
                     print("LED 2 deactivated.")
-                case 9:
+                case 7:
                     led3_active = False
                     led_pin_3.off()
                     print("LED 3 deactivated.")

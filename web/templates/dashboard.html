@@ -1464,16 +1464,24 @@
         async function renameRoom(renameElement, event) {
             event.stopPropagation();
             const roomNameElement = renameElement.previousElementSibling;
-            const currentName = roomNameElement.textContent;
+            const currentName = roomNameElement.textContent.replace(/●/g, '').trim();
             const roomDiv = renameElement.closest('.rooms');
-            let roomNumber;
-            if (roomDiv.classList.contains('room1')) {
-                roomNumber = 1;
-            } else if (roomDiv.classList.contains('room2')) {
-                roomNumber = 2;
-            } else if (roomDiv.classList.contains('room3')) {
-                roomNumber = 3;
+            const roomNumber = parseInt(roomDiv.getAttribute('data-room-id'));
+
+
+            if (!roomNumber) {
+                alert('Error determining room number');
+                return;
             }
+
+            // if (roomDiv.classList.contains('room1')) {
+            //     roomNumber = 1;
+            // } else if (roomDiv.classList.contains('room2')) {
+            //     roomNumber = 2;
+            // } else if (roomDiv.classList.contains('room3')) {
+            //     roomNumber = 3;
+            // }
+
             const newName = prompt(`Enter new name for ${currentName}:`, currentName);
             if (newName !== null && newName.trim() !== '') {
                 const trimmedName = newName.trim();
@@ -1488,7 +1496,10 @@
                     });
                     
                     if (response.ok) {
-                        roomNameElement.textContent = trimmedName;
+                        const hasSensor = roomData[roomNumber]?.has_sensor;
+                        const sensorIndicator = hasSensor ? '<span style="color: #4CAF50; font-size: 0.8rem; margin-left: 5px;" title="Sensor assigned">●</span>' : '';
+                        roomNameElement.innerHTML = trimmedName + sensorIndicator;
+
                         roomData[roomNumber].name = trimmedName;
                         if (roomDiv.classList.contains('active-room')) {
                             const desktopHeader = document.querySelector('aside header h2');
@@ -1496,6 +1507,7 @@
                             if (desktopHeader) desktopHeader.textContent = trimmedName;
                             if (mobileHeader) mobileHeader.textContent = trimmedName;
                         }
+                        updateTopChart();
                     } else {
                         alert('Failed to rename room');
                     }
