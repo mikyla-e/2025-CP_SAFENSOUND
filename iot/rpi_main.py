@@ -920,7 +920,7 @@ async def send_alert_rpi(device_add, room_id, action=None):
         try:
             await asyncio.sleep(1)
             match device_id:
-                case 7:
+                case 1:
                     led1_active = True
                     led_pin_1.blink(on_time=0.5, off_time=0.5)
                     print("LED 1 activated.")
@@ -970,7 +970,7 @@ async def send_reset_rpi(device_add, action=None):
     if "Alert Acknowledged" in action:
         try:
             match device_id:
-                case 7:
+                case 1:
                     led1_active = False
                     led_pin_1.off()
                     print("LED 1 deactivated.")
