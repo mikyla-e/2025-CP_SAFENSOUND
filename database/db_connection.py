@@ -96,35 +96,56 @@ class Database:
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS history (
                     history_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    action TEXT,
-                    sound_type TEXT,
                     date DATE,
                     time TIME,
                     room_id INTEGER,
-                    recording_path TEXT,
-                    FOREIGN KEY (room_id) REFERENCES room (room_id),
-                    CHECK (action IN ('Alert Acknowledged', 'Emergency Alert Detected', 'Alarming Alert Detected'))
+                    FOREIGN KEY (room_id) REFERENCES room (room_id)
                 )
             ''')
 
-    def initialize_rooms(self):
-        try:
-            # cursor = self.conn.execute('SELECT COUNT(*) FROM room')
-            # count = cursor.fetchone()[0]
-            
-            # if count == 0:
-            #     default_rooms = [
-            #         (1, "Room 1"),
-            #         (2, "Room 2"), 
-            #         (3, "Room 3")
-            #     ]
-            #     self.conn.executemany('INSERT INTO room (room_id, room_name) VALUES (?, ?)', default_rooms)
-            #     self.conn.commit()
-            pass
-        except Exception as e:
-            print(f"Error initializing rooms: {e}")
+    def create_alert_event(self):
+        with self.conn:
+            self.conn.execute('''
+                CREATE TABLE IF NOT EXISTS alert_events (
+                    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    history_id INTEGER,
+                    FOREIGN KEY (history_id) REFERENCES history (history_id)
+                )
+            ''')
+
+    def create_alert(self):
+        with self.conn:
+            self.conn.execute('''
+                CREATE TABLE IF NOT EXISTS alert (
+                    alert_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_id INTEGER,
+                    alert_detected TEXT,
+                    sound_type TEXT,
+                    recording_path TEXT,
+                    FOREIGN KEY (event_id) REFERENCES alert_event (event_id),
+                    CHECK (alert_type IN ('Emergency Alert Detected', 'Alarming Alert Detected'))
+                )
+            ''')
+
+    def create_reset(self):
+        with self.conn:
+            self.conn.execute('''
+                reset_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                history_id INTEGER,
+                event_id INTEGER,              
+                FOREIGN KEY (history_id) REFERENCES history (history_id),
+                FOREIGN KEY (event_id) REFERENCES alert_event (event_id)
+            ''')
 
     #insert data
+    def register_device(self, address):
+        with self.conn:
+            self.conn.execute('''
+                INSERT OR IGNORE INTO device (address, room_id)
+                VALUES (?, 0)
+            ''', (address,))
+            self.conn.commit()
+
     def insert_room(self, room_name):
         with self.conn:
             self.conn.execute('''
@@ -132,13 +153,6 @@ class Database:
                 VALUES (?)
             ''', (room_name,))
 
-    def insert_history(self, action, sound_type, date, time, room_id, recording_path):
-        with self.conn:
-            self.conn.execute('''
-                INSERT INTO history (action, sound_type, date, time, room_id, recording_path)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (action, sound_type, date, time, room_id, recording_path))
-        
     def assign_device(self, address, room_id):
         with self.conn:
             self.conn.execute('''
@@ -146,6 +160,44 @@ class Database:
                 VALUES (?, ?)
                 ON CONFLICT(address) DO UPDATE SET room_id=excluded.room_id
             ''', (address, room_id))
+
+    def insert_history(self, date, time, room_id):
+        with self.conn:
+            self.conn.execute('''
+                INSERT INTO history (date, time, room_id)
+                VALUES (?, ?, ?)
+            ''', date, time, room_id)
+
+        # if action == "Alert Acknowledged":
+        #     query = """
+        #     INSERT INTO history (action, sound_type, date, time, room_id, recording_path)
+        #     VALUES (?, ?, ?, ?, ?, ?)
+        #     """
+
+        #     self.conn.execute(query, (action, sound_type, date, time, room_id, recording_path))
+        #     self.conn.commit()
+        #     return
+
+    def insert_alert_event(self, history_id):
+        with self.conn:
+            self.conn.execute('''
+                INSERT INTO alert_event (history_id)
+                VALUES (?)
+            ''', history_id)
+
+    def insert_alert(self, event_id, alert_detected, sound_type, recording_path):
+        with self.conn:
+            self.conn.execute('''
+                INSERT INTO alert_event (event_id, alert_detected, sound_type, recording_path)
+                VALUES (?, ?, ?, ?)
+            ''', event_id, alert_detected, sound_type, recording_path)
+
+    def insert_reset(self, history_id, event_id=None):
+        with self.conn:
+            self.conn.execute('''
+                INSERT INTO reset (history_id, event_id)
+                VALUES (?, ?)
+            ''', history_id, event_id)
 
     #update data
     def update_room(self, room_id, new_name):
@@ -156,43 +208,7 @@ class Database:
                 WHERE room_id = ?
             ''', (new_name, room_id))
 
-    def register_device(self, address):
-        with self.conn:
-            self.conn.execute('''
-                INSERT OR IGNORE INTO device (address, room_id)
-                VALUES (?, 0)
-            ''', (address,))
-            self.conn.commit()
-
     #fetch and display data
-    def fetch_rooms(self):
-        with self.conn:
-            cursor = self.conn.execute('SELECT * FROM room')
-            return cursor.fetchall()
-    
-    def fetch_room(self, room_id):
-        with self.conn:
-            cursor = self.conn.execute('SELECT * FROM room WHERE room_id = ?', (room_id,))
-            return cursor.fetchone()
-        
-    def fetch_history(self, room_id):
-        with self.conn:
-            cursor = self.conn.execute(
-                'SELECT * FROM history WHERE room_id = ? ORDER BY date DESC, history_id DESC',
-                (room_id,)
-            )
-            return cursor.fetchall()
-        
-    def fetch_recording(self, history_id):
-        with self.conn:
-            cursor = self.conn.execute(
-                'SELECT recording_path FROM history WHERE history_id = ?',
-                (history_id,)
-            )
-            path = cursor.fetchone()
-            return path[0] if path else None
-
-                
     def fetch_device(self, address: str):
         with self.conn:
             cursor = self.conn.execute('SELECT * FROM device WHERE address = ?', (address,))
@@ -210,6 +226,33 @@ class Database:
         with self.conn:
             cursor = self.conn.execute('SELECT * FROM device')
             return cursor.fetchall()
+    
+    def fetch_room(self, room_id):
+        with self.conn:
+            cursor = self.conn.execute('SELECT * FROM room WHERE room_id = ?', (room_id,))
+            return cursor.fetchone()
+        
+    def fetch_rooms(self):
+        with self.conn:
+            cursor = self.conn.execute('SELECT * FROM room')
+            return cursor.fetchall()
+        
+    def fetch_history(self, room_id):
+        with self.conn:
+            cursor = self.conn.execute(
+                'SELECT * FROM history WHERE room_id = ? ORDER BY date DESC, history_id DESC',
+                (room_id,)
+            )
+            return cursor.fetchall()
+        
+    def fetch_recording(self, history_id):
+        with self.conn:
+            cursor = self.conn.execute(
+                'SELECT recording_path FROM history WHERE history_id = ?',
+                (history_id,)
+            )
+            path = cursor.fetchone()
+            return path[0] if path else None
         
     
         
