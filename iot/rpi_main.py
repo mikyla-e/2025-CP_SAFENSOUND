@@ -116,6 +116,8 @@ emergency_count = 0
 nonemergency_count = 0
 emergency_detected = False
 alarming_detected = False
+emergency_alert = False
+alarming_alert = False
 sound_type = None
 alerted_rpi = False
 
@@ -903,28 +905,29 @@ led2_active = False
 led3_active = False
 
 async def send_alert_rpi(device_add, room_id, action=None):
-    global alerted_rpi, led1_active, led2_active, led3_active
+    global alerted_rpi, led1_active, led2_active, led3_active, alarming_alert, emergency_alert
     from database.db_connection import Database
     get = Database()
+
     success_rpi = False
 
     device_id = get.fetch_device_id(device_add)
     print(f"Device ID for alert: {device_id}")
 
-    if action is None:
-        print("No action specified for RPI alert.")
-        return success_rpi
+    try: 
+        await asyncio.sleep(1)
+        if action is None:
+            print("No action specified for RPI alert.")
+            return success_rpi
 
-    if "Emergency Alert Detected" in action or "Alarming Alert Detected" in action:
-
-        try:
-            await asyncio.sleep(1)
+        if "Emergency Alert Detected" in action:
+            emergency_alert = True
             match device_id:
-                case 5:
+                case 1:
                     led1_active = True
                     led_pin_1.blink(on_time=0.5, off_time=0.5)
                     print("LED 1 activated.")
-                case 1:
+                case 5:
                     led2_active = True
                     led_pin_2.blink(on_time=0.5, off_time=0.5)
                     print("LED 2 activated.")
@@ -935,29 +938,56 @@ async def send_alert_rpi(device_add, room_id, action=None):
                 case _:
                     print(f"WARNING: Unknown device_id {device_id}, no LED activated!")
                     return success_rpi
-                
-            print(f"DEBUG: led1_active={led1_active}, led2_active={led2_active}, led3_active={led3_active}")
-            print(f"DEBUG: alerted_rpi before check = {alerted_rpi}")
 
-            if alerted_rpi is False and (led1_active or led2_active or led3_active):
+            if alerted_rpi is False:
                 alerted_rpi = True
                 buzzer_pin.beep(on_time=0.5, off_time=0.5)
-                print("DEBUG: Buzzer should now be beeping!")
-            else:
-                print(f"DEBUG: Buzzer NOT activated. alerted_rpi={alerted_rpi}")
-            
+                    
             success_rpi = True
-        except Exception as e:
-            print("Failed to send alert to Raspberry Pi:", e)
+                
+        elif "Alarming Alert Detected" in action:
+            alarming_alert = True
+            led_to_blink = None
+
+            if emergency_alert == False:
+                match device_id:
+                    case 1:
+                        led_to_blink = led_pin_1
+                        print("LED 1 activated.")
+                    case 5:
+                        led_to_blink = led_pin_2
+                        print("LED 2 activated.")
+                    case 7:
+                        led_to_blink = led_pin_3
+                        print("LED 3 activated.")
+                    case _:
+                        print(f"WARNING: Unknown device_id {device_id}, no LED activated!")
+                        return success_rpi
+                
+                if led_to_blink:
+                    led_to_blink.blink(on_time=0.5, off_time=0.5, n=15)
+                    buzzer_pin.beep(on_time=0.5, off_time=0.5, n=15)
+                
+                success_rpi = True
+
+            else:
+                print("Emergency alert already active, skipping LED activation for alarming alert.")
+                return success_rpi
+
+    except Exception as e:
+        print("Failed to send alert to Raspberry Pi:", e)
 
     return success_rpi
 
 
 async def send_reset_rpi(device_add, action=None):
-    global alerted_rpi, led1_active, led2_active, led3_active
+    global alerted_rpi, led1_active, led2_active, led3_active, alarming_alert, emergency_alert
     from database.db_connection import Database
     get = Database()
     success_rpi = False
+
+    alarming_alert = False
+    emergency_alert = False
 
     device_id = get.fetch_device_id(device_add)
     print(f"Device ID for reset: {device_id}")
@@ -970,11 +1000,11 @@ async def send_reset_rpi(device_add, action=None):
     if "Alert Acknowledged" in action:
         try:
             match device_id:
-                case 5:
+                case 1:
                     led1_active = False
                     led_pin_1.off()
                     print("LED 1 deactivated.")
-                case 1:
+                case 5:
                     led2_active = False
                     led_pin_2.off()
                     print("LED 2 deactivated.")

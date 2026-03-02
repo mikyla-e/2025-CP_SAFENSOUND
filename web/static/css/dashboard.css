@@ -165,8 +165,8 @@ main .rooms .logo {
 }
 
 /* Alert blinking animation */
-@keyframes alertBlink {
-    0% {
+@keyframes emergencyBlink {
+    0%, 100% {
         background-color: var(--second);
         transform: translateX(-50%) scale(1);
     }
@@ -174,19 +174,30 @@ main .rooms .logo {
         background-color: var(--red);
         transform: translateX(-50%) scale(1.1);
     }
-    100% {
+}
+
+@keyframes alarmingBlink {
+    0%, 100% {
         background-color: var(--second);
         transform: translateX(-50%) scale(1);
+    }
+    50% {
+        background-color: #ff9800;
+        transform: translateX(-50%) scale(1.1);
     }
 }
 
 /* Apply blinking animation when alert is active (status = 1) */
-.alert-active .logo {
-    animation: alertBlink 0.5s infinite;
+.emergency-active .logo {
+    animation: emergencyBlink 0.5s ease-in-out infinite;
+}
+
+.alarming-active .logo {
+    animation: alarmingBlink 0.5s ease-in-out infinite;
 }
 
 /* Stop animation only when acknowledged (status = 2) or normal (status = 0) */
-.room:not(.alert-active) .logo {
+.room:not(.emergency-active):not(.alarming-active) .logo {
     animation: none;
     background-color: var(--second);
 }

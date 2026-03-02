@@ -1629,6 +1629,8 @@
         // ====================================================================
         // REAL-TIME ALERTS WITH WEBSOCKET
         let roomStatus = {1: 0, 2: 0, 3: 0};
+        let roomAlertType = {};
+        let alarmingTimeouts = {};
         let websocket = null;
         let reconnectInterval = null;
 
@@ -1640,16 +1642,32 @@
                 
                 if (history && history.length > 0) {
                     const latestAction = history[0].action; // Most recent record
-                    
-                    if (latestAction === "Emergency Alert Detected" || latestAction === "Alarming Alert Detected") {
+                    const lastAction = history[1]?.action || null;
+
+                    if (latestAction === "Emergency Alert Detected") {
                         roomStatus[roomId] = 1; // Bell should animate
+                        roomAlertType[roomId] = 'emergency';
                         console.log(`Room ${roomId} latest: Alert Detected - bell animating`);
+                    } else if (latestAction === "Alarming Alert Detected") {
+                        if (lastAction !== "Emergency Alert Detected") {
+                            roomStatus[roomId] = 1; // Bell should animate
+                            roomAlertType[roomId] = 'alarming';
+                            console.log(`Room ${roomId} latest: Alert Detected - bell animating`);
+                            startAlarmingTimeout(roomId);
+                        } else {
+                            roomStatus[roomId] = 1; // Bell should animate
+                            roomAlertType[roomId] = 'emergency';
+                            console.log(`Room ${roomId} latest: Alarming Alert Detected but previous was Emergency - bell animating as emergency`);
+                        }
                     } else if (latestAction === "Alert Acknowledged") {
                         roomStatus[roomId] = 0; // Bell should stop
+                        roomAlertType[roomId] = null;
+                        clearAlarmingTimeout(roomId);
                         console.log(`Room ${roomId} latest: Alert Acknowledged - bell stopped`);
                     }
                 } else {
                     roomStatus[roomId] = 0; // No history = normal state
+                    roomAlertType[roomId] = null;
                 }
                 
                 updateAlertStates();
@@ -1658,9 +1676,30 @@
             }
         }
 
+        function startAlarmingTimeout(roomId) {
+            clearAlarmingTimeout(roomId);
+
+            alarmingTimeouts[roomId] = setTimeout(() => {
+                if (roomAlertType[roomId] === 'alarming') {
+                    console.log(`Room ${roomId}: Alarming bell timeout - stopping animation`);
+                    roomStatus[roomId] = 0;
+                    roomAlertType[roomId] = null;
+                    updateAlertStates();
+                }
+            }, 15000);
+        }
+
+        function clearAlarmingTimeout(roomId) {
+            if (alarmingTimeouts[roomId]) {
+                clearTimeout(alarmingTimeouts[roomId]);
+                delete alarmingTimeouts[roomId];
+            }
+        }
+
         // Update all room statuses from their history
         async function updateAllRoomStatusesFromHistory() {
-            for (let roomId = 1; roomId <= 3; roomId++) {
+            const roomIds = Object.keys(roomData);
+            for (const roomId of roomIds) {
                 await updateRoomStatusFromHistory(roomId);
             }
         }
@@ -1695,14 +1734,26 @@
                             console.log('Alert update received:', data);
                             
                             // Check the latest history to determine bell state
-                            updateRoomStatusFromHistory(data.room_id);
+                            if (data.action === "Emergency Alert Detected") {
+                                roomStatus[data.room_id] = 1;
+                                roomAlertType[data.room_id] = 'emergency';
+                                clearAlarmingTimeout(data.room_id);
+                                updateAlertStates();
+                            } else if (data.action === "Alarming Alert Detected") {
+                                roomStatus[data.room_id] = 1;
+                                roomAlertType[data.room_id] = 'alarming';
+                                updateAlertStates();
+                            } else if (data.action === "Alert Acknowledged") {
+                                roomStatus[data.room_id] = 0;
+                                roomAlertType[data.room_id] = null;
+                                clearAlarmingTimeout(data.room_id);
+                                updateAlertStates();
+                                removeHighlightInstance(data.room_id);
+                            }
+
                             
                             // Refresh recent emergency section
                             fetchRecentEmergency();
-
-                            if (data.action === "Alert Acknowledged") {
-                                removeHighlightInstance(data.room_id);
-                            }
                             
                             // Refresh history for the affected room
                             fetchRoomHistory(data.room_id).then(() => {
@@ -1810,15 +1861,23 @@
                 const roomCard = document.querySelector(`.room[data-room-id="${roomId}"]`);
                 if (roomCard) {
                     const statusValue = roomStatus[roomId];
-                    console.log(`Room ${roomId} card found, status: ${statusValue}`);
+                    const alertType = roomAlertType[roomId];
+                    console.log(`Room ${roomId} card found, status: ${statusValue}, type: ${alertType}`);
+                    
+                    roomCard.classList.remove('emergency-active', 'alarming-active');
                     
                     if (statusValue === 1) {
                         // Latest history is "Emergency Alert Detected" or "Alarming Alert Detected" - bell should blink
-                        roomCard.classList.add('alert-active');
-                        console.log(`Room ${roomId} set to alert-active - bell blinking`);
+                        if (alertType === "emergency") {
+                            roomCard.classList.add('emergency-active');
+                            console.log(`Room ${roomId} set to emergency-active - bell blinking`);
+                        } else if (alertType === "alarming") {
+                            roomCard.classList.add('alarming-active');
+                            console.log(`Room ${roomId} set to alarming-active - bell blinking`);
+                        }
                     } else {
                         // Latest history is "Alert Acknowledged" or no history - stop blinking
-                        roomCard.classList.remove('alert-active');
+                        // roomCard.classList.remove('emergency-active', 'alarming-active');
                         console.log(`Room ${roomId} alert cleared - bell stopped blinking`);
                     }
                 } else {
