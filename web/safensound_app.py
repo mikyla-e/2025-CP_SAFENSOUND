@@ -242,7 +242,7 @@ async def get_recent_emergency():
             SELECT action, date, time, room_id
             FROM history
             WHERE action = 'Emergency Alert Detected' or action = 'Alarming Alert Detected'
-            ORDER BY date DESC, time DESC
+            ORDER BY date DESC, history_id DESC
             LIMIT 1
         """
         cursor = db.conn.execute(query)
