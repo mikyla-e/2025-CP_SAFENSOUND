@@ -949,25 +949,30 @@ async def send_alert_rpi(device_add, room_id, action=None):
             alarming_alert = True
             led_to_blink = None
 
-            match device_id:
-                case 1:
-                    led_to_blink = led_pin_1
-                    print("LED 1 activated.")
-                case 5:
-                    led_to_blink = led_pin_2
-                    print("LED 2 activated.")
-                case 7:
-                    led_to_blink = led_pin_3
-                    print("LED 3 activated.")
-                case _:
-                    print(f"WARNING: Unknown device_id {device_id}, no LED activated!")
-                    return success_rpi
-            
-            if led_to_blink:
-                led_to_blink.blink(on_time=0.5, off_time=0.5, n=5)
-                buzzer_pin.beep(on_time=0.5, off_time=0.5, n=5)
-            
-            success_rpi = True
+            if emergency_alert == False:
+                match device_id:
+                    case 1:
+                        led_to_blink = led_pin_1
+                        print("LED 1 activated.")
+                    case 5:
+                        led_to_blink = led_pin_2
+                        print("LED 2 activated.")
+                    case 7:
+                        led_to_blink = led_pin_3
+                        print("LED 3 activated.")
+                    case _:
+                        print(f"WARNING: Unknown device_id {device_id}, no LED activated!")
+                        return success_rpi
+                
+                if led_to_blink:
+                    led_to_blink.blink(on_time=0.5, off_time=0.5, n=15)
+                    buzzer_pin.beep(on_time=0.5, off_time=0.5, n=15)
+                
+                success_rpi = True
+
+            else:
+                print("Emergency alert already active, skipping LED activation for alarming alert.")
+                return success_rpi
 
     except Exception as e:
         print("Failed to send alert to Raspberry Pi:", e)

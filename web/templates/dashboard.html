@@ -1642,16 +1642,23 @@
                 
                 if (history && history.length > 0) {
                     const latestAction = history[0].action; // Most recent record
-                    
+                    const lastAction = history[1]?.action || null;
+
                     if (latestAction === "Emergency Alert Detected") {
                         roomStatus[roomId] = 1; // Bell should animate
                         roomAlertType[roomId] = 'emergency';
                         console.log(`Room ${roomId} latest: Alert Detected - bell animating`);
                     } else if (latestAction === "Alarming Alert Detected") {
-                        roomStatus[roomId] = 1; // Bell should animate
-                        roomAlertType[roomId] = 'alarming';
-                        console.log(`Room ${roomId} latest: Alert Detected - bell animating`);
-                        startAlarmingTimeout(roomId);
+                        if (lastAction !== "Emergency Alert Detected") {
+                            roomStatus[roomId] = 1; // Bell should animate
+                            roomAlertType[roomId] = 'alarming';
+                            console.log(`Room ${roomId} latest: Alert Detected - bell animating`);
+                            startAlarmingTimeout(roomId);
+                        } else {
+                            roomStatus[roomId] = 1; // Bell should animate
+                            roomAlertType[roomId] = 'emergency';
+                            console.log(`Room ${roomId} latest: Alarming Alert Detected but previous was Emergency - bell animating as emergency`);
+                        }
                     } else if (latestAction === "Alert Acknowledged") {
                         roomStatus[roomId] = 0; // Bell should stop
                         roomAlertType[roomId] = null;
@@ -1679,7 +1686,7 @@
                     roomAlertType[roomId] = null;
                     updateAlertStates();
                 }
-            }, 5000);
+            }, 15000);
         }
 
         function clearAlarmingTimeout(roomId) {
