@@ -475,7 +475,7 @@ def receive_reset_signals():
     sock.close()
     print("Reset signal receiver stopped.")
 
-def clean_old_wavs(max_recording=100):
+def clean_old_wavs(max_recording=90):
     recording_dir = "recorded_audio"
     if not os.path.exists(recording_dir):
         return
@@ -965,8 +965,8 @@ async def send_alert_rpi(device_add, room_id, action=None):
                         return success_rpi
                 
                 if led_to_blink:
-                    led_to_blink.blink(on_time=0.5, off_time=0.5, n=15)
-                    buzzer_pin.beep(on_time=0.5, off_time=0.5, n=15)
+                    led_to_blink.blink(on_time=0.5, off_time=0.5, n=10)
+                    buzzer_pin.beep(on_time=0.5, off_time=0.5, n=10)
                 
                 success_rpi = True
 

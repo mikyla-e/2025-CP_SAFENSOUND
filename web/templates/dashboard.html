@@ -1631,6 +1631,7 @@
         let roomStatus = {1: 0, 2: 0, 3: 0};
         let roomAlertType = {};
         let alarmingTimeouts = {};
+        let alarmingReceivedAt = {};
         let websocket = null;
         let reconnectInterval = null;
 
@@ -1650,10 +1651,27 @@
                         console.log(`Room ${roomId} latest: Alert Detected - bell animating`);
                     } else if (latestAction === "Alarming Alert Detected") {
                         if (lastAction !== "Emergency Alert Detected") {
-                            roomStatus[roomId] = 1; // Bell should animate
-                            roomAlertType[roomId] = 'alarming';
-                            console.log(`Room ${roomId} latest: Alert Detected - bell animating`);
-                            startAlarmingTimeout(roomId);
+                            const receivedAt = alarmingReceivedAt[roomId];
+
+                            if (receivedAt) {
+                                const elapseMs = Date.now() - receivedAt;
+                               
+                                if (elapseMs < 10000) {
+                                    roomStatus[roomId] = 1; // Bell should animate
+                                    roomAlertType[roomId] = 'alarming';
+                                    const remainingMs = 10000 - elapsedMs
+                                    console.log(`Room ${roomId}latest: Alert Detected - bell animating`);
+                                    startAlarmingTimeout(roomId);
+                                } else {
+                                    roomStatus[roomId] = 0; // Bell should animate
+                                    roomAlertType[roomId] = null;
+                                    delete alarmingReceivedAt[roomId];
+                                }
+
+                            } else {
+                                roomStatus[roomId] = 0; // Bell should animate
+                                roomAlertType[roomId] = null;
+                            }
                         } else {
                             roomStatus[roomId] = 1; // Bell should animate
                             roomAlertType[roomId] = 'emergency';
@@ -1663,6 +1681,7 @@
                         roomStatus[roomId] = 0; // Bell should stop
                         roomAlertType[roomId] = null;
                         clearAlarmingTimeout(roomId);
+                        delete alarmingReceivedAt[roomId];
                         console.log(`Room ${roomId} latest: Alert Acknowledged - bell stopped`);
                     }
                 } else {
@@ -1684,6 +1703,7 @@
                     console.log(`Room ${roomId}: Alarming bell timeout - stopping animation`);
                     roomStatus[roomId] = 0;
                     roomAlertType[roomId] = null;
+                    delete alarmingReceivedAt[roomId];
                     updateAlertStates();
                 }
             }, 15000);
@@ -1738,14 +1758,18 @@
                                 roomStatus[data.room_id] = 1;
                                 roomAlertType[data.room_id] = 'emergency';
                                 clearAlarmingTimeout(data.room_id);
+                                delete alarmingReceivedAt[data.room_id];
                                 updateAlertStates();
                             } else if (data.action === "Alarming Alert Detected") {
                                 roomStatus[data.room_id] = 1;
                                 roomAlertType[data.room_id] = 'alarming';
+                                alarmingReceivedAt[data.room_id] = Date.now();
                                 updateAlertStates();
+                                startAlarmingTimeout(data.room_id, 5000)
                             } else if (data.action === "Alert Acknowledged") {
                                 roomStatus[data.room_id] = 0;
                                 roomAlertType[data.room_id] = null;
+                                delete alarmingReceivedAt[data.room_id];
                                 clearAlarmingTimeout(data.room_id);
                                 updateAlertStates();
                                 removeHighlightInstance(data.room_id);
