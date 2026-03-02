@@ -182,7 +182,7 @@ main .rooms .logo {
         transform: translateX(-50%) scale(1);
     }
     50% {
-        background-color: var(#ff9800);
+        background-color: #ff9800;
         transform: translateX(-50%) scale(1.1);
     }
 }
