@@ -981,10 +981,13 @@ async def send_alert_rpi(device_add, room_id, action=None):
 
 
 async def send_reset_rpi(device_add, action=None):
-    global alerted_rpi, led1_active, led2_active, led3_active
+    global alerted_rpi, led1_active, led2_active, led3_active, alarming_alert, emergency_alert
     from database.db_connection import Database
     get = Database()
     success_rpi = False
+
+    alarming_alert = False
+    emergency_alert = False
 
     device_id = get.fetch_device_id(device_add)
     print(f"Device ID for reset: {device_id}")
