@@ -549,7 +549,7 @@ def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=Non
     active = rms_db > (noise_floor + margin_db)
 
     active_ms = active.sum() * (hop_length / sample_rate) * 1000.0
-    print(f"Activity={active_ms:.0f} ms")
+    # print(f"Activity={active_ms:.0f} ms")
 
     try:
         if active_ms >= 3100:
@@ -560,7 +560,7 @@ def process_audio(audio_data_int16, device_add=None, room_id=None, timestamp=Non
             inference(y_i16, f"Room{room_id}_{timestamp}", device_add, room_id)
             return True
         else:
-            print("Audio too quiet, skipping inference.")
+            # print("Audio too quiet, skipping inference.")
             return False
     except Exception as e:
         print(f"Error processing audio: {e}")
@@ -656,15 +656,15 @@ def noise_classification(audio, sample_rate):
 
     if noise_class == 0:
         sound_class = "Environment Sounds"
-        print("Environment sound detected.")
+        # print("Environment sound detected.")
 
     elif noise_class == 1:
         sound_class = "Defensive Speech"
-        print("Defensive speech detected.")
+        # print("Defensive speech detected.")
         
     elif noise_class == 2:
         sound_class = "Hostile Speech"
-        print("Hostile speech detected.")
+        # print("Hostile speech detected.")
 
     else:
         sound_class = "Unknown"
@@ -698,32 +698,32 @@ def inference(audio, wav_name, device_add=None, room_id=None):
     if predicted_class == 1:
         alarming_count += 1
         nonemergency_count = 0
-        print("ALARMING sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
+        # print("ALARMING sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
 
         if alarming_count >= 2:
             alarming_detected = True
             sound_type = noise_classification(audio, sample_rate)
-            print(f"Determined sound type: {sound_type}")
+            # print(f"Determined sound type: {sound_type}")
             trigger_alert(audio, sound_type, device_add, room_id)
 
     elif predicted_class == 2:
         emergency_count += 1
         nonemergency_count = 0
-        print("EMERGENCY sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
+        # print("EMERGENCY sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
         if emergency_count >= 1:
             emergency_detected = True
             sound_type = noise_classification(audio, sample_rate)
-            print(f"Determined sound type: {sound_type}")
+            # print(f"Determined sound type: {sound_type}")
             trigger_alert(audio, sound_type, device_add, room_id)
 
     elif predicted_class == 0:
-        print("No emergency detected.")
+        # print("No emergency detected.")
         nonemergency_count += 1
         if nonemergency_count >= 10:
             alarming_count = 0
             emergency_count = 0
             nonemergency_count = 0
-            print("System reset due to consecutive non-emergency sounds.")
+            # print("System reset due to consecutive non-emergency sounds.")
 
 
 # alert triggering -----------------------------------
@@ -741,9 +741,8 @@ def trigger_alert(audio, sound_type=None, device_add=None, room_id=None):
     nonemergency_count = 0
 
     if (emergency_detected == True):
-        print(f"\nALERT TRIGGERED")
+        print(f"\nEMERGENCY ALERT TRIGGERED")
         action = "Emergency Alert Detected"
-        print(action)
 
         try:
             retry = 0
@@ -756,7 +755,7 @@ def trigger_alert(audio, sound_type=None, device_add=None, room_id=None):
                     print(f"Sent emergency alert from Room {room_id}")
                     break
                 else:
-                    print("Failed to send alert. Retrying...")
+                    # print("Failed to send alert. Retrying...")
                     sleep(2)
 
                     retry += 1
@@ -773,7 +772,7 @@ def trigger_alert(audio, sound_type=None, device_add=None, room_id=None):
             print(f"Error sending alert: {e}")
 
     if (alarming_detected == True):
-        print(f"\nALERT TRIGGERED")
+        print(f"\nALARMING ALERT TRIGGERED")
         action = "Alarming Alert Detected"
 
         try:
@@ -787,7 +786,7 @@ def trigger_alert(audio, sound_type=None, device_add=None, room_id=None):
                     print(f"Sent alarming alert from Room {room_id}")
                     break
                 else:
-                    print("Failed to send alert. Retrying...")
+                    # print("Failed to send alert. Retrying...")
                     sleep(2)
 
                     retry += 1
@@ -821,7 +820,7 @@ async def send_alert_web(room_id, action=None, sound_type=None, recording_path=N
             async with aiohttp.ClientSession() as session:
                 async with session.post(f"http://localhost:{sns_port}/api/alert", json=payload_web, timeout=10) as response:
                     if response.status == 200:
-                        print(f"Alert sent to Web Dashboard for Room {room_id}")
+                        # print(f"Alert sent to Web Dashboard for Room {room_id}")
                         success_web = True
 
         except Exception as e:
@@ -844,7 +843,7 @@ async def send_reset_web(room_id, action=None):
             async with aiohttp.ClientSession() as session:
                 async with session.post(f"http://localhost:{sns_port}/api/alert", json=payload_web, timeout=10) as response:
                     if response.status == 200:
-                        print(f"Reset command sent to Web Dashboard for Room {room_id}")
+                        # print(f"Reset command sent to Web Dashboard for Room {room_id}")
                         success_web = True
 
         except Exception as e:
@@ -912,7 +911,7 @@ async def send_alert_rpi(device_add, room_id, action=None):
     success_rpi = False
 
     device_id = get.fetch_device_id(device_add)
-    print(f"Device ID for alert: {device_id}")
+    # print(f"Device ID for alert: {device_id}")
 
     try: 
         await asyncio.sleep(1)
@@ -926,17 +925,17 @@ async def send_alert_rpi(device_add, room_id, action=None):
                 case 1:
                     led1_active = True
                     led_pin_1.blink(on_time=0.5, off_time=0.5)
-                    print("LED 1 activated.")
+                    # print("LED 1 activated.")
                 case 5:
                     led2_active = True
                     led_pin_2.blink(on_time=0.5, off_time=0.5)
-                    print("LED 2 activated.")
+                    # print("LED 2 activated.")
                 case 7:
                     led3_active = True
                     led_pin_3.blink(on_time=0.5, off_time=0.5)
-                    print("LED 3 activated.")
+                    # print("LED 3 activated.")
                 case _:
-                    print(f"WARNING: Unknown device_id {device_id}, no LED activated!")
+                    # print(f"WARNING: Unknown device_id {device_id}, no LED activated!")
                     return success_rpi
 
             if alerted_rpi is False:
@@ -953,25 +952,25 @@ async def send_alert_rpi(device_add, room_id, action=None):
                 match device_id:
                     case 1:
                         led_to_blink = led_pin_1
-                        print("LED 1 activated.")
+                        # print("LED 1 activated.")
                     case 5:
                         led_to_blink = led_pin_2
-                        print("LED 2 activated.")
+                        # print("LED 2 activated.")
                     case 7:
                         led_to_blink = led_pin_3
-                        print("LED 3 activated.")
+                        # print("LED 3 activated.")
                     case _:
-                        print(f"WARNING: Unknown device_id {device_id}, no LED activated!")
+                        # print(f"WARNING: Unknown device_id {device_id}, no LED activated!")
                         return success_rpi
                 
                 if led_to_blink:
-                    led_to_blink.blink(on_time=0.5, off_time=0.5, n=10)
-                    buzzer_pin.beep(on_time=0.5, off_time=0.5, n=10)
+                    led_to_blink.blink(on_time=0.5, off_time=0.5, n=15)
+                    buzzer_pin.beep(on_time=0.5, off_time=0.5, n=15)
                 
                 success_rpi = True
 
             else:
-                print("Emergency alert already active, skipping LED activation for alarming alert.")
+                # print("Emergency alert already active, skipping LED activation for alarming alert.")
                 return success_rpi
 
     except Exception as e:
@@ -990,11 +989,11 @@ async def send_reset_rpi(device_add, action=None):
     emergency_alert = False
 
     device_id = get.fetch_device_id(device_add)
-    print(f"Device ID for reset: {device_id}")
+    # print(f"Device ID for reset: {device_id}")
     # print(f"send_reset_rpi DEBUG: device add = {device_add}")
 
     if action is None:
-        print("No action specified for RPI alert.")
+        # print("No action specified for RPI alert.")
         return success_rpi
     
     if "Alert Acknowledged" in action:
@@ -1003,15 +1002,15 @@ async def send_reset_rpi(device_add, action=None):
                 case 1:
                     led1_active = False
                     led_pin_1.off()
-                    print("LED 1 deactivated.")
+                    # print("LED 1 deactivated.")
                 case 5:
                     led2_active = False
                     led_pin_2.off()
-                    print("LED 2 deactivated.")
+                    # print("LED 2 deactivated.")
                 case 7:
                     led3_active = False
                     led_pin_3.off()
-                    print("LED 3 deactivated.")
+                    # print("LED 3 deactivated.")
 
             if (not led1_active and not led2_active and not led3_active):
                 alerted_rpi = False
