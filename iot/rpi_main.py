@@ -90,7 +90,7 @@ print("Database connected successfully.")
 
 import tflite_runtime.interpreter as tflite
 
-interpreter = tflite.Interpreter(model_path="ml/ml_models/emergency_classification/lsms_cnn_model_8.tflite", num_threads=2)
+interpreter = tflite.Interpreter(model_path="ml/ml_models/emergency_classification/lsms_cnn_model_6.tflite", num_threads=2)
 interpreter.allocate_tensors()
 print("Model loaded successfully.")
 
@@ -98,7 +98,7 @@ input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
 
-noise_classifier = tflite.Interpreter(model_path="ml/ml_models/noise_classification/lsms_cnn_model_5.tflite", num_threads=2)
+noise_classifier = tflite.Interpreter(model_path="ml/ml_models/noise_classification/lsms_cnn_model_6.tflite", num_threads=2)
 noise_classifier.allocate_tensors()
 print("Model loaded successfully.")
 
