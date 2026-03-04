@@ -90,7 +90,7 @@ print("Database connected successfully.")
 
 import tflite_runtime.interpreter as tflite
 
-interpreter = tflite.Interpreter(model_path="ml/ml_models/emergency_classification/lsms_cnn_model_6.tflite", num_threads=2)
+interpreter = tflite.Interpreter(model_path="ml/ml_models/emergency_classification/lsms_cnn_model_8.tflite", num_threads=2)
 interpreter.allocate_tensors()
 print("Model loaded successfully.")
 
