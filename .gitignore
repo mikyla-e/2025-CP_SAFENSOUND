@@ -12,3 +12,6 @@
 *.pyc
 *.pyc
 /database/__pycache__
+
+/ml/emergency_dataset
+/ml/noise_dataset
