@@ -50,7 +50,6 @@ device_room_map: dict[str, int] = {}
 class AlertData(BaseModel):
     room_id: int
     action: str
-    sound_type: str = None
     recording_path: str = None
 
 class AudioData(BaseModel):
@@ -267,14 +266,13 @@ async def get_history(room_id: int, user: dict = Depends(get_current_user)):
         history = db.fetch_history(room_id)
         formatted_history = []
         for record in history:
-            # record structure: (history_id, action, sound_type, date, time, room_id, recording_path)
+            # record structure: (history_id, action, date, time, room_id, recording_path)
             history_id = record[0]
             action = record[1]
-            sound_type = record[2]
-            date_str = record[3]
-            time_str = record[4]
-            room_id_db = record[5]
-            recording_path = record[6] if len(record) > 6 else None
+            date_str = record[2]
+            time_str = record[3]
+            room_id_db = record[4]
+            recording_path = record[5] if len(record) > 5 else None
             
             # Format date as MM/DD/YY
             formatted_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%m/%d/%y")
@@ -286,7 +284,6 @@ async def get_history(room_id: int, user: dict = Depends(get_current_user)):
             formatted_history.append({
                 "history_id": history_id,
                 "action": action,
-                "sound_type": sound_type,
                 "date": formatted_date,
                 "time": strip_leading_zero_hour(time_str),
                 "has_recording": has_recording,
@@ -536,14 +533,13 @@ async def handle_alert(data: AlertData):
 
         db.insert_history(
             action=data.action,
-            sound_type=data.sound_type,
             date=current_date,
             time=current_time,
             room_id=data.room_id,
             recording_path=data.recording_path
         )
         
-        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Sound Type: {data.sound_type}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
+        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
 
         if hasattr(db.conn, 'commit'):
             db.conn.commit()
@@ -553,7 +549,6 @@ async def handle_alert(data: AlertData):
             "room_id": data.room_id,
             "status": room_status[data.room_id],
             "action": data.action,
-            "sound_type": data.sound_type,
             "date": formatted_date,
             "time": strip_leading_zero_hour(current_time),
             "has_recording": data.recording_path is not None
