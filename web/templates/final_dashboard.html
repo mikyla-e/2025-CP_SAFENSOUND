@@ -558,6 +558,21 @@
                 const track = document.getElementById('carousel-track');
                 const roomList = Object.entries(roomData).map(([id, r]) => ({ id: parseInt(id), ...r }));
 
+                // Sort: rooms with active alert first, then acknowledged/no history — both groups alphabetically
+                roomList.sort((a, b) => {
+                    const aLatest = (a.history && a.history.length > 0) ? a.history[0].action : null;
+                    const bLatest = (b.history && b.history.length > 0) ? b.history[0].action : null;
+
+                    const aAlert = aLatest === 'Emergency Alert Detected' || aLatest === 'Alarming Alert Detected';
+                    const bAlert = bLatest === 'Emergency Alert Detected' || bLatest === 'Alarming Alert Detected';
+
+                    if (aAlert && !bAlert) return -1;
+                    if (!aAlert && bAlert) return 1;
+
+                    // Same group — sort alphabetically by name
+                    return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+                });
+
                 // clamp carouselStart
                 if (carouselStart + VISIBLE > roomList.length && roomList.length > 0) {
                     carouselStart = Math.max(0, roomList.length - VISIBLE);
