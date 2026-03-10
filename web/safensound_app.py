@@ -553,6 +553,34 @@ async def get_top_emergencies(year: str = None, range: str = None, start_date: s
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/stats/room_count")
+async def get_room_count():
+    try:
+        rooms = db.fetch_rooms()
+        return {"count": len(rooms)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stats/device_count")
+async def get_device_count():
+    try:
+        devices = db.fetch_devices()
+        # Count only devices that are assigned (room_id != 0)
+        assigned_devices = [d for d in devices if d[2] != 0]
+        return {"count": len(assigned_devices), "total": len(devices)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stats/user_count")
+async def get_user_count():
+    try:
+        cursor = db.conn.execute('SELECT COUNT(*) FROM users')
+        count = cursor.fetchone()[0]
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ALERT
 @app.post("/api/alert")
 async def handle_alert(data: AlertData):
