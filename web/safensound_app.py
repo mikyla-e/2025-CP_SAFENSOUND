@@ -419,7 +419,7 @@ async def register_device(data: DeviceRegister):
 @app.get("/api/devices")
 async def list_devices():
     devices = db.fetch_devices()
-    return [{"address": device[1], "room_id": device[2]} for device in devices]
+    return [{"device_id": device[0], "address": device[1], "room_id": device[2]} for device in devices]
 
 @app.post("/api/devices/{address}/assign_room")
 async def assign_device(address: str, data: DeviceAssign):

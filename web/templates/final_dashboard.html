@@ -750,8 +750,9 @@
 
                 let sensorCounter = 1;
                 const deviceLabels = {};
-                devices.forEach(d => {
-                    deviceLabels[d.address] = `Sensor #${sensorCounter++}`;
+                const sortedDevices = [...devices].sort((a, b) => a.device_id - b.device_id);
+                sortedDevices.forEach((d, index) => {
+                    deviceLabels[d.address] = `Sensor #${index + 1}`;
                 });
 
                 tbody.innerHTML = sortedRoomIds.map(roomId => {
@@ -818,52 +819,53 @@
         // ====================================================================
         // ASSIGN SENSOR TO ROOM
         async function assignSensorToRoom(sel) {
-            const roomId = parseInt(sel.getAttribute('data-room'));
-            const deviceId = sel.value;
+        const roomId = parseInt(sel.getAttribute('data-room'));
+        const deviceId = sel.value;
 
-            if (!deviceId) {
-                alert('Please select a sensor.');
-                await loadDevices();
-                return;
-            }
+        if (!deviceId) { await loadDevices(); return; }
 
-            if (deviceId === 'unassign') {
-                try {
-                    const devicesResp = await fetch('/api/devices');
-                    const devices = await devicesResp.json();
-                    const currentDevice = devices.find(d => d.room_id === roomId);
-
-                    if (currentDevice) {
-                        const resp = await fetch(`/api/devices/${encodeURIComponent(currentDevice.address)}/assign_room`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({room_id: 0})
-                        });
-                        if (resp.ok) { await loadDevices(); }
-                        else { alert('Failed to remove sensor.'); await loadDevices(); }
-                    }
-                } catch (err) {
-                    console.error('Error removing sensor:', err);
-                    alert('Error removing sensor.');
-                    await loadDevices();
-                }
-                return;
-            }
-
+        if (deviceId === 'unassign') {
             try {
-                const resp = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/assign_room`, {
+                const devicesResp = await fetch('/api/devices');
+                const devices = await devicesResp.json();
+                const currentDevice = devices.find(d => d.room_id === roomId);
+                if (currentDevice) {
+                    await fetch(`/api/devices/${encodeURIComponent(currentDevice.address)}/assign_room`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({room_id: 0})
+                    });
+                }
+            } catch (err) { alert('Error removing sensor.'); }
+            await loadDevices();
+            return;
+        }
+
+        try {
+            // Unassign any existing sensor from this room first
+            const devicesResp = await fetch('/api/devices');
+            const devices = await devicesResp.json();
+            const existingDevice = devices.find(d => d.room_id === roomId);
+            if (existingDevice && existingDevice.address !== deviceId) {
+                await fetch(`/api/devices/${encodeURIComponent(existingDevice.address)}/assign_room`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({room_id: roomId})
+                    body: JSON.stringify({room_id: 0})
                 });
-                if (resp.ok) { await loadDevices(); }
-                else { alert('Failed to assign sensor.'); await loadDevices(); }
-            } catch (err) {
-                console.error('Error assigning sensor:', err);
-                alert('Error assigning sensor.');
-                await loadDevices();
             }
+
+            // Now assign the new sensor
+            const resp = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/assign_room`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({room_id: roomId})
+            });
+            if (!resp.ok) alert('Failed to assign sensor.');
+        } catch (err) {
+            alert('Error assigning sensor.');
         }
+        await loadDevices();
+    }
 
         // ====================================================================
         // RENAME ROOM FROM TABLE
