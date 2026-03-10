@@ -256,7 +256,8 @@ class Database:
                 SELECT 
                     r.room_id,
                     r.room_name,
-                    COUNT(CASE WHEN h.action = 'Emergency Alert Detected' OR h.action = 'Alarming Alert Detected' THEN 1 END) as count
+                    COUNT(CASE WHEN h.action = 'Emergency Alert Detected' THEN 1 END) as emergency_count,
+                    COUNT(CASE WHEN h.action = 'Alarming Alert Detected' THEN 1 END) as alarming_count
                 FROM room r
                 LEFT JOIN history h ON r.room_id = h.room_id
             '''
@@ -301,22 +302,27 @@ class Database:
             
             query += '''
                 GROUP BY r.room_id, r.room_name
-                ORDER BY count DESC
+                ORDER BY (emergency_count + alarming_count) DESC
             '''
             
             cursor = self.conn.execute(query, params)
             results = cursor.fetchall()
             
-            total = sum(row[2] for row in results)
+            total_emergency = sum(row[2] for row in results)
+            total_alarming = sum(row[3] for row in results)
             room_data = {}
-            for room_id, room_name, count in results:
+            for room_id, room_name, emergency_count, alarming_count in results:
                 room_data[room_id] = {
                     "name": room_name,
-                    "count": count
+                    "emergency_count": emergency_count,
+                    "alarming_count": alarming_count,
+                    "total_count": emergency_count + alarming_count
                 }
             
             return {
-                "total": total,
+                "total": total_emergency + total_alarming,
+                "total_emergency": total_emergency,
+                "total_alarming": total_alarming,
                 "rooms": room_data
             }
 

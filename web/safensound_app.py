@@ -254,7 +254,32 @@ async def get_recent_emergency():
         query = """
             SELECT action, date, time, room_id
             FROM history
-            WHERE action = 'Emergency Alert Detected' or action = 'Alarming Alert Detected'
+            WHERE action = 'Emergency Alert Detected'
+            ORDER BY date DESC, history_id DESC
+            LIMIT 1
+        """
+        cursor = db.conn.execute(query)
+        row = cursor.fetchone()
+        if row:
+            formatted_date = datetime.strptime(row[1], "%Y-%m-%d").strftime("%b %d, %Y")
+            return {
+                "action": row[0],
+                "date": formatted_date,
+                "time": strip_leading_zero_hour(row[2]),
+                "room_id": row[3]
+            }
+        else:
+            return None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/api/recent_alarming")
+async def get_recent_alarming():
+    try:
+        query = """
+            SELECT action, date, time, room_id
+            FROM history
+            WHERE action = 'Alarming Alert Detected'
             ORDER BY date DESC, history_id DESC
             LIMIT 1
         """

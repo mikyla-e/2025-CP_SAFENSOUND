@@ -137,17 +137,22 @@
 
         main .stats-div .monthly .chart-div{
             width: 100%;
-            height: clamp(220px, 38vh, 380px);
+            min-height: 200px;
+            height: 100%;
             overflow-x: auto;
             overflow-y: hidden;
-            min-height: 0;
+            
             flex: 1; 
             position: relative; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         main .stats-div .monthly .chart-div canvas{
             width: 100% !important; 
-            height: auto !important;
+            height: 100% !important;
+            max-height: 300px;
             max-width: 100%; 
             display: block; 
 
@@ -167,8 +172,136 @@
 
         main .stats-div .top .room-stats {
             overflow-y: auto;
+            display: flex;
+            justify-content: center;
             height: 60%;
             padding-right: 15px;
+        }
+
+        .room-stat {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            margin-bottom: 8px;
+        }
+
+        .room-stat .room-label {
+            font-weight: 500;
+            color: var(--text);
+            flex: 1;
+        }
+
+        .room-stat .room-counts {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .room-stat .count-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .room-stat .count-badge.emergency {
+            color: #ee3e47;
+        }
+
+        .room-stat .count-badge.alarming {
+            color: #e98c2f;
+        }
+
+        .room-stat .count-badge svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Total display styling */
+        .total-breakdown {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .total-breakdown .total-main {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--second);
+        }
+
+        .total-breakdown .total-sub {
+            display: flex;
+            gap: 12px;
+            font-size: 0.75rem;
+        }
+
+        .total-breakdown .total-sub span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .total-breakdown .total-sub .emergency-total {
+            color: #ee3e47;
+        }
+
+        .total-breakdown .total-sub .alarming-total {
+            color: #e98c2f;
+        }
+
+        .alert-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 10px 0;
+            margin-top: 5px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .alert-legend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+
+        .alert-legend .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .alert-legend .legend-dot.emergency {
+            background-color: #ee3e47;
+        }
+
+        .alert-legend .legend-dot.alarming {
+            background-color: #e98c2f;
+        }
+
+        @media screen and (max-width: 440px) {
+            .alert-legend {
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            .alert-legend .legend-item {
+                font-size: 0.75rem;
+            }
+
+            .alert-legend .legend-dot {
+                width: 10px;
+                height: 10px;
+            }
         }
     </style>
 </head>
@@ -224,7 +357,7 @@
             <!-- Top Emergency Count -->
             <div class="top stats">
                 <div id="top-header">
-                    <h3>Top Emergency Count</h3>
+                    <h3>Top Alert Count</h3>
                     <div id="top-filters">
                         <select id="top-range-filter" onchange="handleRangeChange()">
                             <option value="all">All Time</option>
@@ -246,11 +379,21 @@
                         <canvas id="topChart"></canvas>
                         <div class="total-overlay">
                             <span class="total-label">Total</span>
-                            <span class="total-value" id="total-emergencies">000</span>
+                            <span class="total-main" id="total-emergencies">000</span>
                         </div>
-                    </div>
+                    </div>  
                     <div class="room-stats" id="room-stats-container">
                         <!-- Room stats will be dynamically generated here -->
+                    </div>
+                </div>
+                <div class="alert-legend">
+                    <div class="legend-item">
+                        <span class="legend-dot emergency"></span>
+                        <span>Emergency Alerts</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot alarming"></span>
+                        <span>Alarming Alerts</span>
                     </div>
                 </div>
             </div>
@@ -284,11 +427,7 @@
     updateDateTime();
     setInterval(updateDateTime, 1000);
 
-    let roomData = {
-        1: { name: "Room 1", history: [] },
-        2: { name: "Room 2", history: [] },
-        3: { name: "Room 3", history: [] }
-    };
+    let roomData = {};
 
 
     // Fetch room data from API
@@ -303,7 +442,6 @@
                 const id = parseInt(roomId);
                 roomData[id] = {
                     name: roomInfo.name,
-                    history: [],
                     has_sensor: roomInfo.has_sensor
                 };
             }
@@ -322,10 +460,25 @@
             if (data && data.date && data.time) {
                 elem.textContent = `${data.date}, \u00A0${data.time.replace(' ', '\u00A0')}`;
             } else {
-                elem.textContent = "No emergencies yet";
+                elem.textContent = "No emergency alerts yet";
             }
         } catch (error) {
             document.getElementById('recent-emergency').textContent = "Error loading";
+        }
+    }
+
+    async function fetchRecentAlarming() {
+        try {
+            const response = await fetch('/api/recent_alarming');
+            const data = await response.json();
+            const elem = document.getElementById('recent-alarming');
+            if (data && data.date && data.time) {
+                elem.textContent = `${data.date}, \u00A0${data.time.replace(' ', '\u00A0')}`;
+            } else {
+                elem.textContent = "No alarming alerts yet";
+            }
+        } catch (error) {
+            document.getElementById('recent-alarming').textContent = "Error loading";
         }
     }
 
@@ -335,6 +488,8 @@
     // Aspect ratio helper based on screen width
     function getLineChartAspectRatio() {
         const w = window.innerWidth;
+        if (w >= 1920) return 3;
+        if (w >= 1600) return 2.5;
         if (w >= 1440) return 1.5;  
         if (w >= 1358) return 1.3;  
         if (w >= 1274) return 1.8;  
@@ -606,12 +761,12 @@
             // Get all rooms and sort by emergency count (highest first)
             const roomIds = Object.keys(roomData);
             const sortedRoomIds = roomIds.sort((a, b) => {
-                const countA = data.rooms[a]?.count || 0;
-                const countB = data.rooms[b]?.count || 0;
+                const totalA = data.rooms[a]?.count || 0;
+                const totalB = data.rooms[b]?.count || 0;
                 
                 // Sort by count descending (most emergencies first)
-                if (countB !== countA) {
-                    return countB - countA;
+                if (totalB !== totalA) {
+                    return totalB - totalA;
                 }
                 
                 // If counts are equal, sort by sensor status (with sensor first)
@@ -627,13 +782,25 @@
             
             // Create stat elements for each room in sorted order
             sortedRoomIds.forEach(roomId => {
-                const roomInfo = data.rooms[roomId] || { name: roomData[roomId].name, count: 0 };
+                const roomInfo = data.rooms[roomId] || {
+                    name: roomData[roomId].name || `Room ${roomId}`,
+                    emergency_count: 0, 
+                    alarming_count: 0,
+                    total_count: 0
+                };
                 const statDiv = document.createElement('div');
                 statDiv.className = 'room-stat';
                 statDiv.id = `room-stat-${roomId}`;
                 statDiv.innerHTML = `
                     <span class="room-label">${roomInfo.name}</span>
-                    <span class="room-count">${roomInfo.count.toString().padStart(2, '0')}</span>
+                    <div class="room-counts">
+                        <span class="count-badge emergency" title="Emergency Alerts">
+                            ${roomInfo.emergency_count.toString().padStart(2, '0')}
+                        </span>
+                        <span class="count-badge alarming" title="Alarming Alerts">
+                            ${roomInfo.alarming_count.toString().padStart(2, '0')}
+                        </span>
+                    </div>
                 `;
                 roomStatsContainer.appendChild(statDiv);
             });
@@ -646,11 +813,11 @@
             }
             
             const sortedRooms = Object.entries(data.rooms)
-                .filter(([_, roomData]) => roomData.count > 0)
-                .sort((a, b) => b[1].count - a[1].count);
+                .filter(([_, roomData]) => roomData.total_count > 0)
+                .sort((a, b) => b[1].total_count - a[1].total_count);
             
             const labels = sortedRooms.map(([_, roomData]) => roomData.name);
-            const values = sortedRooms.map(([_, roomData]) => roomData.count);
+            const values = sortedRooms.map(([_, roomData]) => roomData.total_count);
             
             // Generate colors dynamically based on number of rooms
             const colors = ['#015382', '#2d8ec2', '#002C47', '#4a9fd8', '#1a6b99', '#357ab8'];
@@ -670,6 +837,7 @@
                     responsive: true,
                     maintainAspectRatio: true,
                     aspectRatio: 1,
+                    cutout: '50%',
                     plugins: {
                         legend: {
                             display: false
@@ -684,11 +852,13 @@
                             displayColors: true,
                             callbacks: {
                                 label: function(context) {
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const roomName = context.label;
+                                    const value = context.parsed;
+                                    const total = data.total;
                                     const percentage = total > 0 
-                                        ? ((context.parsed / total) * 100).toFixed(1) 
+                                        ? ((value / total) * 100).toFixed(1) 
                                         : 0;
-                                    return `${context.label}: ${context.parsed} (${percentage}%)`;
+                                    return `${roomName}: ${value} (${percentage}%)`;
                                 }
                             }
                         }
@@ -707,6 +877,7 @@
     window.addEventListener('load', async function() {
         await fetchRoomData();
         await fetchRecentEmergency();
+        await fetchRecentAlarming();
         await initializeYearFilter();
         await updateTopChart();
     });
