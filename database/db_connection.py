@@ -2,12 +2,14 @@ import sqlite3
 import os
 from datetime import datetime
 import hashlib
+import threading
 
 class Database:
     def __init__(self, db_name="safensound.db"):
         self.db_name = os.path.join(os.path.dirname(os.path.dirname(__file__)), db_name)
         print(f"Using database at: {self.db_name}")
-        self.conn = sqlite3.connect(self.db_name)
+        self.conn = sqlite3.connect(self.db_name, check_same_thread=False)
+        self._lock = threading.Lock()
         self.create_room()
         self.create_device()
         self.create_history()
@@ -175,7 +177,7 @@ class Database:
             return cursor.fetchone()
         
     def fetch_history(self, room_id):
-        with self.conn:
+        with self._lock:
             cursor = self.conn.execute(
                 'SELECT * FROM history WHERE room_id = ? ORDER BY date DESC, history_id DESC',
                 (room_id,)

@@ -181,7 +181,7 @@ async def dashboard_alias(request: Request):
         return RedirectResponse(url="/login", status_code=303)
     
     # If authenticated, show dashboard
-    return templates.TemplateResponse("dashboard.html", {
+    return templates.TemplateResponse("final_dashboard.html", {
         "request": request,
         "username": user["username"]
     })
@@ -308,10 +308,11 @@ async def get_history(room_id: int, user: dict = Depends(get_current_user)):
             # record structure: (history_id, action, date, time, room_id, recording_path)
             history_id = record[0]
             action = record[1]
-            date_str = record[2]
-            time_str = record[3]
-            room_id_db = record[4]
-            recording_path = record[5] if len(record) > 5 else None
+            # purda sound_type
+            date_str = record[3]
+            time_str = record[4]
+            room_id_db = record[5]
+            recording_path = record[6] if len(record) > 5 else None
             
             # Format date as MM/DD/YY
             formatted_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%m/%d/%y")
