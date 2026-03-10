@@ -1,0 +1,989 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="{{ url_for('static', path='/css/dashboard.css') }}">
+        <title>SnS Final Dashboard</title>
+        <style>
+            @font-face {
+                font-family: 'DM Sans';
+                src: url('/static/fonts/DM_Sans/DMSans_18pt-Regular.ttf') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: "DM Sans", sans-serif;
+                background: linear-gradient(134deg, #F9F8F9 12.76%, #002C47 279.95%);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* ====== NAV ====== */
+            nav {
+                box-sizing: border-box;
+                min-height: 50px;
+                height: 68px;
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0 clamp(10px, 3vw, 30px);
+            }
+
+            nav h1 {
+                font-weight: bold;
+                /* font-size: clamp(1.3rem, 3vw, 1.5rem); */
+                color: var(--text);
+            }
+
+            nav div {
+                display: flex;
+                flex-direction: row;
+                align-items: end;
+                gap: 10px;
+                margin: 0;
+                padding: 0;
+            }
+
+            nav div p {
+                /* font-size: clamp(0.75rem, 2vw, 0.75rem); */
+                color: var(--text);
+            }
+
+            .btn-manage, .btn-stats {
+                background: var(--second);
+                color: var(--primary);
+                border: none;
+                border-radius: 5px;
+                padding: 10px 16px;
+                cursor: pointer;
+                font-family: "DM Sans", sans-serif;
+                /* font-size: 0.65rem; */
+                text-decoration: none;
+                box-shadow: 0 2px 8px rgba(45,51,107,0.2);
+                transition: transform .15s ease, box-shadow .15s ease;
+            }
+
+            .btn-manage:hover, .btn-stats:hover {
+                background: var(--second-light);
+            }
+
+            .btn-logout {
+                background: var(--red);
+                color: var(--primary);
+                border: none;
+                border-radius: 5px;
+                padding: 10px 16px;
+                cursor: pointer;
+                transition: transform .15s ease, box-shadow .15s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .btn-logout:hover {
+                background: #ee3e47;
+            }
+
+            @media screen and (max-width: 768px) {
+                .time {
+                    display: none;
+                }
+            }
+
+            @media screen and (max-width: 440px) {
+                nav {
+                    flex-wrap: wrap;
+                    padding: 20px clamp(3.5vw, 4vw, 5vw) 10px clamp(3.5vw, 4vw, 5vw);
+                    justify-content: space-between;
+                    gap: 8px;
+                }
+
+                nav .backNdashboard {
+                    flex: 1;
+                    order: 1;
+                }
+
+                nav .admin-launch {
+                    margin: 0 !important;
+                    flex: 0 0 auto;
+                    order: 2;
+                }
+
+                nav .admin-launch .btn-manage,
+                nav .admin-launch .btn-stats {
+                    padding: 8px 12px;
+                    font-size: 0.75rem;
+                    white-space: nowrap;
+                }
+
+                nav .admin-launch .btn-manage span,
+                nav .admin-launch .btn-stats span {
+                    display: none;
+                }
+
+                nav > div:not(.backNdashboard):not(.admin-launch) {
+                    width: 100%;
+                    flex-basis: 100%;
+                    order: 3;
+                    justify-content: space-between;
+                    margin-top: 5px;
+                    display: flex;
+                    gap: 10px;
+                }
+
+                nav h1 {
+                    margin: 0;
+                    font-size: 1.3rem;
+                }
+
+                .time {
+                    display: inline;
+                }
+            }
+
+            /* ====== CAROUSEL ====== */
+            .carousel-wrapper {
+                flex: 1;
+                display: flex;
+                align-items: start;
+                padding: 24px 16px;
+                gap: 8px;
+                overflow: hidden;
+            }
+
+            .carousel-arrow {
+                background: none;
+                border: none;
+                font-size: 2.5rem;
+                color: var(--second);
+                cursor: pointer;
+                padding: 0 8px;
+                opacity: 0.5;
+                transition: opacity 0.2s;
+                flex-shrink: 0;
+                user-select: none;
+            }
+
+            .carousel-arrow:hover {
+                opacity: 1;
+            }
+
+            .carousel-arrow:disabled {
+                opacity: 0.15;
+                cursor: not-allowed;
+            }
+
+            .carousel-track {
+                display: flex;
+                gap: 24px;
+                flex: 1;
+                overflow: hidden;
+            }
+
+            /* ====== ROOM CARD ====== */
+            .room-card {
+                flex: 0 0 calc((100% - 48px) / 3);
+                background: var(--primary);
+                border-radius: 16px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+                display: flex;
+                flex-direction: column;
+                padding: 0;
+                overflow: visible;
+                position: relative;
+                min-width: 0;
+            }
+
+            .room-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 32px 24px 12px 24px;
+            }
+
+            .room-title {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .room-title h2 {
+                font-size: 1.4rem;
+                color: var(--text);
+            }
+
+            .room-title .edit-icon {
+                opacity: 0.35;
+                cursor: pointer;
+                font-size: 0.9rem;
+                transition: opacity 0.2s;
+            }
+
+            .room-title .edit-icon:hover {
+                opacity: 0.7;
+            }
+
+            .bell-icon {
+                width: 48px;
+                height: 48px;
+                background: var(--second);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+
+            .bell-icon svg {
+                width: 26px;
+                height: 26px;
+                fill: white;
+            }
+
+            /* ====== TABLE ====== */
+            .room-table-wrapper {
+                flex: 1;
+                overflow: hidden;
+                padding: 0 16px 8px 16px;
+            }
+
+            .room-table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+            }
+
+            .room-table th {
+                background: #002c472a;
+                padding: 8px 12px;
+                text-align: left;
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: var(--text);
+            }
+
+            .room-table td {
+                padding: 8px 12px;
+                font-size: 0.82rem;
+                color: var(--text);
+            }
+
+            .room-table tbody tr:nth-child(odd) {
+                background: rgba(136, 143, 167, 0.08);
+            }
+
+            .room-table th:first-child,
+            .room-table td:first-child {
+                width: 50%;
+            }
+
+            .room-table th:nth-child(2),
+            .room-table td:nth-child(2) {
+                width: 22%;
+            }
+
+            .room-table th:nth-child(3),
+            .room-table td:nth-child(3) {
+                width: 28%;
+            }
+
+            /* ====== PAGINATION ====== */
+            .pagination {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                padding: 12px 16px 16px 16px;
+            }
+
+            .pagination button {
+                background: linear-gradient(133deg, var(--second) 60%, var(--second-very-light) 120%);
+                color: var(--primary);
+                border: none;
+                border-radius: 5px;
+                padding: 6px 18px;
+                font-size: 0.8rem;
+                font-family: "DM Sans", sans-serif;
+                cursor: pointer;
+                transition: background 0.2s, transform 0.1s;
+            }
+
+            .pagination button:active:not(:disabled) {
+                transform: scale(0.97);
+            }
+
+            .pagination button:disabled {
+                background: #e0e0e0;
+                color: #bfc3d6;
+                cursor: not-allowed;
+            }
+
+            .pagination span {
+                font-size: 0.8rem;
+                color: var(--second);
+                font-weight: 600;
+                background: #f7f7f7;
+                padding: 5px 14px;
+                border-radius: 5px;
+                border: 1px solid #e0e0e0;
+            }
+        </style>
+
+        <!-- MANAGE ROOMS AND DEVICES Overlay -->
+        <style>
+            .admin-overlay {
+                position: fixed; inset: 0;
+                background: rgba(0,0,0,.35);
+                backdrop-filter: blur(1px);
+                opacity: 0; pointer-events: none;
+                transition: opacity .2s ease; z-index: 1000;
+            }
+            .admin-overlay.show { opacity: 1; pointer-events: auto; }
+
+            .admin-modal {
+                position: fixed; top: 50%; left: 50%;
+                width: min(920px, 94vw); max-height: 85vh;
+                background: #fff; border-radius: 12px;
+                box-shadow: 0 12px 30px rgba(0,0,0,.2);
+                transform: translate(-50%, -45%);
+                opacity: 0; pointer-events: none;
+                transition: transform .2s ease, opacity .2s ease;
+                z-index: 1001; display: flex; flex-direction: column;
+                padding: 14px 18px; overflow: auto;
+            }
+            .admin-modal.show { transform: translate(-50%, -50%); opacity: 1; pointer-events: auto; }
+            .admin-modal h3 { color: var(--second); margin: 2px; }
+            .admin-modal-header { display: flex; align-items: center; justify-content: space-between; }
+            .admin-close { background: transparent; border: none; font-size: 22px; cursor: pointer; color: #333; }
+
+            .device-section { padding-top: 20px; }
+            .helper-text { color: #666; font-size: 0.88rem; }
+            .device-table-container { width: 100%; overflow-x: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 5px; }
+            .device-table { width: 100%; border-collapse: collapse; background: var(--primary); border-radius: 5px; overflow: hidden; }
+            .device-table thead { background-color: #002c472a; }
+            .device-table th { padding: 8px 10px; text-align: left; }
+            .device-table tbody tr { border-bottom: 1px solid #e9ecef; }
+            .device-table tbody tr:last-child { border-bottom: none; }
+            .device-table td { padding: 2px 10px; color: var(--text); }
+            .device-table select { color: var(--second); border: none; border-radius: 5px; padding: 5px 0; font-family: "DM Sans", sans-serif; font-size: 0.85rem; outline: none; cursor: pointer; }
+            .no-devices-row { text-align: center; padding: 40px 20px !important; color: #999; font-style: italic; }
+            .action-buttons { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+            .room-name-cell { font-weight: 600; color: var(--text); }
+            .no-sensor { color: #999; font-style: italic; }
+            .sensor-info { color: #666; font-size: 0.9rem; }
+            .btn-action { background: transparent; border: 1px solid var(--second-light); color: var(--second); border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 0.82rem; font-family: "DM Sans", sans-serif; transition: all 0.2s; white-space: nowrap; }
+            .btn-action:hover { background: var(--second); color: white; border-color: var(--second); }
+            .btn-delete { border-color: var(--red); color: var(--red); }
+            .btn-delete:hover { background: var(--red); color: white; border-color: var(--red); }
+        </style>
+    </head>
+    <body>
+        <!-- NAV -->
+        <nav>
+            <div class="backNdashboard" style="display: flex; align-items: center; gap: 15px;">
+                <a href="/" style="text-decoration: none; color: var(--second); display: flex; align-items: center; font-size: 1.2rem; transition: color 0.3s;" title="Back to Homepage">
+                    ←
+                </a>
+                <h1>Dashboard</h1>
+            </div>
+            <div>
+                <p id="current-date">00/00/00</p>
+                <p class="time" id="current-time">00:00 AM</p>
+            </div>
+            <div class="admin-launch" style="margin: 20px 0; display: flex; gap: 10px; align-items: center;">
+                <button class="btn-manage" onclick="openAdminModal()"><span>Manage </span>Devices &amp; Rooms</button>
+                <button class="btn-stats"><span>View </span>Statistics</button>
+                <a href="/logout" onclick="confirmLogout(event)" class="btn-logout" title="Logout">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="white" style="width: 16px; height: 16px; vertical-align: middle;">
+                        <path d="M377.9 105.9L500.7 228.7c7.2 7.2 11.3 17.1 11.3 27.3s-4.1 20.1-11.3 27.3L377.9 406.1c-6.4 6.4-15 9.9-24 9.9c-18.7 0-33.9-15.2-33.9-33.9l0-62.1-128 0c-17.7 0-32-14.3-32-32l0-64c0-17.7 14.3-32 32-32l128 0 0-62.1c0-18.7 15.2-33.9 33.9-33.9c9 0 17.6 3.6 24 9.9zM160 96L96 96c-17.7 0-32 14.3-32 32l0 256c0 17.7 14.3 32 32 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-64 0c-53 0-96-43-96-96L0 128C0 75 43 32 96 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z"/>
+                    </svg>
+                </a>
+            </div>
+        </nav>
+
+        <!-- MANAGE ROOMS AND DEVICES Overlay -->
+        <div id="admin-overlay" class="admin-overlay" onclick="closeAdminModal()"></div>
+
+        <div id="admin-modal" class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title" onclick="event.stopPropagation()">
+            <div class="admin-modal-header">
+                <h3 id="helper-text">Create New Room</h3>
+                <button class="admin-close" onclick="closeAdminModal()" aria-label="Close">×</button>
+            </div>
+            <div class="admin-modal-body">
+                <div>
+                    <p class="helper-text">Add a new room to monitor.</p>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <input type="text" id="new-room-name" placeholder="Enter room name (e.g., Kitchen)"
+                            style="flex:1; min-width:200px; padding:10px; border:2px solid var(--second-light); border-radius:5px; font-family: 'DM Sans', sans-serif;">
+                        <button onclick="createRoom()" class="btn-manage">Add Room</button>
+                    </div>
+                </div>
+                <div class="device-section">
+                    <h3>Room & Sensor Management</h3>
+                    <p class="helper-text">Manage room names and assign sensors to each room.</p>
+                    <div class="device-table-container">
+                        <table class="device-table">
+                            <thead>
+                                <tr>
+                                    <th>Room Name</th>
+                                    <th>Assigned Sensor</th>
+                                    <th>Sensor Actions</th>
+                                    <th>Room Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="device-table-body">
+                                <tr><td colspan="4" class="no-devices-row">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <br>
+                </div>
+                <div class="device-section">
+                    <h3>System Control</h3>
+                    <p class="helper-text">Remotely shutdown the SafeNSound system.</p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                        <button onclick="shutdownSystem('all')" class="btn-action btn-delete" style="padding: 10px 20px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;">
+                                <path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V256c0 17.7 14.3 32 32 32s32-14.3 32-32V32zM143.5 120.6c13.6-11.3 15.4-31.5 4.1-45.1s-31.5-15.4-45.1-4.1C49.7 115.4 16 181.8 16 256c0 132.5 107.5 240 240 240s240-107.5 240-240c0-74.2-33.8-140.6-86.6-184.6c-13.6-11.3-33.8-9.4-45.1 4.1s-9.4 33.8 4.1 45.1c40.5 33.8 66.5 85 66.5 141.4c0 99.5-80.5 180-180 180s-180-80.5-180-180c0-56.4 26-107.6 66.5-141.4z"/>
+                            </svg>
+                            Shutdown System
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CAROUSEL -->
+        <div class="carousel-wrapper">
+            <button class="carousel-arrow" id="carousel-prev" onclick="slideCarousel(-1)">&#8249;</button>
+
+            <div class="carousel-track" id="carousel-track">
+                <!-- Room cards are generated by JS -->
+            </div>
+
+            <button class="carousel-arrow" id="carousel-next" onclick="slideCarousel(1)">&#8250;</button>
+        </div>
+
+        <script>
+            // ====== DATE/TIME ======
+            function updateDateTime() {
+                const now = new Date();
+                document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', {
+                    month: 'long', day: 'numeric', year: 'numeric'
+                });
+                document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', {
+                    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+                });
+            }
+
+            function confirmLogout(event) {
+                event.preventDefault();
+                if (confirm('Are you sure you want to logout?')) {
+                    window.location.href = '/logout';
+                }
+            }
+
+            // ====== CONFIG ======
+            const VISIBLE = 3;
+            const ROWS_PER_PAGE = 11;
+
+            // ====== ROOM DATA ======
+            let roomData = {};  // ← ADD THIS LINE
+
+            // ====== CAROUSEL STATE ======
+            let carouselStart = 0;
+            const pageStates = {};
+
+            // ====== BUILD CARD HTML ======
+            function buildCard(room) {
+                if (!pageStates[room.id]) pageStates[room.id] = 1;
+                const page = pageStates[room.id];
+                const history = room.history || [];
+                const totalPages = Math.ceil(history.length / ROWS_PER_PAGE) || 1;
+                const start = (page - 1) * ROWS_PER_PAGE;
+                const slice = history.slice(start, start + ROWS_PER_PAGE);
+
+                let rowsHtml = '';
+                if (slice.length === 0) {
+                    rowsHtml = `<tr><td colspan="3" style="text-align:center; padding: 20px; color:#999; font-style:italic;">No alert history yet</td></tr>`;
+                } else {
+                    for (const entry of slice) {
+                        rowsHtml += `<tr>
+                            <td>${escapeHtml(entry.action)}</td>
+                            <td>${escapeHtml(entry.date)}</td>
+                            <td>${escapeHtml(entry.time)}</td>
+                        </tr>`;
+                    }
+                }
+
+                return `
+                <div class="room-card" data-room="${room.id}">
+                    <div class="room-header">
+                        <div class="room-title">
+                            <h2>${escapeHtml(room.name)}</h2>
+                            <span class="edit-icon" onclick="renameRoomFromCard(${room.id})">&#9998;</span>
+                        </div>
+                        <div class="bell-icon">
+                            <svg viewBox="0 0 512 512"><path d="M256 32c-17.7 0-32 14.3-32 32V80C153.3 92.7 96 158.3 96 240v112l-32 32v16H448V384l-32-32V240c0-81.7-57.3-147.3-128-160V64c0-17.7-14.3-32-32-32zm0 448c35.3 0 64-28.7 64-64H192c0 35.3 28.7 64 64 64z"/></svg>
+                        </div>
+                    </div>
+                    <div class="room-table-wrapper">
+                        <table class="room-table">
+                            <thead>
+                                <tr><th>Action</th><th>Date</th><th>Time</th></tr>
+                            </thead>
+                            <tbody>${rowsHtml}</tbody>
+                        </table>
+                    </div>
+                    <div class="pagination">
+                        <button onclick="changePage(${room.id}, -1)" ${page <= 1 ? 'disabled' : ''}>Prev</button>
+                        <span>${page} of ${totalPages}</span>
+                        <button onclick="changePage(${room.id}, 1)" ${page >= totalPages ? 'disabled' : ''}>Next</button>
+                    </div>
+                </div>`;
+            }
+
+            // ====== RENDER (reads from roomData) ======
+            function render() {
+                const track = document.getElementById('carousel-track');
+                const roomList = Object.entries(roomData).map(([id, r]) => ({ id: parseInt(id), ...r }));
+
+                // clamp carouselStart
+                if (carouselStart + VISIBLE > roomList.length && roomList.length > 0) {
+                    carouselStart = Math.max(0, roomList.length - VISIBLE);
+                }
+
+                const visible = roomList.slice(carouselStart, carouselStart + VISIBLE);
+                track.innerHTML = visible.map(buildCard).join('');
+
+                document.getElementById('carousel-prev').disabled = carouselStart === 0;
+                document.getElementById('carousel-next').disabled = carouselStart + VISIBLE >= roomList.length;
+            }
+
+            // ====== CAROUSEL NAV ======
+            function slideCarousel(dir) {
+                const roomList = Object.keys(roomData);
+                const next = carouselStart + dir;
+                if (next < 0 || next + VISIBLE > roomList.length) return;
+                carouselStart = next;
+                render();
+            }
+
+            // ====== TABLE PAGINATION ======
+            function changePage(roomId, dir) {
+                const history = roomData[roomId]?.history || [];
+                const totalPages = Math.ceil(history.length / ROWS_PER_PAGE) || 1;
+                const next = (pageStates[roomId] || 1) + dir;
+                if (next < 1 || next > totalPages) return;
+                pageStates[roomId] = next;
+                render();
+            }
+
+            // ====== RENAME FROM CARD EDIT ICON ======
+            async function renameRoomFromCard(roomId) {
+                const currentName = roomData[roomId]?.name || `Room ${roomId}`;
+                const newName = prompt(`Enter new name for ${currentName}:`, currentName);
+                if (newName !== null && newName.trim() !== '' && newName.trim() !== currentName) {
+                    const trimmedName = newName.trim();
+                    try {
+                        const response = await fetch(`/api/rooms/${roomId}/rename`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ new_name: trimmedName })
+                        });
+                        if (response.ok) {
+                            roomData[roomId].name = trimmedName;
+                            render();
+                            loadDevices();
+                        } else {
+                            alert('Failed to rename room.');
+                        }
+                    } catch (error) {
+                        console.error('Error renaming room:', error);
+                        alert('Error renaming room.');
+                    }
+                }
+            }
+
+            // ====== ESCAPE HTML ======
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.appendChild(document.createTextNode(str));
+                return div.innerHTML;
+            }
+
+            // ====== INIT ======
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+        </script>
+
+        <script>
+        // MANAGE ROOMS AND DEVICES
+
+        // ====================================================================
+        // ROOM DATA (mirrored from SnS Dashboard)
+        async function fetchRoomData() {
+            try {
+                const response = await fetch('/api/rooms');
+                const rooms = await response.json();
+                roomData = {};
+                for (const [roomId, roomInfo] of Object.entries(rooms)) {
+                    const id = parseInt(roomId);
+                    roomData[id] = {
+                        name: roomInfo.name,
+                        history: [],
+                        has_sensor: roomInfo.has_sensor
+                    };
+                }
+                refreshRoomsCarousel();
+            } catch (error) {
+                console.error('Error fetching room data:', error);
+            }
+        }
+
+        async function refreshRoomsCarousel() {
+            const track = document.getElementById('carousel-track');
+            if (!track) return;
+
+            const roomIds = Object.keys(roomData);
+            await Promise.all(roomIds.map(async (id) => {
+                try {
+                    const resp = await fetch(`/api/history/${id}`, {
+                        credentials: 'same-origin'   // ← ADD THIS
+                    });
+                    if (!resp.ok) {
+                        console.error(`History ${id} failed: ${resp.status}`, await resp.text());  // ← ADD THIS
+                        roomData[id].history = [];
+                        return;
+                    }
+                    const data = await resp.json();
+                    console.log(`History ${id}:`, data);  // ← ADD THIS temporarily
+                    roomData[id].history = Array.isArray(data) ? data : [];
+                } catch (e) {
+                    console.error(`History ${id} exception:`, e);
+                    roomData[id].history = [];
+                }
+            }));
+
+            render();
+        }
+
+        // ====================================================================
+        // ADMIN MODAL OPEN / CLOSE
+        function openAdminModal() {
+            const overlay = document.getElementById('admin-overlay');
+            const modal = document.getElementById('admin-modal');
+            overlay.classList.add('show');
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            try { loadDevices(); } catch(e) {}
+            const input = document.getElementById('new-room-name');
+            if (input) { setTimeout(() => input.focus(), 50); }
+        }
+
+        function closeAdminModal() {
+            const overlay = document.getElementById('admin-overlay');
+            const modal = document.getElementById('admin-modal');
+            overlay.classList.remove('show');
+            modal.classList.remove('show');
+            document.body.style.overflow = 'auto';
+            fetchRoomData();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeAdminModal();
+        });
+
+        // ====================================================================
+        // CREATE ROOM
+        async function createRoom() {
+            const nameEl = document.getElementById('new-room-name');
+            const room_name = nameEl.value.trim();
+            if (!room_name) { alert("Enter room name"); return; }
+            try {
+                const r = await fetch('/api/rooms', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({room_name})
+                });
+                if (!r.ok) throw new Error(await r.text());
+                nameEl.value = '';
+                await fetchRoomData();
+                loadDevices();
+            } catch(e) { console.error(e); alert("Failed to add room"); }
+        }
+
+        // ====================================================================
+        // LOAD DEVICES TABLE
+        async function loadDevices() {
+            try {
+                const [devicesResp, roomsResp] = await Promise.all([
+                    fetch('/api/devices'),
+                    fetch('/api/rooms')
+                ]);
+                const devices = await devicesResp.json();
+                const rooms = await roomsResp.json();
+                const tbody = document.getElementById('device-table-body');
+
+                const roomToDevice = {};
+                devices.forEach(d => {
+                    if (d.room_id !== 0) roomToDevice[d.room_id] = d.address;
+                });
+
+                const availableDevices = devices.filter(d => d.room_id === 0);
+                const sortedRoomIds = Object.keys(rooms).sort((a, b) => parseInt(a) - parseInt(b));
+
+                if (sortedRoomIds.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="no-devices-row">No rooms available. Create a room first.</td></tr>';
+                    return;
+                }
+
+                let sensorCounter = 1;
+                const deviceLabels = {};
+                devices.forEach(d => {
+                    deviceLabels[d.address] = `Sensor #${sensorCounter++}`;
+                });
+
+                tbody.innerHTML = sortedRoomIds.map(roomId => {
+                    const room = rooms[roomId];
+                    const assignedDeviceId = roomToDevice[roomId];
+                    const sensorLabel = assignedDeviceId ? deviceLabels[assignedDeviceId] : null;
+                    const safeName = (room.name || '').replace(/'/g, "\\'");
+
+                    return `
+                        <tr>
+                            <td class="room-name-cell">${room.name}</td>
+                            <td class="sensor-info">
+                                ${sensorLabel ? sensorLabel : '<span class="no-sensor">No sensor assigned</span>'}
+                            </td>
+                            <td>
+                                <select data-room="${roomId}" onchange="assignSensorToRoom(this)">
+                                    <option value="" style="color: #015382;">Select Sensor</option>
+                                    ${assignedDeviceId ? `<option value="${assignedDeviceId}" selected>${deviceLabels[assignedDeviceId]}</option>` : ''}
+                                    ${availableDevices.map(d =>
+                                        `<option value="${d.address}">${deviceLabels[d.address]}</option>`
+                                    ).join('')}
+                                    ${assignedDeviceId ? '<option value="unassign">Remove Sensor</option>' : ''}
+                                </select>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn-action" onclick="renameRoomFromTable(${roomId}, '${safeName}')">Rename</button>
+                                    <button class="btn-action btn-delete" onclick="deleteRoom(${roomId}, '${safeName}')">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Failed to load devices:', err);
+                document.getElementById('device-table-body').innerHTML =
+                    '<tr><td colspan="4" class="no-devices-row">Unable to load data. Please refresh.</td></tr>';
+            }
+        }
+
+        // ====================================================================
+        // DELETE ROOM
+        async function deleteRoom(roomId, roomName) {
+            if (!confirm(`Are you sure you want to delete "${roomName}"?\n\nThis will remove all emergency history for this room and cannot be undone.`)) return;
+
+            try {
+                const response = await fetch(`/api/rooms/${roomId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    delete roomData[roomId];
+                    await fetchRoomData();
+                    await loadDevices();
+                    alert(`"${roomName}" has been deleted successfully.`);
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to delete room: ${error.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error deleting room:', error);
+                alert('Error deleting room. Please try again.');
+            }
+        }
+
+        // ====================================================================
+        // ASSIGN SENSOR TO ROOM
+        async function assignSensorToRoom(sel) {
+            const roomId = parseInt(sel.getAttribute('data-room'));
+            const deviceId = sel.value;
+
+            if (!deviceId) {
+                alert('Please select a sensor.');
+                await loadDevices();
+                return;
+            }
+
+            if (deviceId === 'unassign') {
+                try {
+                    const devicesResp = await fetch('/api/devices');
+                    const devices = await devicesResp.json();
+                    const currentDevice = devices.find(d => d.room_id === roomId);
+
+                    if (currentDevice) {
+                        const resp = await fetch(`/api/devices/${encodeURIComponent(currentDevice.address)}/assign_room`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({room_id: 0})
+                        });
+                        if (resp.ok) { await loadDevices(); }
+                        else { alert('Failed to remove sensor.'); await loadDevices(); }
+                    }
+                } catch (err) {
+                    console.error('Error removing sensor:', err);
+                    alert('Error removing sensor.');
+                    await loadDevices();
+                }
+                return;
+            }
+
+            try {
+                const resp = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/assign_room`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({room_id: roomId})
+                });
+                if (resp.ok) { await loadDevices(); }
+                else { alert('Failed to assign sensor.'); await loadDevices(); }
+            } catch (err) {
+                console.error('Error assigning sensor:', err);
+                alert('Error assigning sensor.');
+                await loadDevices();
+            }
+        }
+
+        // ====================================================================
+        // RENAME ROOM FROM TABLE
+        async function renameRoomFromTable(roomId, currentName) {
+            const newName = prompt(`Enter new name for ${currentName}:`, currentName);
+            if (newName !== null && newName.trim() !== '' && newName.trim() !== currentName) {
+                const trimmedName = newName.trim();
+                try {
+                    const response = await fetch(`/api/rooms/${roomId}/rename`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ new_name: trimmedName })
+                    });
+                    if (response.ok) {
+                        if (roomData[roomId]) roomData[roomId].name = trimmedName;
+                        await fetchRoomData();
+                        await loadDevices();
+                    } else {
+                        alert('Failed to rename room.');
+                    }
+                } catch (error) {
+                    console.error('Error renaming room:', error);
+                    alert('Error renaming room.');
+                }
+            }
+        }
+
+        // ====================================================================
+        // BUILD ROOM OPTIONS (helper)
+        function buildRoomOptions(current) {
+            let opts = '';
+            const sortedRoomIds = Object.keys(roomData).sort((a, b) => parseInt(a) - parseInt(b));
+            for (const id of sortedRoomIds) {
+                const sel = parseInt(id) === parseInt(current) ? 'selected' : '';
+                opts += `<option value="${id}" ${sel}>${roomData[id].name}</option>`;
+            }
+            return opts;
+        }
+
+        // ====================================================================
+        // ASSIGN DEVICE FROM TABLE (legacy helper)
+        async function assignDeviceFromTable(sel) {
+            const deviceId = sel.getAttribute('data-device');
+            const roomId = parseInt(sel.value);
+
+            if (roomId === 0) {
+                alert('Please select a room.');
+                await loadDevices();
+                return;
+            }
+
+            try {
+                const resp = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/assign_room`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({room_id: roomId})
+                });
+                if (resp.ok) { await loadDevices(); }
+                else { alert('Failed to assign sensor.'); await loadDevices(); }
+            } catch (err) {
+                console.error('Error assigning device:', err);
+                alert('Error assigning sensor.');
+                await loadDevices();
+            }
+        }
+
+        // ====================================================================
+        // SHUTDOWN SYSTEM
+        async function shutdownSystem(target) {
+            if (!confirm(`Are you sure you want to shutdown?\n\nThis will stop the SafeNSound monitoring system.`)) return;
+
+            const doubleConfirm = prompt(`Type "SHUTDOWN" to confirm shutting down`);
+            if (doubleConfirm !== "SHUTDOWN") {
+                alert("Shutdown cancelled.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/shutdown', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ target: 'all', confirm: true })
+                });
+
+                if (response.ok) {
+                    document.body.innerHTML = `
+                        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; font-family:'DM Sans', sans-serif; background: var(--primary); color: var(--second);">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" style="width: 80px; height: 80px; margin-bottom: 20px; opacity: 0.7;">
+                                <path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V256c0 17.7 14.3 32 32 32s32-14.3 32-32V32zM143.5 120.6c13.6-11.3 15.4-31.5 4.1-45.1s-31.5-15.4-45.1-4.1C49.7 115.4 16 181.8 16 256c0 132.5 107.5 240 240 240s240-107.5 240-240c0-74.2-33.8-140.6-86.6-184.6c-13.6-11.3-33.8-9.4-45.1 4.1s-9.4 33.8 4.1 45.1c40.5 33.8 66.5 85 66.5 141.4c0 99.5-80.5 180-180 180s-180-80.5-180-180c0-56.4 26-107.6 66.5-141.4z"/>
+                            </svg>
+                            <h1 style="margin: 0;">System Shutting Down...</h1>
+                            <p style="margin-top: 10px; opacity: 0.7;">The SafeNSound system is powering off.</p>
+                            <p style="margin-top: 20px; font-size: 0.9rem; opacity: 0.5;">You may close this browser window.</p>
+                        </div>
+                    `;
+                } else {
+                    const error = await response.json();
+                    alert(`Shutdown failed: ${error.detail}`);
+                }
+            } catch (error) {
+                console.error('Shutdown error:', error);
+                alert('Failed to send shutdown command.');
+            }
+        }
+
+        // ====================================================================
+        // AUTO-REFRESH DEVICES LIST
+        window.addEventListener('load', () => {
+            fetchRoomData().then(() => loadDevices());
+        });
+
+        setInterval(loadDevices, 10000);
+
+        // setInterval(loadDevices, 10000);
+        // window.addEventListener('load', () => {
+        //     fetchRoomData();
+        //     setTimeout(loadDevices, 1500);
+        //     render();
+        // });
+    </script>
+
+    </body>
+    </html>
