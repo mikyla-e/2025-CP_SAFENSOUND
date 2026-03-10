@@ -26,12 +26,12 @@ body {
     margin: 0;
     width: 100%;
     min-height: 100vh;
-    display: grid;
+    /* display: grid;
     grid-template-areas: 
         "nav logs"
         "main logs";
     grid-template-columns: 1fr 396px;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto 1fr; */
 
     font-family: "DM Sans", sans-serif;
     background: linear-gradient(134deg, #F9F8F9 12.76%, #002C47 279.95%);
@@ -266,10 +266,11 @@ main .stats-div{
 
     display: grid;
     grid-template-areas: 
-        "recent top"
-        "monthly top";
-    grid-template-columns: auto 60%;
-    grid-template-rows: minmax(100px, auto) 1fr;
+        "recent1 top number"
+        "recent2 top number"
+        "monthly monthly number";
+    grid-template-columns: 30% 45% 25%;
+    grid-template-rows: 12% 12% 25%;
 
     gap: 25px 35px;
 }
@@ -286,9 +287,9 @@ main .stats-div .stats{
 }
 
 /* most recent alarm */
-main .stats-div .recent{
+main .stats-div .recent1{
     box-sizing: border-box;
-    grid-area: recent;
+    grid-area: recent1;
     min-height: fit-content;
     /* height: 100px; */
 
@@ -302,21 +303,21 @@ main .stats-div .recent{
     padding: 0;
 }
 
-main .stats-div .recent div{
+main .stats-div .recent1 div{
     padding: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: start;
-    width: 90%;
+    width: 80%;
 
-    gap: 3px;
+    gap: 10px;
     container-type: inline-size;
     /* border: 1px solid black; */
 }
 
 /* Most Recent Emergency */
-main .stats-div .recent p{
+main .stats-div .recent1 p{
     /* border: 1px solid black; */
     margin: 0;
     font-size: clamp(0.85rem, 2vw, 1rem);
@@ -326,7 +327,7 @@ main .stats-div .recent p{
 }
 
 /* date and time */
-main .stats-div .recent h2{
+main .stats-div .recent1 h2{
     font-size: clamp(1.2rem, 3vw, 1.7rem);
     max-width: 100%;
     box-sizing: border-box;
@@ -343,25 +344,104 @@ main .stats-div .recent h2{
 }
 
 @container (max-width: 300px) {
-    main .stats-div .recent h2{
+    main .stats-div .recent1 h2{
         font-size: 1.3rem;
     }
 }
 
 @container (min-width: 301px) and (max-width: 400px) {
-    main .stats-div .recent h2{
+    main .stats-div .recent1 h2{
         font-size: 1.5rem;
     }
 }
 
 @container (min-width: 401px) and (max-width: 500px) {
-    main .stats-div .recent h2{
+    main .stats-div .recent1 h2{
         font-size: 1.8rem;
     }
 }
 
 @container (min-width: 501px) {
-    main .stats-div .recent h2{
+    main .stats-div .recent1 h2{
+        font-size: 2rem;
+    }
+}
+
+main .stats-div .recent2{
+    box-sizing: border-box;
+    grid-area: recent2;
+    min-height: fit-content;
+    /* height: 100px; */
+
+    background: linear-gradient(180deg, var(--second-light) 0%, var(--second) 181.85%);
+    color: var(--primary); 
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 0;
+}
+
+main .stats-div .recent2 div{
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    width: 80%;
+
+    gap: 10px;
+    container-type: inline-size;
+    /* border: 1px solid black; */
+}
+
+/* Most Recent Emergency */
+main .stats-div .recent2 p{
+    /* border: 1px solid black; */
+    margin: 0;
+    font-size: clamp(0.85rem, 2vw, 1rem);
+    white-space: nowrap;
+
+    color: white;
+}
+
+/* date and time */
+main .stats-div .recent2 h2{
+    font-size: clamp(1.2rem, 3vw, 1.7rem);
+    max-width: 100%;
+    box-sizing: border-box;
+
+    margin: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.3;
+
+    color: white;
+
+    /* text-align: center; */
+    /* border: 1px solid black; */
+}
+
+@container (max-width: 300px) {
+    main .stats-div .recent2 h2{
+        font-size: 1.3rem;
+    }
+}
+
+@container (min-width: 301px) and (max-width: 400px) {
+    main .stats-div .recent2 h2{
+        font-size: 1.5rem;
+    }
+}
+
+@container (min-width: 401px) and (max-width: 500px) {
+    main .stats-div .recent2 h2{
+        font-size: 1.8rem;
+    }
+}
+
+@container (min-width: 501px) {
+    main .stats-div .recent2 h2{
         font-size: 2rem;
     }
 }
@@ -470,7 +550,7 @@ main .stats-div .top .top-content {
     flex-direction: row;
     align-items: center;
     justify-content: space-around;
-    gap: 20px;
+    gap: 10px;
     flex: 1;
     min-height: 0;
     overflow: hidden;
@@ -483,7 +563,7 @@ main .stats-div .top .pie-chart-container {
     flex-shrink: 0;
 
     width: 60%;
-    max-width: 300px;
+    max-width: 200px;
     /* height: 50%; */
     aspect-ratio: 1/1;
 
@@ -855,7 +935,7 @@ aside .table-div table tr:nth-child(odd),
         grid-template-rows: 100px minmax(250px, 1fr) minmax(300px, 1fr); /* Change this line */
     }
 
-    main .stats-div .recent{
+    main .stats-div .recent1{
         height: auto;
     }
 
@@ -984,7 +1064,7 @@ aside .table-div table tr:nth-child(odd),
         gap: clamp(15px, 20px, 30px);
     }
 
-    main .stats-div .recent{
+    main .stats-div .recent1{
         height: 100px;
     }
 
@@ -1087,7 +1167,7 @@ aside .table-div table tr:nth-child(odd),
         grid-template-rows: 100px minmax(250px, 1fr) minmax(250px, 1fr); 
     }
 
-    main .stats-div .recent{
+    main .stats-div .recent1{
         height: auto;
     }
 

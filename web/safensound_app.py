@@ -186,6 +186,20 @@ async def dashboard_alias(request: Request):
         "username": user["username"]
     })
 
+@app.get("/statistics", response_class=HTMLResponse)
+async def statistics_page(request: Request):
+    # Check if user is logged in
+    user = request.session.get("user")
+    if not user:
+        # Redirect to login page if not authenticated
+        return RedirectResponse(url="/login", status_code=303)
+    
+    # If authenticated, show statistics page
+    return templates.TemplateResponse("statistics.html", {
+        "request": request,
+        "username": user["username"]
+    })
+
 @app.get("/api/rooms")
 async def get_rooms(user: dict = Depends(get_current_user)):
     try:
