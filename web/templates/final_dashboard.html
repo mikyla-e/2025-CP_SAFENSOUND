@@ -337,8 +337,89 @@
                 border-radius: 5px;
                 border: 1px solid #e0e0e0;
             }
+
+            /* ====== ALERT BELL ANIMATIONS ====== */
+            @keyframes bellShakeEmergency {
+                0%, 100% { transform: rotate(0deg); }
+                10% { transform: rotate(-15deg); }
+                20% { transform: rotate(15deg); }
+                30% { transform: rotate(-12deg); }
+                40% { transform: rotate(12deg); }
+                50% { transform: rotate(-8deg); }
+                60% { transform: rotate(8deg); }
+                70% { transform: rotate(-5deg); }
+                80% { transform: rotate(5deg); }
+                90% { transform: rotate(0deg); }
+            }
+
+            @keyframes bellPulseEmergency {
+                0%, 100% { background: var(--red); transform: scale(1); }
+                50% { background: #ff6b6b; transform: scale(1.1); }
+            }
+
+            @keyframes bellShakeAlarming {
+                0%, 100% { transform: rotate(0deg); }
+                15% { transform: rotate(-10deg); }
+                30% { transform: rotate(10deg); }
+                45% { transform: rotate(-7deg); }
+                60% { transform: rotate(7deg); }
+                75% { transform: rotate(-3deg); }
+                90% { transform: rotate(3deg); }
+            }
+
+            @keyframes bellPulseAlarming {
+                0%, 100% { background: #F59E0B; transform: scale(1); }
+                50% { background: #fbbf24; transform: scale(1.08); }
+            }
+
+            .room-card.emergency-active .bell-icon {
+                animation: bellPulseEmergency 0.8s ease-in-out infinite;
+            }
+            .room-card.emergency-active .bell-icon svg {
+                animation: bellShakeEmergency 0.8s ease-in-out infinite;
+            }
+            .room-card.alarming-active .bell-icon {
+                animation: bellPulseAlarming 1.2s ease-in-out infinite;
+            }
+            .room-card.alarming-active .bell-icon svg {
+                animation: bellShakeAlarming 1.2s ease-in-out infinite;
+            }
+
+            /* ====== NEW ALERT ROW HIGHLIGHTS ====== */
+            @keyframes newEmergency {
+                0% { background-color: rgba(181, 46, 52, 0.3); }
+                50% { background-color: rgba(181, 46, 52, 0.15); }
+                100% { background-color: rgba(181, 46, 52, 0.3); }
+            }
+            @keyframes newAlarming {
+                0% { background-color: rgba(245, 158, 11, 0.3); }
+                50% { background-color: rgba(245, 158, 11, 0.15); }
+                100% { background-color: rgba(245, 158, 11, 0.3); }
+            }
+
+            .history-row.new-emergency {
+                animation: newEmergency 3s ease;
+                border-left: 3px solid var(--red);
+            }
+            .history-row.new-alarming {
+                animation: newAlarming 3s ease;
+                border-left: 3px solid #F59E0B;
+            }
+            .history-row.acknowledged-highlight {
+                animation: none;
+                background-color: #10B9811a;
+                border-left: 3px solid #10B981;
+                transition: background-color 5s ease-out, border-left-color 5s ease-out;
+            }
+            .history-row.fade-highlight {
+                animation: none;
+                background-color: transparent;
+                border-left: 3px solid transparent;
+                transition: all 0.5s ease-out;
+            }
         </style>
 
+        <!-- OVERLAYS -->
         <style>
             /* MANAGE ROOMS AND DEVICES Overlay */
             .admin-overlay {
@@ -643,7 +724,12 @@
             const ROWS_PER_PAGE = 11;
 
             // ====== ROOM DATA ======
-            let roomData = {};  // ← ADD THIS LINE
+            let roomData = {};  
+
+            let roomStatus     = {};   // roomId -> 0 (normal) | 1 (alerting)
+            let roomAlertType  = {};   // roomId -> null | 'emergency' | 'alarming'
+            let alarmingTimeouts   = {};
+            let alarmingReceivedAt = {};
 
             // ====== CAROUSEL STATE ======
             let carouselStart = 0;
@@ -659,6 +745,8 @@
                 const slice = history.slice(start, start + ROWS_PER_PAGE);
 
                 let rowsHtml = '';
+                const latestAction = history.length > 0 ? history[0].action : null;
+                const latestIsAlert = latestAction === 'Emergency Alert Detected' || latestAction === 'Alarming Alert Detected';
                 if (slice.length === 0) {
                     rowsHtml = `<tr><td colspan="3" style="text-align:center; padding: 20px; color:#999; font-style:italic;">No alert history yet</td></tr>`;
                 } else {
@@ -669,6 +757,10 @@
                         let rowClass = 'history-row';
                         let onclickAttr = '';
                         let actionHtml = '';
+
+                        if (latestIsAlert && entry.history_id === history[0].history_id) {
+                            rowClass += isEmergency ? ' new-emergency' : ' new-alarming';
+                        }
 
                         if ((isEmergency || isAlarming) && hasRec) {
                             rowClass += ' has-audio';
@@ -706,8 +798,12 @@
                     }
                 }
 
+                const alertClass = roomStatus[room.id] === 1
+                    ? (roomAlertType[room.id] === 'emergency' ? 'emergency-active' : 'alarming-active')
+                    : '';
+
                 return `
-                <div class="room-card" data-room="${room.id}">
+                <div class="room-card ${alertClass}" data-room="${room.id}">
                     <div class="room-header">
                         <div class="room-title">
                             <h2>${escapeHtml(room.name)}</h2>
@@ -860,253 +956,407 @@
                 return key;
             }
 
+            // ====================================================================
+            // WEBSOCKET — real-time updates
+            let websocket      = null;
+            let reconnectTimer = null;
+
+            function connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl    = `${protocol}//${window.location.host}/ws`;
+                console.log('Connecting WebSocket:', wsUrl);
+
+                try {
+                    websocket = new WebSocket(wsUrl);
+
+                    websocket.onopen = function () {
+                        console.log('✓ WebSocket connected');
+                        if (reconnectTimer) { clearInterval(reconnectTimer); reconnectTimer = null; }
+                    };
+
+                    websocket.onmessage = async function (event) {
+                        try {
+                            const data = JSON.parse(event.data);
+
+                            if (data.type === 'alert_update') {
+                                const rid = data.room_id;
+
+                                if (data.action === 'Emergency Alert Detected') {
+                                    roomStatus[rid]    = 1;
+                                    roomAlertType[rid] = 'emergency';
+                                    clearAlarmingTimeout(rid);
+                                    delete alarmingReceivedAt[rid];
+
+                                } else if (data.action === 'Alarming Alert Detected') {
+                                    roomStatus[rid]         = 1;
+                                    roomAlertType[rid]      = 'alarming';
+                                    alarmingReceivedAt[rid] = Date.now();
+                                    startAlarmingTimeout(rid);
+
+                                } else if (data.action === 'Alert Acknowledged') {
+                                    roomStatus[rid]    = 0;
+                                    roomAlertType[rid] = null;
+                                    clearAlarmingTimeout(rid);
+                                    delete alarmingReceivedAt[rid];
+                                }
+
+                                await refreshRoomHistory(rid);
+                                render();
+
+                            } else if (data.type === 'room_renamed') {
+                                if (roomData[data.room_id]) {
+                                    roomData[data.room_id].name = data.new_name;
+                                    render();
+                                    loadDevices();
+                                }
+                            }
+                        } catch (err) {
+                            console.error('WS parse error:', err);
+                        }
+                    };
+
+                    websocket.onerror = function (err) {
+                        console.error('WebSocket error:', err);
+                    };
+
+                    websocket.onclose = function () {
+                        console.warn('WebSocket closed — reconnecting in 3s');
+                        websocket = null;
+                        if (!reconnectTimer) {
+                            reconnectTimer = setInterval(() => connectWebSocket(), 3000);
+                        }
+                    };
+
+                } catch (err) {
+                    console.error('WebSocket creation error:', err);
+                }
+            }
+
+            // REFRESH HISTORY
+            async function refreshRoomHistory(roomId) {
+                try {
+                    const resp = await fetch(`/api/history/${roomId}`, { credentials: 'same-origin' });
+                    if (!resp.ok) return;
+                    const data = await resp.json();
+                    if (roomData[roomId]) {
+                        roomData[roomId].history = Array.isArray(data) ? data : [];
+                    }
+                } catch (e) {
+                    console.error(`Error refreshing history for room ${roomId}:`, e);
+                }
+            }
+
             // ====== INIT ======
             updateDateTime();
             setInterval(updateDateTime, 1000);
         </script>
 
         <script>
-        // MANAGE ROOMS AND DEVICES
 
-        // ====================================================================
-        // ROOM DATA (mirrored from SnS Dashboard)
-        async function fetchRoomData() {
-            try {
-                const response = await fetch('/api/rooms');
-                const rooms = await response.json();
-                roomData = {};
-                for (const [roomId, roomInfo] of Object.entries(rooms)) {
-                    const id = parseInt(roomId);
-                    roomData[id] = {
-                        name: roomInfo.name,
-                        history: [],
-                        has_sensor: roomInfo.has_sensor
-                    };
-                }
-                refreshRoomsCarousel();
-            } catch (error) {
-                console.error('Error fetching room data:', error);
-            }
-        }
+            // ====================================================================
+            // ALERT STATE HELPERS
 
-        async function refreshRoomsCarousel() {
-            const track = document.getElementById('carousel-track');
-            if (!track) return;
-
-            const roomIds = Object.keys(roomData);
-            await Promise.all(roomIds.map(async (id) => {
-                try {
-                    const resp = await fetch(`/api/history/${id}`, {
-                        credentials: 'same-origin'   // ← ADD THIS
-                    });
-                    if (!resp.ok) {
-                        console.error(`History ${id} failed: ${resp.status}`, await resp.text());  // ← ADD THIS
-                        roomData[id].history = [];
-                        return;
+            function startAlarmingTimeout(roomId) {
+                clearAlarmingTimeout(roomId);
+                alarmingTimeouts[roomId] = setTimeout(() => {
+                    if (roomAlertType[roomId] === 'alarming') {
+                        roomStatus[roomId]    = 0;
+                        roomAlertType[roomId] = null;
+                        delete alarmingReceivedAt[roomId];
+                        render();
                     }
-                    const data = await resp.json();
-                    console.log(`History ${id}:`, data);  // ← ADD THIS temporarily
-                    roomData[id].history = Array.isArray(data) ? data : [];
-                } catch (e) {
-                    console.error(`History ${id} exception:`, e);
-                    roomData[id].history = [];
-                }
-            }));
-
-            render();
-        }
-
-        // ====================================================================
-        // ADMIN MODAL OPEN / CLOSE
-        function openAdminModal() {
-            const overlay = document.getElementById('admin-overlay');
-            const modal = document.getElementById('admin-modal');
-            overlay.classList.add('show');
-            modal.classList.add('show');
-            document.body.style.overflow = 'hidden';
-            try { loadDevices(); } catch(e) {}
-            const input = document.getElementById('new-room-name');
-            if (input) { setTimeout(() => input.focus(), 50); }
-        }
-
-        function closeAdminModal() {
-            const overlay = document.getElementById('admin-overlay');
-            const modal = document.getElementById('admin-modal');
-            overlay.classList.remove('show');
-            modal.classList.remove('show');
-            document.body.style.overflow = 'auto';
-            fetchRoomData();
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeAudioModal();
-                closeAdminModal();
+                }, 15000);
             }
-        });
 
-        // ====================================================================
-        // CREATE ROOM
-        async function createRoom() {
-            const nameEl = document.getElementById('new-room-name');
-            const room_name = nameEl.value.trim();
-            if (!room_name) { alert("Enter room name"); return; }
-            try {
-                const r = await fetch('/api/rooms', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({room_name})
-                });
-                if (!r.ok) throw new Error(await r.text());
-                nameEl.value = '';
-                await fetchRoomData();
-                loadDevices();
-            } catch(e) { console.error(e); alert("Failed to add room"); }
-        }
+            function clearAlarmingTimeout(roomId) {
+                if (alarmingTimeouts[roomId]) {
+                    clearTimeout(alarmingTimeouts[roomId]);
+                    delete alarmingTimeouts[roomId];
+                }
+            }
 
-        // ====================================================================
-        // LOAD DEVICES TABLE
-        async function loadDevices() {
-            try {
-                const [devicesResp, roomsResp] = await Promise.all([
-                    fetch('/api/devices'),
-                    fetch('/api/rooms')
-                ]);
-                const devices = await devicesResp.json();
-                const rooms = await roomsResp.json();
-                const tbody = document.getElementById('device-table-body');
-
-                const roomToDevice = {};
-                devices.forEach(d => {
-                    if (d.room_id !== 0) roomToDevice[d.room_id] = d.address;
-                });
-
-                const availableDevices = devices.filter(d => d.room_id === 0);
-                const sortedRoomIds = Object.keys(rooms).sort((a, b) => parseInt(a) - parseInt(b));
-
-                if (sortedRoomIds.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="no-devices-row">No rooms available. Create a room first.</td></tr>';
+            function applyAlertStateFromHistory(roomId) {
+                const history = roomData[roomId]?.history || [];
+                if (history.length === 0) {
+                    roomStatus[roomId]    = 0;
+                    roomAlertType[roomId] = null;
                     return;
                 }
+                const latestAction = history[0].action;
+                const prevAction   = history[1]?.action || null;
 
-                let sensorCounter = 1;
-                const deviceLabels = {};
-                const sortedDevices = [...devices].sort((a, b) => a.device_id - b.device_id);
-                sortedDevices.forEach((d, index) => {
-                    deviceLabels[d.address] = `Sensor #${index + 1}`;
-                });
+                if (latestAction === 'Emergency Alert Detected') {
+                    roomStatus[roomId]    = 1;
+                    roomAlertType[roomId] = 'emergency';
+                    clearAlarmingTimeout(roomId);
+                    delete alarmingReceivedAt[roomId];
 
-                tbody.innerHTML = sortedRoomIds.map(roomId => {
-                    const room = rooms[roomId];
-                    const assignedDeviceId = roomToDevice[roomId];
-                    const sensorLabel = assignedDeviceId ? deviceLabels[assignedDeviceId] : null;
-                    const safeName = (room.name || '').replace(/'/g, "\\'");
-
-                    return `
-                        <tr>
-                            <td class="room-name-cell">${room.name}</td>
-                            <td class="sensor-info">
-                                ${sensorLabel ? sensorLabel : '<span class="no-sensor">No sensor assigned</span>'}
-                            </td>
-                            <td>
-                                <select data-room="${roomId}" onchange="assignSensorToRoom(this)">
-                                    <option value="" style="color: #015382;">Select Sensor</option>
-                                    ${assignedDeviceId ? `<option value="${assignedDeviceId}" selected>${deviceLabels[assignedDeviceId]}</option>` : ''}
-                                    ${availableDevices.map(d =>
-                                        `<option value="${d.address}">${deviceLabels[d.address]}</option>`
-                                    ).join('')}
-                                    ${assignedDeviceId ? '<option value="unassign">Remove Sensor</option>' : ''}
-                                </select>
-                            </td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="btn-action" onclick="renameRoomFromTable(${roomId}, '${safeName}')">Rename</button>
-                                    <button class="btn-action btn-delete" onclick="deleteRoom(${roomId}, '${safeName}')">Delete</button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-
-            } catch (err) {
-                console.error('Failed to load devices:', err);
-                document.getElementById('device-table-body').innerHTML =
-                    '<tr><td colspan="4" class="no-devices-row">Unable to load data. Please refresh.</td></tr>';
-            }
-        }
-
-        // ====================================================================
-        // DELETE ROOM
-        async function deleteRoom(roomId, roomName) {
-            if (!confirm(`Are you sure you want to delete "${roomName}"?\n\nThis will remove all emergency history for this room and cannot be undone.`)) return;
-
-            try {
-                const response = await fetch(`/api/rooms/${roomId}`, { method: 'DELETE' });
-                if (response.ok) {
-                    delete roomData[roomId];
-                    await fetchRoomData();
-                    await loadDevices();
-                    alert(`"${roomName}" has been deleted successfully.`);
+                } else if (latestAction === 'Alarming Alert Detected') {
+                    if (prevAction === 'Emergency Alert Detected') {
+                        roomStatus[roomId]    = 1;
+                        roomAlertType[roomId] = 'emergency';
+                    } else {
+                        const receivedAt = alarmingReceivedAt[roomId];
+                        if (receivedAt && (Date.now() - receivedAt) < 15000) {
+                            roomStatus[roomId]    = 1;
+                            roomAlertType[roomId] = 'alarming';
+                        } else {
+                            // On page load, don't animate old alarming entries
+                            roomStatus[roomId]    = 0;
+                            roomAlertType[roomId] = null;
+                            delete alarmingReceivedAt[roomId];
+                        }
+                    }
                 } else {
-                    const error = await response.json();
-                    alert(`Failed to delete room: ${error.detail || 'Unknown error'}`);
+                    roomStatus[roomId]    = 0;
+                    roomAlertType[roomId] = null;
+                    clearAlarmingTimeout(roomId);
+                    delete alarmingReceivedAt[roomId];
                 }
-            } catch (error) {
-                console.error('Error deleting room:', error);
-                alert('Error deleting room. Please try again.');
             }
-        }
+        
+            // MANAGE ROOMS AND DEVICES
 
-        // ====================================================================
-        // ASSIGN SENSOR TO ROOM
-        async function assignSensorToRoom(sel) {
-        const roomId = parseInt(sel.getAttribute('data-room'));
-        const deviceId = sel.value;
+            // ====================================================================
+            // ROOM DATA (mirrored from SnS Dashboard)
+            async function fetchRoomData() {
+                try {
+                    const response = await fetch('/api/rooms');
+                    const rooms = await response.json();
+                    roomData = {};
+                    for (const [roomId, roomInfo] of Object.entries(rooms)) {
+                        const id = parseInt(roomId);
+                        roomData[id] = {
+                            name: roomInfo.name,
+                            history: roomData[id]?.history || [],
+                            has_sensor: roomInfo.has_sensor
+                        };
+                    }
+                    refreshRoomsCarousel();
+                } catch (error) {
+                    console.error('Error fetching room data:', error);
+                }
+            }
 
-        if (!deviceId) { await loadDevices(); return; }
+            async function refreshRoomsCarousel() {
+                const track = document.getElementById('carousel-track');
+                if (!track) return;
 
-        if (deviceId === 'unassign') {
+                const roomIds = Object.keys(roomData);
+                await Promise.all(roomIds.map(async (id) => {
+                    try {
+                        const resp = await fetch(`/api/history/${id}`, {
+                            credentials: 'same-origin'   // ← ADD THIS
+                        });
+                        if (!resp.ok) {
+                            console.error(`History ${id} failed: ${resp.status}`, await resp.text());  // ← ADD THIS
+                            roomData[id].history = [];
+                            return;
+                        }
+                        const data = await resp.json();
+                        console.log(`History ${id}:`, data);  // ← ADD THIS temporarily
+                        roomData[id].history = Array.isArray(data) ? data : [];
+                        applyAlertStateFromHistory(id);
+                    } catch (e) {
+                        console.error(`History ${id} exception:`, e);
+                        roomData[id].history = [];
+                    }
+                }));
+
+                render();
+            }
+
+            // ====================================================================
+            // ADMIN MODAL OPEN / CLOSE
+            function openAdminModal() {
+                const overlay = document.getElementById('admin-overlay');
+                const modal = document.getElementById('admin-modal');
+                overlay.classList.add('show');
+                modal.classList.add('show');
+                document.body.style.overflow = 'hidden';
+                try { loadDevices(); } catch(e) {}
+                const input = document.getElementById('new-room-name');
+                if (input) { setTimeout(() => input.focus(), 50); }
+            }
+
+            function closeAdminModal() {
+                const overlay = document.getElementById('admin-overlay');
+                const modal = document.getElementById('admin-modal');
+                overlay.classList.remove('show');
+                modal.classList.remove('show');
+                document.body.style.overflow = 'auto';
+                fetchRoomData();
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeAudioModal();
+                    closeAdminModal();
+                }
+            });
+
+            // ====================================================================
+            // CREATE ROOM
+            async function createRoom() {
+                const nameEl = document.getElementById('new-room-name');
+                const room_name = nameEl.value.trim();
+                if (!room_name) { alert("Enter room name"); return; }
+                try {
+                    const r = await fetch('/api/rooms', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({room_name})
+                    });
+                    if (!r.ok) throw new Error(await r.text());
+                    nameEl.value = '';
+                    await fetchRoomData();
+                    loadDevices();
+                } catch(e) { console.error(e); alert("Failed to add room"); }
+            }
+
+            // ====================================================================
+            // LOAD DEVICES TABLE
+            async function loadDevices() {
+                try {
+                    const [devicesResp, roomsResp] = await Promise.all([
+                        fetch('/api/devices'),
+                        fetch('/api/rooms')
+                    ]);
+                    const devices = await devicesResp.json();
+                    const rooms = await roomsResp.json();
+                    const tbody = document.getElementById('device-table-body');
+
+                    const roomToDevice = {};
+                    devices.forEach(d => {
+                        if (d.room_id !== 0) roomToDevice[d.room_id] = d.address;
+                    });
+
+                    const availableDevices = devices.filter(d => d.room_id === 0);
+                    const sortedRoomIds = Object.keys(rooms).sort((a, b) => parseInt(a) - parseInt(b));
+
+                    if (sortedRoomIds.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="no-devices-row">No rooms available. Create a room first.</td></tr>';
+                        return;
+                    }
+
+                    let sensorCounter = 1;
+                    const deviceLabels = {};
+                    const sortedDevices = [...devices].sort((a, b) => a.device_id - b.device_id);
+                    sortedDevices.forEach((d, index) => {
+                        deviceLabels[d.address] = `Sensor #${index + 1}`;
+                    });
+
+                    tbody.innerHTML = sortedRoomIds.map(roomId => {
+                        const room = rooms[roomId];
+                        const assignedDeviceId = roomToDevice[roomId];
+                        const sensorLabel = assignedDeviceId ? deviceLabels[assignedDeviceId] : null;
+                        const safeName = (room.name || '').replace(/'/g, "\\'");
+
+                        return `
+                            <tr>
+                                <td class="room-name-cell">${room.name}</td>
+                                <td class="sensor-info">
+                                    ${sensorLabel ? sensorLabel : '<span class="no-sensor">No sensor assigned</span>'}
+                                </td>
+                                <td>
+                                    <select data-room="${roomId}" onchange="assignSensorToRoom(this)">
+                                        <option value="" style="color: #015382;">Select Sensor</option>
+                                        ${assignedDeviceId ? `<option value="${assignedDeviceId}" selected>${deviceLabels[assignedDeviceId]}</option>` : ''}
+                                        ${availableDevices.map(d =>
+                                            `<option value="${d.address}">${deviceLabels[d.address]}</option>`
+                                        ).join('')}
+                                        ${assignedDeviceId ? '<option value="unassign">Remove Sensor</option>' : ''}
+                                    </select>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-action" onclick="renameRoomFromTable(${roomId}, '${safeName}')">Rename</button>
+                                        <button class="btn-action btn-delete" onclick="deleteRoom(${roomId}, '${safeName}')">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                } catch (err) {
+                    console.error('Failed to load devices:', err);
+                    document.getElementById('device-table-body').innerHTML =
+                        '<tr><td colspan="4" class="no-devices-row">Unable to load data. Please refresh.</td></tr>';
+                }
+            }
+
+            // ====================================================================
+            // DELETE ROOM
+            async function deleteRoom(roomId, roomName) {
+                if (!confirm(`Are you sure you want to delete "${roomName}"?\n\nThis will remove all emergency history for this room and cannot be undone.`)) return;
+
+                try {
+                    const response = await fetch(`/api/rooms/${roomId}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        delete roomData[roomId];
+                        await fetchRoomData();
+                        await loadDevices();
+                        alert(`"${roomName}" has been deleted successfully.`);
+                    } else {
+                        const error = await response.json();
+                        alert(`Failed to delete room: ${error.detail || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error deleting room:', error);
+                    alert('Error deleting room. Please try again.');
+                }
+            }
+
+            // ====================================================================
+            // ASSIGN SENSOR TO ROOM
+            async function assignSensorToRoom(sel) {
+            const roomId = parseInt(sel.getAttribute('data-room'));
+            const deviceId = sel.value;
+
+            if (!deviceId) { await loadDevices(); return; }
+
+            if (deviceId === 'unassign') {
+                try {
+                    const devicesResp = await fetch('/api/devices');
+                    const devices = await devicesResp.json();
+                    const currentDevice = devices.find(d => d.room_id === roomId);
+                    if (currentDevice) {
+                        await fetch(`/api/devices/${encodeURIComponent(currentDevice.address)}/assign_room`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({room_id: 0})
+                        });
+                    }
+                } catch (err) { alert('Error removing sensor.'); }
+                await loadDevices();
+                return;
+            }
+
             try {
+                // Unassign any existing sensor from this room first
                 const devicesResp = await fetch('/api/devices');
                 const devices = await devicesResp.json();
-                const currentDevice = devices.find(d => d.room_id === roomId);
-                if (currentDevice) {
-                    await fetch(`/api/devices/${encodeURIComponent(currentDevice.address)}/assign_room`, {
+                const existingDevice = devices.find(d => d.room_id === roomId);
+                if (existingDevice && existingDevice.address !== deviceId) {
+                    await fetch(`/api/devices/${encodeURIComponent(existingDevice.address)}/assign_room`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({room_id: 0})
                     });
                 }
-            } catch (err) { alert('Error removing sensor.'); }
-            await loadDevices();
-            return;
-        }
 
-        try {
-            // Unassign any existing sensor from this room first
-            const devicesResp = await fetch('/api/devices');
-            const devices = await devicesResp.json();
-            const existingDevice = devices.find(d => d.room_id === roomId);
-            if (existingDevice && existingDevice.address !== deviceId) {
-                await fetch(`/api/devices/${encodeURIComponent(existingDevice.address)}/assign_room`, {
+                // Now assign the new sensor
+                const resp = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/assign_room`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({room_id: 0})
+                    body: JSON.stringify({room_id: roomId})
                 });
+                if (!resp.ok) alert('Failed to assign sensor.');
+            } catch (err) {
+                alert('Error assigning sensor.');
             }
-
-            // Now assign the new sensor
-            const resp = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/assign_room`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({room_id: roomId})
-            });
-            if (!resp.ok) alert('Failed to assign sensor.');
-        } catch (err) {
-            alert('Error assigning sensor.');
+            await loadDevices();
         }
-        await loadDevices();
-    }
 
         // ====================================================================
         // RENAME ROOM FROM TABLE
@@ -1214,8 +1464,10 @@
 
         // ====================================================================
         // AUTO-REFRESH DEVICES LIST
-        window.addEventListener('load', () => {
-            fetchRoomData().then(() => loadDevices());
+        window.addEventListener('load', async () => {
+            await fetchRoomData();
+            loadDevices();
+            connectWebSocket();
         });
 
         setInterval(loadDevices, 10000);
