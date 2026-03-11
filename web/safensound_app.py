@@ -317,9 +317,10 @@ async def get_history(room_id: int, user: dict = Depends(get_current_user)):
             # Format date as MM/DD/YY
             formatted_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%m/%d/%y")
             has_recording = False
-
-            if recording_path and os.path.exists(recording_path):
-                has_recording = True
+            if recording_path:
+                local_path = os.path.join(recordings_dir, os.path.basename(recording_path))
+                if os.path.exists(local_path):
+                    has_recording = True
             
             formatted_history.append({
                 "history_id": history_id,
@@ -448,15 +449,25 @@ async def device_config(address: str):
     return {"registered": True, "room_id": room_id}
 
 # RECORDINGS
-@app.get("/api/recordings/{filename}")
-async def get_recording(filename: str):
-    b_filename = os.path.basename(filename)
-    file_path = os.path.join(recordings_dir, b_filename)
+@app.get("/api/history/{history_id}/recording")
+async def get_recording_by_id(history_id: int):
+    try:
+        recording_path = db.fetch_recording(history_id)
+        if not recording_path:
+            raise HTTPException(status_code=404, detail="Recording not found")
 
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Recording not found")
-    
-    return FileResponse(file_path, media_type="audio/wav", filename=b_filename)
+        # Extract just the filename and resolve against local recordings_dir
+        filename = os.path.basename(recording_path)
+        local_path = os.path.join(recordings_dir, filename)
+
+        if not os.path.exists(local_path):
+            raise HTTPException(status_code=404, detail="Recording not found")
+        
+        return FileResponse(local_path, media_type="audio/wav", filename=filename)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/history/{history_id}/recording")
 async def get_recording_by_id(history_id: int):

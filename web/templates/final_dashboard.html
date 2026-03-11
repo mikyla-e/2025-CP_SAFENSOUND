@@ -339,8 +339,8 @@
             }
         </style>
 
-        <!-- MANAGE ROOMS AND DEVICES Overlay -->
         <style>
+            /* MANAGE ROOMS AND DEVICES Overlay */
             .admin-overlay {
                 position: fixed; inset: 0;
                 background: rgba(0,0,0,.35);
@@ -385,6 +385,124 @@
             .btn-action:hover { background: var(--second); color: white; border-color: var(--second); }
             .btn-delete { border-color: var(--red); color: var(--red); }
             .btn-delete:hover { background: var(--red); color: white; border-color: var(--red); }
+
+            /* PLAYBACK OVERLAY */
+            /* ====== HISTORY ROW STATES ====== */
+            .history-row.has-audio {
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }
+
+            .history-row.has-audio:hover {
+                background-color: rgba(1, 83, 130, 0.08) !important;
+            }
+
+            .action-icon {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .play-icon {
+                width: 12px;
+                height: 12px;
+                fill: var(--second);
+                flex-shrink: 0;
+                opacity: 0.7;
+                transition: opacity 0.2s, transform 0.2s;
+            }
+
+            .history-row.has-audio:hover .play-icon {
+                opacity: 1;
+                transform: scale(1.15);
+            }
+
+            /* ====== AUDIO MODAL ====== */
+            .audio-modal-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                backdrop-filter: blur(2px);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease;
+                z-index: 2000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .audio-modal-overlay.show {
+                opacity: 1;
+                pointer-events: auto;
+            }
+            .audio-modal {
+                background: white;
+                border-radius: 12px;
+                padding: 24px;
+                max-width: 400px;
+                width: 90%;
+                box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+                transform: scale(0.9);
+                transition: transform 0.2s ease;
+            }
+            .audio-modal-overlay.show .audio-modal {
+                transform: scale(1);
+            }
+            .audio-modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 16px;
+            }
+            .audio-modal-header h3 {
+                margin: 0;
+                color: var(--second);
+                font-size: 1.1rem;
+            }
+            .audio-modal-close {
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #666;
+                line-height: 1;
+            }
+            .audio-modal-close:hover { color: #333; }
+            .audio-modal-body { text-align: center; }
+            .audio-modal-info {
+                margin-bottom: 16px;
+                color: #666;
+                font-size: 0.9rem;
+            }
+            .audio-modal-info p { margin: 4px 0; }
+            .audio-modal audio {
+                width: 100%;
+                margin-top: 10px;
+            }
+            .audio-modal-actions {
+                display: flex;
+                gap: 10px;
+                margin-top: 16px;
+                justify-content: center;
+            }
+            .btn-audio-action {
+                padding: 8px 16px;
+                border-radius: 5px;
+                border: none;
+                cursor: pointer;
+                font-family: "DM Sans", sans-serif;
+                font-size: 0.9rem;
+                transition: all 0.2s;
+            }
+            .btn-download-audio {
+                background: var(--second);
+                color: white;
+                text-decoration: none;
+                display: inline-block;
+            }
+            .btn-download-audio:hover { background: var(--second-light); }
+            .btn-close-audio { background: #e9ecef; color: #333; }
+            .btn-close-audio:hover { background: #dee2e6; }
         </style>
     </head>
     <body>
@@ -463,6 +581,33 @@
             </div>
         </div>
 
+        <!-- AUDIO MODAL -->
+        <div class="audio-modal-overlay" id="audio-modal-overlay" onclick="closeAudioModal()">
+            <div class="audio-modal" onclick="event.stopPropagation()">
+                <div class="audio-modal-header">
+                    <h3>Emergency Recording</h3>
+                    <button class="audio-modal-close" onclick="closeAudioModal()">×</button>
+                </div>
+                <div class="audio-modal-body">
+                    <div class="audio-modal-info">
+                        <p id="audio-datetime">--/--/-- at --:--:-- --</p>
+                    </div>
+                    <audio controls id="audio-player">
+                        <source src="" type="audio/wav">
+                        Your browser does not support the audio element.
+                    </audio>
+                    <div class="audio-modal-actions">
+                        <a href="#" class="btn-audio-action btn-download-audio" id="audio-download" download>
+                            Download
+                        </a>
+                        <button class="btn-audio-action btn-close-audio" onclick="closeAudioModal()">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- CAROUSEL -->
         <div class="carousel-wrapper">
             <button class="carousel-arrow" id="carousel-prev" onclick="slideCarousel(-1)">&#8249;</button>
@@ -518,8 +663,43 @@
                     rowsHtml = `<tr><td colspan="3" style="text-align:center; padding: 20px; color:#999; font-style:italic;">No alert history yet</td></tr>`;
                 } else {
                     for (const entry of slice) {
-                        rowsHtml += `<tr>
-                            <td>${escapeHtml(entry.action)}</td>
+                        const isEmergency = entry.action === 'Emergency Alert Detected';
+                        const isAlarming  = entry.action === 'Alarming Alert Detected';
+                        const hasRec      = entry.has_recording === true || (entry.recording_path !== null && entry.recording_path !== undefined);
+                        let rowClass = 'history-row';
+                        let onclickAttr = '';
+                        let actionHtml = '';
+
+                        if ((isEmergency || isAlarming) && hasRec) {
+                            rowClass += ' has-audio';
+                            registerEntry(room.id, entry);
+                            onclickAttr = `onclick="openAudioModal(${room.id}, ${entry.history_id})"`;
+                            const color = isEmergency ? 'var(--red)' : '#F59E0B';
+                            actionHtml = `
+                                <div class="action-icon">
+                                    <svg class="play-icon" viewBox="0 0 384 512">
+                                        <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
+                                    </svg>
+                                    <span style="color:${color};">${escapeHtml(entry.action)}</span>
+                                </div>`;
+                        } else if (isEmergency) {
+                            actionHtml = `<div class="action-icon"><span style="color:var(--red);">${escapeHtml(entry.action)}</span></div>`;
+                        } else if (isAlarming) {
+                            actionHtml = `<div class="action-icon"><span style="color:#F59E0B;">${escapeHtml(entry.action)}</span></div>`;
+                        } else if (entry.action === 'Alert Acknowledged') {
+                            actionHtml = `
+                                <div class="action-icon" style="color:#10B981;">
+                                    <svg viewBox="0 0 512 512" style="width:16px;height:16px;fill:#10B981;flex-shrink:0;">
+                                        <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/>
+                                    </svg>
+                                    <span>${escapeHtml(entry.action)}</span>
+                                </div>`;
+                        } else {
+                            actionHtml = escapeHtml(entry.action);
+                        }
+
+                        rowsHtml += `<tr class="${rowClass}" ${onclickAttr} ${hasRec && (isEmergency || isAlarming) ? 'title="Click to play recording"' : ''}>
+                            <td>${actionHtml}</td>
                             <td>${escapeHtml(entry.date)}</td>
                             <td>${escapeHtml(entry.time)}</td>
                         </tr>`;
@@ -637,6 +817,49 @@
                 return div.innerHTML;
             }
 
+            // ====== AUDIO PLAYBACK MODAL ======
+            let currentAudioHistoryId = null;
+
+            function openAudioModal(roomId, historyId) {
+                const entry = entryRegistry[String(historyId)];
+
+                if (!entry || !entry.recording_path) {
+                    alert('No recording available for this alert.');
+                    return;
+                }
+                const audioUrl = `/api/history/${entry.history_id}/recording`;
+                document.getElementById('audio-datetime').textContent =
+                    `${entry.date} at ${entry.time}`;
+                const audioPlayer = document.getElementById('audio-player');
+                audioPlayer.src = audioUrl;
+                audioPlayer.load();
+                const downloadLink = document.getElementById('audio-download');
+                downloadLink.href = audioUrl;
+                downloadLink.download = `emergency_room${roomId}_${entry.date.replace(/\//g, '-')}.wav`;
+                document.getElementById('audio-modal-overlay').classList.add('show');
+                currentAudioHistoryId = entry.history_id;
+                audioPlayer.play().catch(e => console.log('Autoplay prevented:', e));
+            }
+
+            function closeAudioModal() {
+                const audioPlayer = document.getElementById('audio-player');
+                audioPlayer.pause();
+                audioPlayer.currentTime = 0;
+                audioPlayer.src = '';
+                audioPlayer.load();
+                document.getElementById('audio-modal-overlay').classList.remove('show');
+                currentAudioHistoryId = null;
+            }
+
+            // Registry to avoid inline JSON serialization issues
+            const entryRegistry = {};
+
+            function registerEntry(roomId, entry) {
+                const key = String(entry.history_id);
+                entryRegistry[key] = entry;
+                return key;
+            }
+
             // ====== INIT ======
             updateDateTime();
             setInterval(updateDateTime, 1000);
@@ -716,7 +939,10 @@
         }
 
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeAdminModal();
+            if (e.key === 'Escape') {
+                closeAudioModal();
+                closeAdminModal();
+            }
         });
 
         // ====================================================================
