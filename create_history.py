@@ -1,16 +1,16 @@
+import requests
 import sqlite3
-from datetime import datetime
 
 DB_PATH = "safensound.db"
+API_URL = "http://localhost:47845/api/alert"
 
 ALERT_ACTIONS = {
-    "1": ("emergency",   "Emergency Alert Detected"),
-    "2": ("alarming",    "Alarming Alert Detected"),
-    "3": ("acknowledge", "Alert Acknowledged"),
+    "1": "Emergency Alert Detected",
+    "2": "Alarming Alert Detected",
+    "3": "Alert Acknowledged",
 }
 
-
-def get_rooms(db_path: str = DB_PATH) -> list[dict]:
+def get_rooms(db_path=DB_PATH):
     conn = sqlite3.connect(db_path)
     try:
         cur = conn.cursor()
@@ -19,80 +19,53 @@ def get_rooms(db_path: str = DB_PATH) -> list[dict]:
     finally:
         conn.close()
 
-
-def create_history(action, sound_type, room_id, recording_path=None, db_path=DB_PATH):
-    now = datetime.now()
-    date = now.strftime("%Y-%m-%d")
-    time = now.strftime("%I:%M:%S %p")
-
-    conn = sqlite3.connect(db_path)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO history (action, sound_type, date, time, room_id, recording_path)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (action, sound_type, date, time, room_id, recording_path),
-        )
-        conn.commit()
-        return cur.lastrowid
-    finally:
-        conn.close()
-
-
 def main():
-    print("\n=== Safe & Sound — Create History Record ===\n")
+    print("\n=== Safe & Sound — Test Alert ===\n")
 
-    # --- Choose alert type ---
     print("Alert Type:")
-    for key, (_, label) in ALERT_ACTIONS.items():
+    for key, label in ALERT_ACTIONS.items():
         print(f"  [{key}] {label}")
-
     while True:
         choice = input("\nChoose alert type (1/2/3): ").strip()
         if choice in ALERT_ACTIONS:
-            _, action = ALERT_ACTIONS[choice]
+            action = ALERT_ACTIONS[choice]
             break
-        print("  Invalid choice. Please enter 1, 2, or 3.")
+        print("  Invalid choice.")
 
-    # --- Choose room ---
     rooms = get_rooms()
     print("\nRooms:")
     for i, room in enumerate(rooms, start=1):
         print(f"  [{i}] {room['room_name']}")
-
     while True:
         choice = input("\nChoose room number: ").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(rooms):
             selected_room = rooms[int(choice) - 1]
             break
-        print(f"  Invalid choice. Please enter a number between 1 and {len(rooms)}.")
+        print(f"  Invalid. Enter 1–{len(rooms)}.")
 
-    # --- Optional: sound type ---
-    sound_type = input("\nSound type (press Enter to skip): ").strip()
+    recording_path = input("\nRecording path (press Enter to skip): ").strip() or None
 
-    # --- Optional: recording path ---
-    recording_path = input("Recording path (press Enter to skip): ").strip()
-    if not recording_path:
-        recording_path = None
+    payload = {
+        "room_id": selected_room["room_id"],
+        "action":  action,
+    }
+    if recording_path:
+        payload["recording_path"] = recording_path
 
-    # --- Save ---
-    new_id = create_history(
-        action=action,
-        sound_type=sound_type,
-        room_id=selected_room["room_id"],
-        recording_path=recording_path,
-    )
-
-    print(f"\n[✓] Record saved!")
-    print(f"    history_id   : {new_id}")
-    print(f"    action       : {action}")
-    print(f"    room         : {selected_room['room_name']}")
-    print(f"    sound_type   : {sound_type or '—'}")
-    print(f"    recording    : {recording_path or '—'}")
-    print()
-
+    print(f"\nSending POST to {API_URL}...")
+    try:
+        resp = requests.post(API_URL, json=payload, timeout=5)
+        if resp.ok:
+            print(f"\n[✓] Alert sent successfully!")
+            print(f"    action    : {action}")
+            print(f"    room      : {selected_room['room_name']} (id={selected_room['room_id']})")
+            print(f"    recording : {recording_path or '—'}")
+            print(f"    response  : {resp.json()}")
+        else:
+            print(f"\n[✗] Server returned {resp.status_code}: {resp.text}")
+    except requests.exceptions.ConnectionError:
+        print(f"\n[✗] Could not connect to {API_URL}")
+        print("    Is safensound_app.py running?")
 
 if __name__ == "__main__":
     main()
