@@ -108,7 +108,7 @@ output_details = interpreter.get_output_details()
 
 audio_data = None
 audio_wav = None
-audio_duration = 5 #seconds
+audio_duration = 3 #seconds
 sample_rate = 16000
 
 alarming_count = 0
@@ -351,7 +351,7 @@ def receive_audio_data():
 
     audio_chunks = {}
     chunk_timestamps = {}
-    EXPECTED_TOTAL_SAMPLES = 80000
+    EXPECTED_TOTAL_SAMPLES = audio_duration * sample_rate
 
     last_packet_time = time.time()
 
