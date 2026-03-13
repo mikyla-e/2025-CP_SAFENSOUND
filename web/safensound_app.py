@@ -89,16 +89,70 @@ room_status = {1:0, 2:0, 3:0}
 sns_port = 47845
 stop_event = threading.Event()
 
+last_seen_id: int = 0
+
 async def periodic_updates():
+    global last_seen_id
+    try:
+        cursor = db.conn.execute('SELECT MAX(history_id) FROM history')
+        row = cursor.fetchone()
+        last_seen_id = row[0] if row[0] else 0
+    except Exception as e:
+        print(f"Error initializing last_seen_id: {e}")
+
     while True:
         try:
+            # Broadcast current status every 5 seconds
             await manager.broadcast({
                 "type": "status_update",
                 "status": room_status
             })
+
+            # Check for new history rows since last poll
+            cursor = db.conn.execute(
+                'SELECT history_id, action, date, time, room_id, recording_path '
+                'FROM history WHERE history_id > ? ORDER BY history_id ASC',
+                (last_seen_id,)
+            )
+            new_rows = cursor.fetchall()
+
+            for row in new_rows:
+                history_id, action, date_str, time_str, rid, recording_path = row
+                last_seen_id = history_id
+
+                # Update in-memory room_status
+                if action in ("Emergency Alert Detected", "Alarming Alert Detected"):
+                    room_status[rid] = 1
+                elif action == "Alert Acknowledged":
+                    room_status[rid] = 0
+
+                # Format date/time to match what the dashboard expects
+                try:
+                    formatted_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%m/%d/%y")
+                except Exception:
+                    formatted_date = date_str
+
+                has_recording = False
+                if recording_path:
+                    local_path = os.path.join(recordings_dir, os.path.basename(recording_path))
+                    has_recording = os.path.exists(local_path)
+
+                await manager.broadcast({
+                    "type":           "alert_update",
+                    "room_id":        rid,
+                    "action":         action,
+                    "history_id":     history_id,
+                    "date":           formatted_date,
+                    "time":           strip_leading_zero_hour(time_str),
+                    "has_recording":  has_recording,
+                    "recording_path": recording_path
+                })
+                print(f"[poll] Broadcast new row: id={history_id}, room={rid}, action={action}")
+
         except Exception as e:
             print(f"Error in periodic update: {e}")
-        await asyncio.sleep(5)
+
+        await asyncio.sleep(2)  # poll every 2 seconds
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -623,14 +677,22 @@ async def handle_alert(data: AlertData):
         if hasattr(db.conn, 'commit'):
             db.conn.commit()
 
+        new_history_id = db.conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+
+        has_recording = False
+        if data.recording_path:
+            local_path = os.path.join(recordings_dir, os.path.basename(data.recording_path))
+            has_recording = os.path.exists(local_path)
+
         await manager.broadcast({
-            "type": "alert_update",
-            "room_id": data.room_id,
-            "status": room_status[data.room_id],
-            "action": data.action,
-            "date": formatted_date,
-            "time": strip_leading_zero_hour(current_time),
-            "has_recording": data.recording_path is not None
+            "type":           "alert_update",
+            "room_id":        data.room_id,
+            "action":         data.action,
+            "history_id":     new_history_id,
+            "date":           formatted_date,
+            "time":           strip_leading_zero_hour(current_time),
+            "has_recording":  has_recording,
+            "recording_path": data.recording_path
         })
         
         return {"success": True, "message": "Alert processed successfully."}

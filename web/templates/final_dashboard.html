@@ -974,25 +974,28 @@
                         if (reconnectTimer) { clearInterval(reconnectTimer); reconnectTimer = null; }
                     };
 
-                    websocket.onmessage = async function (event) {
+                    websocket.onmessage = function (event) {
                         try {
                             const data = JSON.parse(event.data);
+                            console.log('WS message received:', data);
 
                             if (data.type === 'alert_update') {
                                 const rid = data.room_id;
+
+                                if (!roomData[rid]) {
+                                    roomData[rid] = { name: `Room ${rid}`, history: [], has_sensor: false };
+                                }
 
                                 if (data.action === 'Emergency Alert Detected') {
                                     roomStatus[rid]    = 1;
                                     roomAlertType[rid] = 'emergency';
                                     clearAlarmingTimeout(rid);
                                     delete alarmingReceivedAt[rid];
-
                                 } else if (data.action === 'Alarming Alert Detected') {
                                     roomStatus[rid]         = 1;
                                     roomAlertType[rid]      = 'alarming';
                                     alarmingReceivedAt[rid] = Date.now();
                                     startAlarmingTimeout(rid);
-
                                 } else if (data.action === 'Alert Acknowledged') {
                                     roomStatus[rid]    = 0;
                                     roomAlertType[rid] = null;
@@ -1000,7 +1003,16 @@
                                     delete alarmingReceivedAt[rid];
                                 }
 
-                                await refreshRoomHistory(rid);
+                                // Inject directly from WS payload — no HTTP fetch needed
+                                roomData[rid].history.unshift({
+                                    history_id:     data.history_id,
+                                    action:         data.action,
+                                    date:           data.date,
+                                    time:           data.time,
+                                    has_recording:  data.has_recording  || false,
+                                    recording_path: data.recording_path || null
+                                });
+                                pageStates[rid] = 1;
                                 render();
 
                             } else if (data.type === 'room_renamed') {
@@ -1011,7 +1023,7 @@
                                 }
                             }
                         } catch (err) {
-                            console.error('WS parse error:', err);
+                            console.error('WS error:', err);
                         }
                     };
 
