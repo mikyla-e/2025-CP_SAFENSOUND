@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="{{ url_for('static', path='/css/dashboard.css') }}">
+        <!-- <link rel="stylesheet" href="{{ url_for('static', path='/css/dashboard.css') }}"> -->
         <title>SnS Final Dashboard</title>
         <style>
             @font-face {
@@ -19,6 +19,16 @@
                 box-sizing: border-box;
             }
 
+            :root{
+                --primary: white;
+                --second: #002C47;
+                --second-light: #015382;
+                --second-very-light: #2d8ec2;
+
+                --red: #B52E34;
+                --text: #0D1A22;
+            }
+
             body {
                 font-family: "DM Sans", sans-serif;
                 background: linear-gradient(134deg, #F9F8F9 12.76%, #002C47 279.95%);
@@ -31,17 +41,45 @@
             nav {
                 box-sizing: border-box;
                 min-height: 50px;
-                height: 68px;
                 display: flex;
                 flex-direction: row;
                 justify-content: space-between;
                 align-items: center;
-                padding: 0 clamp(10px, 3vw, 30px);
+                padding: 13px clamp(10px, 3vw, 30px);
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .nav-left {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                flex: 0 0 auto;
+            }
+
+            .nav-center {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 10px;
+                flex: 1 1 auto;
+                justify-content: center;
+            }
+
+            .nav-center p {
+                color: var(--text);
+                white-space: nowrap;
+            }
+
+            .nav-right {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex: 0 0 auto;
             }
 
             nav h1 {
                 font-weight: bold;
-                /* font-size: clamp(1.3rem, 3vw, 1.5rem); */
                 color: var(--text);
             }
 
@@ -55,7 +93,6 @@
             }
 
             nav div p {
-                /* font-size: clamp(0.75rem, 2vw, 0.75rem); */
                 color: var(--text);
             }
 
@@ -64,13 +101,14 @@
                 color: var(--primary);
                 border: none;
                 border-radius: 5px;
-                padding: 10px 16px;
+                padding: clamp(6px, 1.5vw, 10px) clamp(10px, 2vw, 16px);
                 cursor: pointer;
                 font-family: "DM Sans", sans-serif;
-                /* font-size: 0.65rem; */
+                font-size: clamp(0.7rem, 1.2vw, 0.85rem);
                 text-decoration: none;
                 box-shadow: 0 2px 8px rgba(45,51,107,0.2);
                 transition: transform .15s ease, box-shadow .15s ease;
+                white-space: nowrap;
             }
 
             .btn-manage:hover, .btn-stats:hover {
@@ -94,63 +132,48 @@
                 background: #ee3e47;
             }
 
-            @media screen and (max-width: 768px) {
-                .time {
-                    display: none;
+            @media screen and (max-width: 795px) {
+                /* .time { display: none; } */
+                .btn-label { display: none; }
+                .nav-center {
+                    order: 3;
+                    flex-basis: 100%;
+                    justify-content: flex-center;
+                    padding: 4px 0 6px 0;
+                }
+            }
+
+            @media screen and (max-width: 515px) {
+                .btn-logout {
+                    padding: clamp(6px, 1.5vw, 10px) clamp(10px, 2vw, 16px);
+                    cursor: pointer;
+                    font-family: "DM Sans", sans-serif;
+                    font-size: clamp(0.7rem, 1.2vw, 0.85rem);
+                }
+            }
+
+            @media screen and (max-width: 460px) {
+                .nav-left h1 {
+                    font-size: 1.5rem;
                 }
             }
 
             @media screen and (max-width: 440px) {
-                nav {
-                    flex-wrap: wrap;
-                    padding: 20px clamp(3.5vw, 4vw, 5vw) 10px clamp(3.5vw, 4vw, 5vw);
-                    justify-content: space-between;
-                    gap: 8px;
-                }
+                nav { padding: 10px clamp(8px, 4vw, 16px); }
+                .time { display: none; }
+            }
 
-                nav .backNdashboard {
-                    flex: 1;
-                    order: 1;
-                }
-
-                nav .admin-launch {
-                    margin: 0 !important;
-                    flex: 0 0 auto;
-                    order: 2;
-                }
-
-                nav .admin-launch .btn-manage,
-                nav .admin-launch .btn-stats {
-                    padding: 8px 12px;
-                    font-size: 0.75rem;
-                    white-space: nowrap;
-                }
-
-                nav .admin-launch .btn-manage span,
-                nav .admin-launch .btn-stats span {
-                    display: none;
-                }
-
-                nav > div:not(.backNdashboard):not(.admin-launch) {
-                    width: 100%;
-                    flex-basis: 100%;
-                    order: 3;
-                    justify-content: space-between;
-                    margin-top: 5px;
-                    display: flex;
-                    gap: 10px;
-                }
-
-                nav h1 {
-                    margin: 0;
-                    font-size: 1.3rem;
-                }
-
-                .time {
-                    display: inline;
+            @media screen and (max-width: 420px) {
+                .nav-left h1 {
+                    font-size: 1rem;
                 }
             }
 
+            @media screen and (max-width: 390px) {
+                .nav-left h1 {
+                    display: none;
+                }
+            }
             /* ====== CAROUSEL ====== */
             .carousel-wrapper {
                 flex: 1;
@@ -339,6 +362,47 @@
                 border: 1px solid #e0e0e0;
             }
 
+            @media screen and (max-width: 1100px) {
+                .room-card { flex: 0 0 calc((100% - 12px) / 2); }
+            }
+
+            @media screen and (max-width: 640px) {
+                .room-card { flex: 0 0 100%; }
+                .carousel-arrow { display: none; }
+                .carousel-wrapper { padding: 12px 8px; }
+            }
+
+            @media screen and (max-width: 360px) {
+                .room-table th:nth-child(3),
+                .room-table td:nth-child(3) { display: none; }
+                .room-table th:first-child,
+                .room-table td:first-child { width: 60%; }
+                .room-table th:nth-child(2),
+                .room-table td:nth-child(2) { width: 40%; }
+            }
+
+            .carousel-dots {
+                display: none;
+                justify-content: center;
+                gap: 6px;
+                padding: 8px 0 12px;
+            }
+
+            .carousel-dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: var(--second);
+                opacity: 0.25;
+                transition: opacity 0.2s;
+            }
+
+            .carousel-dot.active { opacity: 0.8; }
+
+            @media screen and (max-width: 640px) {
+                .carousel-dots { display: flex; }
+            }
+
             /* ====== ALERT BELL ANIMATIONS ====== */
             /* ====== EMERGENCY — matches hardware: indefinite 1Hz blink ====== */
             @keyframes bellPulseEmergency {
@@ -382,10 +446,10 @@
             }
 
             .room-card.alarming-active .bell-icon {
-                animation: bellPulseAlarming 1s ease-in-out 15;   /* was 1.2s infinite */
+                animation: bellPulseAlarming 1s ease-in-out 15;  
             }
             .room-card.alarming-active .bell-icon svg {
-                animation: bellShakeAlarming 1s ease-in-out 15;   /* was 1.2s infinite */
+                animation: bellShakeAlarming 1s ease-in-out 15;   
             }
 
             /* ====== NEW ALERT ROW HIGHLIGHTS ====== */
@@ -592,19 +656,17 @@
     <body>
         <!-- NAV -->
         <nav>
-            <div class="backNdashboard" style="display: flex; align-items: center; gap: 15px;">
-                <a href="/" style="text-decoration: none; color: var(--second); display: flex; align-items: center; font-size: 1.2rem; transition: color 0.3s;" title="Back to Homepage">
-                    ←
-                </a>
+            <div class="nav-left">
+                <a href="/" style="text-decoration: none; color: var(--second); display: flex; align-items: center; font-size: 1.2rem; transition: color 0.3s;" title="Back to Homepage">←</a>
                 <h1>Dashboard</h1>
             </div>
-            <div>
+            <div class="nav-center">
                 <p id="current-date">00/00/00</p>
                 <p class="time" id="current-time">00:00 AM</p>
             </div>
-            <div class="admin-launch" style="margin: 20px 0; display: flex; gap: 10px; align-items: center;">
-                <button class="btn-manage" onclick="openAdminModal()"><span>Manage </span>Devices &amp; Rooms</button>
-                <button class="btn-stats" onclick="window.location.href='/statistics'"><span>View </span>Statistics</button>
+            <div class="nav-right">
+                <button class="btn-manage" onclick="openAdminModal()"><span class="btn-label">Manage </span>Devices &amp; Rooms</button>
+                <button class="btn-stats" onclick="window.location.href='/statistics'"><span class="btn-label">View </span>Statistics</button>
                 <a href="/logout" onclick="confirmLogout(event)" class="btn-logout" title="Logout">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="white" style="width: 16px; height: 16px; vertical-align: middle;">
                         <path d="M377.9 105.9L500.7 228.7c7.2 7.2 11.3 17.1 11.3 27.3s-4.1 20.1-11.3 27.3L377.9 406.1c-6.4 6.4-15 9.9-24 9.9c-18.7 0-33.9-15.2-33.9-33.9l0-62.1-128 0c-17.7 0-32-14.3-32-32l0-64c0-17.7 14.3-32 32-32l128 0 0-62.1c0-18.7 15.2-33.9 33.9-33.9c9 0 17.6 3.6 24 9.9zM160 96L96 96c-17.7 0-32 14.3-32 32l0 256c0 17.7 14.3 32 32 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-64 0c-53 0-96-43-96-96L0 128C0 75 43 32 96 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z"/>
@@ -696,8 +758,9 @@
         <div class="carousel-wrapper">
             <button class="carousel-arrow" id="carousel-prev" onclick="slideCarousel(-1)">&#8249;</button>
 
-            <div class="carousel-track" id="carousel-track">
-                <!-- Room cards are generated by JS -->
+            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;">
+                <div class="carousel-track" id="carousel-track"></div>
+                <div class="carousel-dots" id="carousel-dots"></div>
             </div>
 
             <button class="carousel-arrow" id="carousel-next" onclick="slideCarousel(1)">&#8250;</button>
@@ -723,7 +786,12 @@
             }
 
             // ====== CONFIG ======
-            const VISIBLE = 3;
+            function getVisibleCards() {
+                if (window.innerWidth <= 640) return 1;
+                if (window.innerWidth <= 1100) return 2;
+                return 3;
+            }
+
             const ROWS_PER_PAGE = 11;
 
             // ====== ROOM DATA ======
@@ -836,6 +904,7 @@
             function render() {
                 const track = document.getElementById('carousel-track');
                 const roomList = Object.entries(roomData).map(([id, r]) => ({ id: parseInt(id), ...r }));
+                const VISIBLE = getVisibleCards();
 
                 // Sort: rooms with active alert first, then acknowledged/no history — both groups alphabetically
                 roomList.sort((a, b) => {
@@ -852,7 +921,6 @@
                     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
                 });
 
-                // clamp carouselStart
                 if (carouselStart + VISIBLE > roomList.length && roomList.length > 0) {
                     carouselStart = Math.max(0, roomList.length - VISIBLE);
                 }
@@ -862,11 +930,23 @@
 
                 document.getElementById('carousel-prev').disabled = carouselStart === 0;
                 document.getElementById('carousel-next').disabled = carouselStart + VISIBLE >= roomList.length;
+                updateDots(roomList.length, VISIBLE);
+            }
+
+            function updateDots(total, visible) {
+                const dotsEl = document.getElementById('carousel-dots');
+                if (!dotsEl) return;
+                const numDots = Math.max(1, Math.ceil(total / visible));
+                const activeDot = Math.floor(carouselStart / visible);
+                dotsEl.innerHTML = Array.from({length: numDots}, (_, i) =>
+                    `<div class="carousel-dot ${i === activeDot ? 'active' : ''}"></div>`
+                ).join('');
             }
 
             // ====== CAROUSEL NAV ======
             function slideCarousel(dir) {
                 const roomList = Object.keys(roomData);
+                const VISIBLE = getVisibleCards(); 
                 const next = carouselStart + dir;
                 if (next < 0 || next + VISIBLE > roomList.length) return;
                 carouselStart = next;
@@ -907,6 +987,15 @@
                         alert('Error renaming room.');
                     }
                 }
+            }
+
+            function slideCarousel(dir) {
+                const roomList = Object.keys(roomData);
+                const VISIBLE = getVisibleCards(); 
+                const next = carouselStart + dir;
+                if (next < 0 || next + VISIBLE > roomList.length) return;
+                carouselStart = next;
+                render();
             }
 
             // ====== ESCAPE HTML ======
@@ -1161,15 +1250,15 @@
                 await Promise.all(roomIds.map(async (id) => {
                     try {
                         const resp = await fetch(`/api/history/${id}`, {
-                            credentials: 'same-origin'   // ← ADD THIS
+                            credentials: 'same-origin'   
                         });
                         if (!resp.ok) {
-                            console.error(`History ${id} failed: ${resp.status}`, await resp.text());  // ← ADD THIS
+                            console.error(`History ${id} failed: ${resp.status}`, await resp.text()); 
                             roomData[id].history = [];
                             return;
                         }
                         const data = await resp.json();
-                        console.log(`History ${id}:`, data);  // ← ADD THIS temporarily
+                        // console.log(`History ${id}:`, data);  
                         roomData[id].history = Array.isArray(data) ? data : [];
                         applyAlertStateFromHistory(id);
                     } catch (e) {
@@ -1348,7 +1437,7 @@
             }
 
             try {
-                // Unassign any existing sensor from this room first
+                // Unassign any existing sensor from this room 
                 const devicesResp = await fetch('/api/devices');
                 const devices = await devicesResp.json();
                 const existingDevice = devices.find(d => d.room_id === roomId);
@@ -1360,7 +1449,7 @@
                     });
                 }
 
-                // Now assign the new sensor
+                // assign the new sensor
                 const resp = await fetch(`/api/devices/${encodeURIComponent(deviceId)}/assign_room`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -1486,13 +1575,6 @@
         });
 
         setInterval(loadDevices, 10000);
-
-        // setInterval(loadDevices, 10000);
-        // window.addEventListener('load', () => {
-        //     fetchRoomData();
-        //     setTimeout(loadDevices, 1500);
-        //     render();
-        // });
     </script>
 
     </body>
