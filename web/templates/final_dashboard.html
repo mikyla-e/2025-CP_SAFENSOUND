@@ -1259,7 +1259,12 @@
                         }
                         const data = await resp.json();
                         // console.log(`History ${id}:`, data);  
-                        roomData[id].history = Array.isArray(data) ? data : [];
+                        roomData[id].history = Array.isArray(data) ? data.sort((a, b) => {
+                            const da = new Date(`${a.date} ${a.time}`);
+                            const db = new Date(`${b.date} ${b.time}`);
+                            return db - da;
+                        })
+                        : [];
                         applyAlertStateFromHistory(id);
                     } catch (e) {
                         console.error(`History ${id} exception:`, e);
