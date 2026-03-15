@@ -267,7 +267,7 @@ main .stats-div{
         "recent2 top number"
         "monthly top number";
     grid-template-columns: 35% 40% auto;
-    grid-template-rows: 20% 20% 1fr;
+    grid-template-rows: auto auto 1fr;
 
     gap: 25px 35px;
     padding-bottom: 20px;
