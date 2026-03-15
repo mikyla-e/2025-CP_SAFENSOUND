@@ -2,12 +2,14 @@ import sqlite3
 import os
 from datetime import datetime
 import hashlib
+import threading
 
 class Database:
     def __init__(self, db_name="safensound.db"):
         self.db_name = os.path.join(os.path.dirname(os.path.dirname(__file__)), db_name)
         print(f"Using database at: {self.db_name}")
-        self.conn = sqlite3.connect(self.db_name)
+        self.conn = sqlite3.connect(self.db_name, check_same_thread=False)
+        self._lock = threading.Lock()
         self.create_room()
         self.create_device()
         self.create_history()
@@ -97,7 +99,6 @@ class Database:
                 CREATE TABLE IF NOT EXISTS history (
                     history_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     action TEXT,
-                    sound_type TEXT,
                     date DATE,
                     time TIME,
                     room_id INTEGER,
@@ -132,12 +133,12 @@ class Database:
                 VALUES (?)
             ''', (room_name,))
 
-    def insert_history(self, action, sound_type, date, time, room_id, recording_path):
+    def insert_history(self, action, date, time, room_id, recording_path):
         with self.conn:
             self.conn.execute('''
-                INSERT INTO history (action, sound_type, date, time, room_id, recording_path)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (action, sound_type, date, time, room_id, recording_path))
+                INSERT INTO history (action, date, time, room_id, recording_path)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (action, date, time, room_id, recording_path))
         
     def assign_device(self, address, room_id):
         with self.conn:
@@ -176,7 +177,7 @@ class Database:
             return cursor.fetchone()
         
     def fetch_history(self, room_id):
-        with self.conn:
+        with self._lock:
             cursor = self.conn.execute(
                 'SELECT * FROM history WHERE room_id = ? ORDER BY date DESC, history_id DESC',
                 (room_id,)
@@ -257,7 +258,8 @@ class Database:
                 SELECT 
                     r.room_id,
                     r.room_name,
-                    COUNT(CASE WHEN h.action = 'Emergency Alert Detected' OR h.action = 'Alarming Alert Detected' THEN 1 END) as count
+                    COUNT(CASE WHEN h.action = 'Emergency Alert Detected' THEN 1 END) as emergency_count,
+                    COUNT(CASE WHEN h.action = 'Alarming Alert Detected' THEN 1 END) as alarming_count
                 FROM room r
                 LEFT JOIN history h ON r.room_id = h.room_id
             '''
@@ -302,22 +304,27 @@ class Database:
             
             query += '''
                 GROUP BY r.room_id, r.room_name
-                ORDER BY count DESC
+                ORDER BY (emergency_count + alarming_count) DESC
             '''
             
             cursor = self.conn.execute(query, params)
             results = cursor.fetchall()
             
-            total = sum(row[2] for row in results)
+            total_emergency = sum(row[2] for row in results)
+            total_alarming = sum(row[3] for row in results)
             room_data = {}
-            for room_id, room_name, count in results:
+            for room_id, room_name, emergency_count, alarming_count in results:
                 room_data[room_id] = {
                     "name": room_name,
-                    "count": count
+                    "emergency_count": emergency_count,
+                    "alarming_count": alarming_count,
+                    "total_count": emergency_count + alarming_count
                 }
             
             return {
-                "total": total,
+                "total": total_emergency + total_alarming,
+                "total_emergency": total_emergency,
+                "total_alarming": total_alarming,
                 "rooms": room_data
             }
 

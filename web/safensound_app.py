@@ -50,7 +50,6 @@ device_room_map: dict[str, int] = {}
 class AlertData(BaseModel):
     room_id: int
     action: str
-    sound_type: str = None
     recording_path: str = None
 
 class AudioData(BaseModel):
@@ -175,14 +174,23 @@ async def logout(request: Request):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_alias(request: Request):
-    # Check if user is logged in
+    # Check if logged in
     user = request.session.get("user")
     if not user:
-        # Redirect to login page if not authenticated
         return RedirectResponse(url="/login", status_code=303)
     
-    # If authenticated, show dashboard
-    return templates.TemplateResponse("dashboard.html", {
+    return templates.TemplateResponse("final_dashboard.html", {
+        "request": request,
+        "username": user["username"]
+    })
+
+@app.get("/statistics", response_class=HTMLResponse)
+async def statistics_page(request: Request):
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    return templates.TemplateResponse("statistics.html", {
         "request": request,
         "username": user["username"]
     })
@@ -215,13 +223,11 @@ async def get_rooms(user: dict = Depends(get_current_user)):
             else:
                 unassigned_rooms.append(room_data)
         
-        # Sort unassigned rooms alphabetically by name
         unassigned_rooms.sort(key=lambda x: x["name"].lower())
         
         # Combine: assigned first, then unassigned (alphabetically)
         sorted_rooms = assigned_rooms + unassigned_rooms
         
-        # Return as dictionary with room_id as key
         rooms_data = {}
         for room in sorted_rooms:
             rooms_data[room["id"]] = {
@@ -241,7 +247,32 @@ async def get_recent_emergency():
         query = """
             SELECT action, date, time, room_id
             FROM history
-            WHERE action = 'Emergency Alert Detected' or action = 'Alarming Alert Detected'
+            WHERE action = 'Emergency Alert Detected'
+            ORDER BY date DESC, history_id DESC
+            LIMIT 1
+        """
+        cursor = db.conn.execute(query)
+        row = cursor.fetchone()
+        if row:
+            formatted_date = datetime.strptime(row[1], "%Y-%m-%d").strftime("%b %d, %Y")
+            return {
+                "action": row[0],
+                "date": formatted_date,
+                "time": strip_leading_zero_hour(row[2]),
+                "room_id": row[3]
+            }
+        else:
+            return None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/api/recent_alarming")
+async def get_recent_alarming():
+    try:
+        query = """
+            SELECT action, date, time, room_id
+            FROM history
+            WHERE action = 'Alarming Alert Detected'
             ORDER BY date DESC, history_id DESC
             LIMIT 1
         """
@@ -267,26 +298,26 @@ async def get_history(room_id: int, user: dict = Depends(get_current_user)):
         history = db.fetch_history(room_id)
         formatted_history = []
         for record in history:
-            # record structure: (history_id, action, sound_type, date, time, room_id, recording_path)
+            # record structure: (history_id, action, date, time, room_id, recording_path)
             history_id = record[0]
             action = record[1]
-            sound_type = record[2]
-            date_str = record[3]
-            time_str = record[4]
-            room_id_db = record[5]
-            recording_path = record[6] if len(record) > 6 else None
+            # purda sound_type
+            date_str = record[2]
+            time_str = record[3]
+            room_id_db = record[4]
+            recording_path = record[5] if len(record) > 5 else None
             
             # Format date as MM/DD/YY
             formatted_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%m/%d/%y")
             has_recording = False
-
-            if recording_path and os.path.exists(recording_path):
-                has_recording = True
+            if recording_path:
+                local_path = os.path.join(recordings_dir, os.path.basename(recording_path))
+                if os.path.exists(local_path):
+                    has_recording = True
             
             formatted_history.append({
                 "history_id": history_id,
                 "action": action,
-                "sound_type": sound_type,
                 "date": formatted_date,
                 "time": strip_leading_zero_hour(time_str),
                 "has_recording": has_recording,
@@ -382,7 +413,7 @@ async def register_device(data: DeviceRegister):
 @app.get("/api/devices")
 async def list_devices():
     devices = db.fetch_devices()
-    return [{"address": device[1], "room_id": device[2]} for device in devices]
+    return [{"device_id": device[0], "address": device[1], "room_id": device[2]} for device in devices]
 
 @app.post("/api/devices/{address}/assign_room")
 async def assign_device(address: str, data: DeviceAssign):
@@ -411,30 +442,40 @@ async def device_config(address: str):
     return {"registered": True, "room_id": room_id}
 
 # RECORDINGS
-@app.get("/api/recordings/{filename}")
-async def get_recording(filename: str):
-    b_filename = os.path.basename(filename)
-    file_path = os.path.join(recordings_dir, b_filename)
-
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Recording not found")
-    
-    return FileResponse(file_path, media_type="audio/wav", filename=b_filename)
-
 @app.get("/api/history/{history_id}/recording")
 async def get_recording_by_id(history_id: int):
     try:
         recording_path = db.fetch_recording(history_id)
-        if recording_path:
-            print(recording_path)
+        if not recording_path:
+            raise HTTPException(status_code=404, detail="Recording not found")
 
-        if not recording_path or not os.path.exists(recording_path):
+        # Extract just the filename and resolve against local recordings_dir
+        filename = os.path.basename(recording_path)
+        local_path = os.path.join(recordings_dir, filename)
+
+        if not os.path.exists(local_path):
             raise HTTPException(status_code=404, detail="Recording not found")
         
-        filename = os.path.basename(recording_path)
-        return FileResponse(recording_path, media_type="audio/wav", filename=filename)
+        return FileResponse(local_path, media_type="audio/wav", filename=filename)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# @app.get("/api/history/{history_id}/recording")
+# async def get_recording_by_id(history_id: int):
+#     try:
+#         recording_path = db.fetch_recording(history_id)
+#         if recording_path:
+#             print(recording_path)
+
+#         if not recording_path or not os.path.exists(recording_path):
+#             raise HTTPException(status_code=404, detail="Recording not found")
+        
+#         filename = os.path.basename(recording_path)
+#         return FileResponse(recording_path, media_type="audio/wav", filename=filename)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get("/api/recordings")
 async def list_recordings():
@@ -517,6 +558,34 @@ async def get_top_emergencies(year: str = None, range: str = None, start_date: s
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/stats/room_count")
+async def get_room_count():
+    try:
+        rooms = db.fetch_rooms()
+        return {"count": len(rooms)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stats/device_count")
+async def get_device_count():
+    try:
+        devices = db.fetch_devices()
+        # Count only devices that are assigned (room_id != 0)
+        assigned_devices = [d for d in devices if d[2] != 0]
+        return {"count": len(assigned_devices), "total": len(devices)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stats/user_count")
+async def get_user_count():
+    try:
+        cursor = db.conn.execute('SELECT COUNT(*) FROM users')
+        count = cursor.fetchone()[0]
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ALERT
 @app.post("/api/alert")
 async def handle_alert(data: AlertData):
@@ -536,14 +605,13 @@ async def handle_alert(data: AlertData):
 
         db.insert_history(
             action=data.action,
-            sound_type=data.sound_type,
             date=current_date,
             time=current_time,
             room_id=data.room_id,
             recording_path=data.recording_path
         )
         
-        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Sound Type: {data.sound_type}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
+        print(f"Alert processed: Room {data.room_id}, Action: {data.action}, Recording: {data.recording_path}, Status: {room_status[data.room_id]}")
 
         if hasattr(db.conn, 'commit'):
             db.conn.commit()
@@ -553,7 +621,6 @@ async def handle_alert(data: AlertData):
             "room_id": data.room_id,
             "status": room_status[data.room_id],
             "action": data.action,
-            "sound_type": data.sound_type,
             "date": formatted_date,
             "time": strip_leading_zero_hour(current_time),
             "has_recording": data.recording_path is not None
@@ -572,7 +639,6 @@ async def get_status():
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        # Send initial status
         await websocket.send_json({
             "type": "status_update",
             "status": room_status
@@ -582,7 +648,6 @@ async def websocket_endpoint(websocket: WebSocket):
         # Keep connection alive and listen for messages
         while True:
             try:
-                # Wait for messages from client (if any)
                 data = await websocket.receive_text()
                 print(f"Received from client: {data}")
             except WebSocketDisconnect:

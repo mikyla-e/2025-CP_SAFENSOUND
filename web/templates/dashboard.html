@@ -660,13 +660,6 @@
             color: #10B981;
         }
 
-        /* Sound type styling */
-        .sound-type-label {
-            color: var(--second-light);
-            font-size: 0.8rem;
-            margin-left: 4px;
-        }
-
         /* Audio Modal */
         .audio-modal-overlay {
             position: fixed;
@@ -1285,10 +1278,6 @@
                 const isAcknowledged = entry.action === "Alert Acknowledged";
                 const hasRecording = entry.has_recording === true;
             
-                const hasValidSoundType = entry.sound_type && 
-                                        entry.sound_type !== "Unknown" && 
-                                        entry.sound_type !== "null" && 
-                                        entry.sound_type !== "undefined";
 
                 if (entry.history_id === recentUnacknowledgedAlarmId) {
                     if (isEmergency) {
@@ -1304,7 +1293,7 @@
                 let actionHTML = '';
                 
                 if (isEmergency) {
-                    if (hasRecording && hasValidSoundType) {
+                    if (hasRecording) {
                         row.classList.add('has-audio');
                         row.title = 'Click to play recording';
                         row.onclick = () => openAudioModal(roomNumber, entry);
@@ -1313,32 +1302,16 @@
                                 <svg class="play-icon" viewBox="0 0 384 512">
                                     <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
                                 </svg>
-                                <p style="color: var(--red);">  ${entry.sound_type} Detected</p>
+                                <p style="color: var(--red);">  Emergency Alert Detected</p>
                             </div>
                         `;
-                    } else if (hasRecording && !hasValidSoundType) {
-                            row.classList.add('has-audio');
-                            row.title = 'Click to play recording';
-                            row.onclick = () => openAudioModal(roomNumber, entry);
-                            actionHTML = `
-                                <div class="action-icon">
-                                    <svg class="play-icon" viewBox="0 0 384 512">
-                                        <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
-                                    </svg>
-                                    <p style="color: var(--red);">  Unknown Emergency Alert</p>
-                                </div>
-                            `;
-                    } else if (!hasRecording && hasValidSoundType) {
+                    } else if (!hasRecording) {
                         actionHTML = `
-                            <div class="action-icon"><p style="color: var(--red);">  ${entry.sound_type} Detected</p></div>
-                        `;
-                    } else if (!hasRecording && !hasValidSoundType) {
-                        actionHTML = `
-                            <div class="action-icon"><p style="color: var(--red);">  Unknown Emergency Alert</p></div>
+                            <div class="action-icon"><p style="color: var(--red);">  Emergency Alert Detected</p></div>
                         `;
                     }
                 } else if (isAlarming) {
-                    if (hasRecording && hasValidSoundType) {
+                    if (hasRecording) {
                             row.classList.add('has-audio');
                             row.title = 'Click to play recording';
                             row.onclick = () => openAudioModal(roomNumber, entry);
@@ -1347,28 +1320,12 @@
                                     <svg class="play-icon" viewBox="0 0 384 512">
                                         <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
                                     </svg>
-                                    <p style="color: #F59E0B;">  ${entry.sound_type} Detected</p>
+                                    <p style="color: #F59E0B;">  Alarming Alert Detected</p>
                                 </div>
                             `;
-                    } else if (hasRecording && !hasValidSoundType) {
-                            row.classList.add('has-audio');
-                            row.title = 'Click to play recording';
-                            row.onclick = () => openAudioModal(roomNumber, entry);
-                            actionHTML = `
-                                <div class="action-icon">
-                                    <svg class="play-icon" viewBox="0 0 384 512">
-                                        <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
-                                    </svg>
-                                    <p style="color: #F59E0B;">  Unknown Alarming Alert</p>
-                                </div>
-                            `;
-                    } else if (!hasRecording && hasValidSoundType) {
+                    } else if (!hasRecording) {
                         actionHTML = `
-                            <div class="action-icon"><p style="color: #F59E0B;">  ${entry.sound_type} Detected</p></div>
-                        `;
-                    } else if (!hasRecording && !hasValidSoundType) {
-                        actionHTML = `
-                            <div class="action-icon"><p style="color: #F59E0B;">  Unknown Alarming Alert</p></div>
+                            <div class="action-icon"><p style="color: #F59E0B;">  Alarming Alert Detected</p></div>
                         `;
                     }
                 } else if (isAcknowledged) {

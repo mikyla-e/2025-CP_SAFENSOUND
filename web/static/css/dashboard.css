@@ -26,15 +26,11 @@ body {
     margin: 0;
     width: 100%;
     min-height: 100vh;
-    display: grid;
-    grid-template-areas: 
-        "nav logs"
-        "main logs";
-    grid-template-columns: 1fr 396px;
-    grid-template-rows: auto 1fr;
 
     font-family: "DM Sans", sans-serif;
     background: linear-gradient(134deg, #F9F8F9 12.76%, #002C47 279.95%);
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 h1, h2, h3, h4, h5, p{
@@ -88,6 +84,7 @@ main{
     grid-area: main;
 
     padding: 0 clamp(20px, 4vw, 45px);
+    padding-bottom: 40px;
     display: flex;
     flex-direction: column;
     gap: 5px;
@@ -262,16 +259,18 @@ aside header i:hover,
 /* div of statistics */
 main .stats-div{
     min-height: fit-content;
-    height: 57%;
+    height: auto;
 
     display: grid;
     grid-template-areas: 
-        "recent top"
-        "monthly top";
-    grid-template-columns: auto 60%;
-    grid-template-rows: minmax(100px, auto) 1fr;
+        "recent1 top number"
+        "recent2 top number"
+        "monthly top number";
+    grid-template-columns: 35% 40% auto;
+    grid-template-rows: auto auto 1fr;
 
     gap: 25px 35px;
+    padding-bottom: 20px;
 }
 
 /* all stats */
@@ -286,13 +285,13 @@ main .stats-div .stats{
 }
 
 /* most recent alarm */
-main .stats-div .recent{
+main .stats-div .recent1{
     box-sizing: border-box;
-    grid-area: recent;
+    grid-area: recent1;
     min-height: fit-content;
     /* height: 100px; */
 
-    background: linear-gradient(180deg, var(--second-light) 0%, var(--second) 181.85%);
+    background: linear-gradient(180deg, #C17426 0%, #ee3e47 181.85%);
     color: var(--primary); 
 
     display: flex;
@@ -302,21 +301,22 @@ main .stats-div .recent{
     padding: 0;
 }
 
-main .stats-div .recent div{
+main .stats-div .recent1 div{
     padding: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: start;
-    width: 90%;
+    width: 80%;
 
-    gap: 3px;
+    gap: 10px;
+    padding-block: 8px;
     container-type: inline-size;
     /* border: 1px solid black; */
 }
 
 /* Most Recent Emergency */
-main .stats-div .recent p{
+main .stats-div .recent1 p{
     /* border: 1px solid black; */
     margin: 0;
     font-size: clamp(0.85rem, 2vw, 1rem);
@@ -326,7 +326,7 @@ main .stats-div .recent p{
 }
 
 /* date and time */
-main .stats-div .recent h2{
+main .stats-div .recent1 h2{
     font-size: clamp(1.2rem, 3vw, 1.7rem);
     max-width: 100%;
     box-sizing: border-box;
@@ -343,25 +343,105 @@ main .stats-div .recent h2{
 }
 
 @container (max-width: 300px) {
-    main .stats-div .recent h2{
+    main .stats-div .recent1 h2{
         font-size: 1.3rem;
     }
 }
 
 @container (min-width: 301px) and (max-width: 400px) {
-    main .stats-div .recent h2{
+    main .stats-div .recent1 h2{
         font-size: 1.5rem;
     }
 }
 
 @container (min-width: 401px) and (max-width: 500px) {
-    main .stats-div .recent h2{
+    main .stats-div .recent1 h2{
         font-size: 1.8rem;
     }
 }
 
 @container (min-width: 501px) {
-    main .stats-div .recent h2{
+    main .stats-div .recent1 h2{
+        font-size: 2rem;
+    }
+}
+
+main .stats-div .recent2{
+    box-sizing: border-box;
+    grid-area: recent2;
+    min-height: fit-content;
+    /* height: 100px; */
+
+    background: linear-gradient(180deg, #B52E34 0%, #002C47 181.85%);
+    color: var(--primary); 
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 0;
+}
+
+main .stats-div .recent2 div{
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    width: 80%;
+
+    padding-block: 8px;
+    gap: 10px;
+    container-type: inline-size;
+    /* border: 1px solid black; */
+}
+
+/* Most Recent Emergency */
+main .stats-div .recent2 p{
+    /* border: 1px solid black; */
+    margin: 0;
+    font-size: clamp(0.85rem, 2vw, 1rem);
+    white-space: nowrap;
+
+    color: white;
+}
+
+/* date and time */
+main .stats-div .recent2 h2{
+    font-size: clamp(1.2rem, 3vw, 1.7rem);
+    max-width: 100%;
+    box-sizing: border-box;
+
+    margin: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.3;
+
+    color: white;
+
+    /* text-align: center; */
+    /* border: 1px solid black; */
+}
+
+@container (max-width: 300px) {
+    main .stats-div .recent2 h2{
+        font-size: 1.3rem;
+    }
+}
+
+@container (min-width: 301px) and (max-width: 400px) {
+    main .stats-div .recent2 h2{
+        font-size: 1.5rem;
+    }
+}
+
+@container (min-width: 401px) and (max-width: 500px) {
+    main .stats-div .recent2 h2{
+        font-size: 1.8rem;
+    }
+}
+
+@container (min-width: 501px) {
+    main .stats-div .recent2 h2{
         font-size: 2rem;
     }
 }
@@ -375,7 +455,8 @@ main .stats-div .monthly{
     overflow: hidden;
     flex: 1;
 
-    min-height: 100px;
+    min-height: 200px;
+    height: auto;
     /* height: fit-content; */
     
 }
@@ -470,7 +551,7 @@ main .stats-div .top .top-content {
     flex-direction: row;
     align-items: center;
     justify-content: space-around;
-    gap: 20px;
+    gap: 10px;
     flex: 1;
     min-height: 0;
     overflow: hidden;
@@ -483,7 +564,7 @@ main .stats-div .top .pie-chart-container {
     flex-shrink: 0;
 
     width: 60%;
-    max-width: 300px;
+    max-width: 200px;
     /* height: 50%; */
     aspect-ratio: 1/1;
 
@@ -512,13 +593,6 @@ main .stats-div .top .total-label {
     font-size: 0.9rem;
     color: #888;
     margin-bottom: 5px;
-}
-
-main .stats-div .top .total-value {
-    display: block;
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: var(--text);
 }
 
 main .stats-div .top .room-stats {
@@ -846,16 +920,16 @@ aside .table-div table tr:nth-child(odd),
     main .stats-div{
         border-top: 2px solid rgba(184, 183, 183, 0.408);
         padding-top: 10px;
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
         grid-template-areas: 
-            "recent"
-            "top"
-            "monthly";
+            "recent1 recent2"
+            "top top"
+            "monthly monthly";
 
-        grid-template-rows: 100px minmax(250px, 1fr) minmax(300px, 1fr); /* Change this line */
+        grid-template-rows: 100px auto minmax(0px, 1fr); /* Change this line */
     }
 
-    main .stats-div .recent{
+    main .stats-div .recent1{
         height: auto;
     }
 
@@ -976,15 +1050,16 @@ aside .table-div table tr:nth-child(odd),
 
         display: grid;
         grid-template-areas: 
-            "recent top"
-            "monthly top";
-        grid-template-columns: 1fr 45%;
+            "recent1 recent2"
+            "top top"
+            "monthly monthly";
+        grid-template-columns: 1fr 1fr;
         grid-template-rows: auto minmax(0px, 1fr);
 
         gap: clamp(15px, 20px, 30px);
     }
 
-    main .stats-div .recent{
+    main .stats-div .recent1{
         height: 100px;
     }
 
@@ -1087,7 +1162,7 @@ aside .table-div table tr:nth-child(odd),
         grid-template-rows: 100px minmax(250px, 1fr) minmax(250px, 1fr); 
     }
 
-    main .stats-div .recent{
+    main .stats-div .recent1{
         height: auto;
     }
 

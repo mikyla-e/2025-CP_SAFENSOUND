@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnS Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/dashboard.css') }}">
+    <script src="{{ url_for('static', path='/js/chart.umd.js') }}"></script>
+
+    <style>
+        @media screen and (max-width: 768px) {
+            .time {
+                display: none;
+            }
+        }
+
+        @media screen and (max-width: 440px) {
+            nav {
+                flex-wrap: wrap;
+                padding: 20px clamp(3.5vw, 4vw, 5vw)  10px clamp(3.5vw, 4vw, 5vw);
+                justify-content: space-between;
+                gap: 8px;
+            }
+
+            /* Back button and Dashboard on the left */
+            nav .backNdashboard {
+                flex: 1;
+                order: 1;
+            }
+
+            /* Manage button on the right */
+            nav .admin-launch {
+                margin: 0 !important;
+                flex: 0 0 auto;
+                order: 2;
+            }
+            
+            nav .admin-launch .btn-manage {
+                padding: 8px 12px;
+                font-size: 0.75rem;
+                white-space: nowrap;
+                
+            }
+
+            nav .admin-launch .btn-manage span{
+                display: none;
+                text-decoration: none;
+            }
+
+            /* Date and time below - full width with space between */
+            nav > div:not(.backNdashboard):not(.admin-launch) {
+                width: 100%;
+                flex-basis: 100%;
+                order: 3;
+                justify-content: space-between; 
+                margin-top: 5px;
+                display: flex;
+                gap: 10px;
+            }
+
+            nav h1 {
+                margin: 0;
+                font-size: 1.3rem;
+            }
+
+            .time {
+                display: inline;
+            }
+        }
+
+        .btn-manage {
+            background: var(--second);
+            color: var(--primary);
+            border: none;
+            border-radius: 5px;
+            text-decoration-color: none;
+            padding: 10px 16px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(45,51,107,0.2);
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .btn-manage:hover {
+            background: var(--second-light);
+        }
+
+        /* logout button */
+        .btn-logout {
+            background: var(--red); 
+            color: var(--primary);
+            border: none;
+            border-radius: 5px;
+            padding: 7.5px 16px;
+            cursor: pointer;
+            /* box-shadow: 0 2px 8px rgba(45,51,107,0.2); */
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .btn-logout:hover {
+            background: #ee3e47;
+        }
+
+        main .stats-div .monthly #monthly-header{
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        main .stats-div .monthly #monthly-header h3{
+            margin: 0;
+            padding: 0;
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+        }
+
+        main .stats-div .monthly #monthly-header select{
+            background: var(--second);
+            color: var(--primary);
+            border: none;
+            border-radius: 5px;
+            padding: 5px 12px;
+            font-family: "DM Sans", sans-serif;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer; 
+            transition: all 0.2s ease;
+        }
+
+        main .stats-div .monthly #monthly-header select:hover {
+            background: var(--second-light);
+        }
+
+        main .stats-div .monthly #monthly-header select:focus {
+            background: linear-gradient(133deg, var(--second) 60%, var(--second-light) 120%);
+            color: var(--second-very-light);
+        }
+
+        main .stats-div .monthly .chart-div{
+            width: 100%;
+            min-height: 200px;
+            height: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            
+            flex: 1; 
+            position: relative; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        main .stats-div .monthly .chart-div canvas{
+            width: 100% !important; 
+            height: 100% !important;
+            max-height: 360px;
+            max-width: 100%; 
+            display: block; 
+
+            box-sizing: border-box;
+        }
+
+        /* top emergency count */
+        main .stats-div .top #top-filters select,
+        main .stats-div .top #top-filters input[type="date"] {
+            background: var(--second);
+        }
+
+        main .stats-div .top #top-filters select:hover,
+        main .stats-div .top #top-filters input[type="date"]:hover {
+            background: var(--second-light);
+        }
+
+        main .stats-div .top .room-stats {
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            height: 60%;
+            padding-right: 15px;
+        }
+
+        main .stats-div .number {
+            grid-area: number;
+            min-height: fit-content;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 0;
+        }
+
+        main .stats-div .number .number-div {
+            box-sizing: border-box;
+            min-height: 100px;
+            height: auto;
+            flex: 1;
+
+            background: linear-gradient(180deg, #005481 0%, #002C47 181.85%);
+            color: var(--primary);
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
+        }
+
+        main .stats-div .number .number-div div {
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            text-align: center;
+            gap: 8px;
+            container-type: inline-size;
+        }
+
+        main .stats-div .number .number-div p {
+            margin: 0;
+            font-size: clamp(0.85rem, 2vw, 1rem);
+            white-space: nowrap;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        main .stats-div .number .number-div h2 {
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            max-width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+            color: white;
+            font-weight: 700;
+        }
+
+        .report {
+            border-radius: 15px;
+            background-color: var(--primary);
+            box-shadow: 0 20.547px 20.547px 0 rgba(0, 0, 0, 0.10);
+            min-height: 60px;
+            width: 100%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .report:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 25px 25px 0 rgba(0, 0, 0, 0.15);
+        }
+
+        .report span {
+            padding: 15px 20px;
+            font-size: clamp(0.9rem, 2vw, 1.1rem);
+            font-weight: 600;
+            color: var(--second);
+            white-space: nowrap;
+        }
+
+        .room-stat {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            margin-bottom: 8px;
+        }
+
+        .room-stat .room-label {
+            font-weight: 500;
+            color: var(--text);
+            flex: 1;
+        }
+
+        .room-stat .room-counts {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .room-stat .count-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .room-stat .count-badge.emergency {
+            color: #ee3e47;
+        }
+
+        .room-stat .count-badge.alarming {
+            color: #e98c2f;
+        }
+
+        .room-stat .count-badge svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Total display styling */
+        .total-breakdown {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .total-breakdown .total-main {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--second);
+        }
+
+        .total-breakdown .total-sub {
+            display: flex;
+            gap: 12px;
+            font-size: 0.75rem;
+        }
+
+        .total-breakdown .total-sub span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .total-breakdown .total-sub .emergency-total {
+            color: #ee3e47;
+        }
+
+        .total-breakdown .total-sub .alarming-total {
+            color: #e98c2f;
+        }
+
+        .alert-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 10px 0;
+            margin-top: 5px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .alert-legend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+
+        .alert-legend .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .alert-legend .legend-dot.emergency {
+            background-color: #ee3e47;
+        }
+
+        .alert-legend .legend-dot.alarming {
+            background-color: #e98c2f;
+        }
+
+        @media screen and (max-width: 1200px) {
+            main .stats-div .number {
+                gap: 15px;
+            }
+            
+            main .stats-div .number .number-div {
+                min-height: 80px;
+                padding: 15px;
+            }
+        }
+
+        @media screen and (max-width: 900px) {
+            main .stats-div {
+                grid-template-areas: 
+                    "recent1 recent2"
+                    "top top"
+                    "monthly monthly"
+                    "number number";
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto minmax(250px, 1fr) auto;
+            }
+
+            main .stats-div .number {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                gap: 15px;
+            }
+
+            main .stats-div .number .number-div {
+                flex: 1 1 calc(33% - 10px);
+                min-width: 120px;
+                min-height: 90px;
+            }
+
+            main .stats-div .number .report {
+                flex: 1 1 100%;
+                min-height: 50px;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            main .stats-div {
+                grid-template-areas: 
+                    "recent1 recent2"
+                    "top top"
+                    "monthly monthly"
+                    "number number";
+                grid-template-columns: 1fr 1fr;
+            }
+
+            main .stats-div .number .number-div {
+                flex: 1 1 calc(33% - 10px);
+                min-width: 100px;
+            }
+        }
+
+        @media screen and (max-width: 440px) {
+            main .stats-div {
+                grid-template-areas: 
+                    "recent1"
+                    "recent2"
+                    "top"
+                    "monthly"
+                    "number";
+                grid-template-columns: 1fr;
+            }
+
+            main .stats-div .number {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            main .stats-div .number .number-div {
+                flex: none;
+                width: 100%;
+                min-height: 70px;
+                padding: 12px;
+            }
+
+            main .stats-div .number .number-div h2 {
+                font-size: 1.8rem;
+            }
+
+            .alert-legend {
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            .alert-legend .legend-item {
+                font-size: 0.75rem;
+            }
+
+            .alert-legend .legend-dot {
+                width: 10px;
+                height: 10px;
+            }
+
+            .report span {
+                font-size: 0.85rem;
+                padding: 12px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="backNdashboard" style="display: flex; align-items: center; gap: 15px;">
+            <a href="/" style="text-decoration: none; color: var(--second); display: flex; align-items: center; font-size: 1.2rem; transition: color 0.3s;" title="Back to Homepage">
+                ←
+            </a>
+            <h1>Dashboard</h1>
+        </div>
+        <div>
+            <p id="current-date">00/00/00</p>
+            <p class="time" id="current-time">00:00 AM</p>
+        </div>
+        <div class="admin-launch" style="margin:20px 0; display: flex; gap: 10px; align-items: center;">
+            <a href="/dashboard" class="btn-manage" style="text-decoration: none; font-size: 0.75rem;"><span>Back to Dashboard</span></a>
+            <a href="/logout" onclick="confirmLogout(event)" class="btn-logout" title="Logout">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="white" style="width: 16px; height: 16px; vertical-align: middle;">
+                    <path d="M377.9 105.9L500.7 228.7c7.2 7.2 11.3 17.1 11.3 27.3s-4.1 20.1-11.3 27.3L377.9 406.1c-6.4 6.4-15 9.9-24 9.9c-18.7 0-33.9-15.2-33.9-33.9l0-62.1-128 0c-17.7 0-32-14.3-32-32l0-64c0-17.7 14.3-32 32-32l128 0 0-62.1c0-18.7 15.2-33.9 33.9-33.9c9 0 17.6 3.6 24 9.9zM160 96L96 96c-17.7 0-32 14.3-32 32l0 256c0 17.7 14.3 32 32 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-64 0c-53 0-96-43-96-96L0 128C0 75 43 32 96 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z"/>
+                </svg>
+            </a>
+        </div>
+    </nav>
+    <main>
+        <div class="stats-div">
+            <!-- Most Recent Emergency -->
+            <div class="recent1 stats"> 
+                <div>
+                    <p>Most Recent Alarming Alert</p>
+                    <h2 id="recent-alarming"></h2>
+                </div>
+            </div>
+            <div class="recent2 stats"> 
+                <div>
+                    <p>Most Recent Emergency Alert</p>
+                    <h2 id="recent-emergency"></h2>
+                </div>
+            </div>
+            
+
+            <!-- Monthly Detected Emergencies -->
+            <div class="monthly stats">
+                <div id="monthly-header">
+                    <h3>Monthly Detected Emergencies</h3>
+                    <select id="year-filter" onchange="updateMonthlyGraph()"></select>
+                </div>
+                <div class="chart-div">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Emergency Count -->
+            <div class="top stats">
+                <div id="top-header">
+                    <h3>Top Alert Count</h3>
+                    <div id="top-filters">
+                        <select id="top-range-filter" onchange="handleRangeChange()">
+                            <option value="all">All Time</option>
+                            <option value="this_year">This Year</option>
+                            <option value="this_month">This Month</option>
+                            <option value="last_7" selected>Last 7 Days</option>
+                            <option value="last_30">Last 30 Days</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                        <div class="date-inputs" id="custom-date-inputs">
+                            <input type="date" id="start-date">
+                            <span>to</span>
+                            <input type="date" id="end-date">
+                        </div>
+                    </div>
+                </div>
+                <div class="top-content">
+                    <div class="pie-chart-container">
+                        <canvas id="topChart"></canvas>
+                        <div class="total-overlay">
+                            <span class="total-label">Total</span>
+                            <span class="total-main" id="total-emergencies">000</span>
+                        </div>
+                    </div>  
+                    <div class="room-stats" id="room-stats-container">
+                        <!-- Room stats will be dynamically generated here -->
+                    </div>
+                </div>
+                <div class="alert-legend">
+                    <div class="legend-item">
+                        <span class="legend-dot emergency"></span>
+                        <span>Emergency Alerts</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot alarming"></span>
+                        <span>Alarming Alerts</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="number"> 
+                <div class="number-div stats">
+                    <div>
+                        <p>No of Rooms</p>
+                        <h2 id="room-count">--</h2>
+                    </div>
+                </div>
+
+                <div class="number-div stats">
+                    <div>
+                        <p>No of Devices</p>
+                        <h2 id="device-count">--</h2>
+                    </div>
+                </div>
+
+                <div class="number-div stats">
+                    <div>
+                        <p>No of Users</p>
+                        <h2 id="user-count">--</h2>
+                    </div>
+                </div>
+
+                <button class="report" onclick="window.location.href='/report'" title="Print Report">
+                    <span>Print Report</span>
+                </button>
+                
+            </div>
+        </div>
+    </main>
+</body>
+<script>
+    function updateDateTime() {
+        const now = new Date();
+        
+        // Format date as MM/DD/YY
+        const date = now.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        });
+        
+        // Format time as HH:MM:SS AM/PM
+        const time = now.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+        
+        document.getElementById('current-date').textContent = date;
+        document.getElementById('current-time').textContent = time;
+    }
+    
+    // Update immediately, then every second
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+
+    let roomData = {};
+
+
+    // Fetch room data from API
+    async function fetchRoomData() {
+        try {
+            const response = await fetch('/api/rooms');
+            const rooms = await response.json();
+            
+            roomData = {};
+            
+            for (const [roomId, roomInfo] of Object.entries(rooms)) {
+                const id = parseInt(roomId);
+                roomData[id] = {
+                    name: roomInfo.name,
+                    has_sensor: roomInfo.has_sensor
+                };
+            }
+            
+            console.log('Room data loaded:', roomData);
+        } catch (error) {
+            console.error('Error fetching room data:', error);
+        }
+    }
+
+    async function fetchRecentEmergency() {
+        try {
+            const response = await fetch('/api/recent_emergency');
+            const data = await response.json();
+            const elem = document.getElementById('recent-emergency');
+            if (data && data.date && data.time) {
+                elem.textContent = `${data.date}, \u00A0${data.time.replace(' ', '\u00A0')}`;
+            } else {
+                elem.textContent = "No emergency alerts yet";
+            }
+        } catch (error) {
+            document.getElementById('recent-emergency').textContent = "Error loading";
+        }
+    }
+
+    async function fetchRecentAlarming() {
+        try {
+            const response = await fetch('/api/recent_alarming');
+            const data = await response.json();
+            const elem = document.getElementById('recent-alarming');
+            if (data && data.date && data.time) {
+                elem.textContent = `${data.date}, \u00A0${data.time.replace(' ', '\u00A0')}`;
+            } else {
+                elem.textContent = "No alarming alerts yet";
+            }
+        } catch (error) {
+            document.getElementById('recent-alarming').textContent = "Error loading";
+        }
+    }
+
+    async function fetchRoomCount() {
+        try {
+            const response = await fetch('/api/stats/room_count');
+            const data = await response.json();
+            document.getElementById('room-count').textContent = data.count.toString().padStart(2, '0');
+        } catch (error) {
+            console.error('Error fetching room count:', error);
+            document.getElementById('room-count').textContent = '--';
+        }
+    }
+
+    async function fetchDeviceCount() {
+        try {
+            const response = await fetch('/api/stats/device_count');
+            const data = await response.json();
+            // Show assigned devices count
+            document.getElementById('device-count').textContent = data.count.toString().padStart(2, '0');
+        } catch (error) {
+            console.error('Error fetching device count:', error);
+            document.getElementById('device-count').textContent = '--';
+        }
+    }
+
+    async function fetchUserCount() {
+        try {
+            const response = await fetch('/api/stats/user_count');
+            const data = await response.json();
+            document.getElementById('user-count').textContent = data.count.toString().padStart(2, '0');
+        } catch (error) {
+            console.error('Error fetching user count:', error);
+            document.getElementById('user-count').textContent = '--';
+        }
+    }
+
+    // MONTHLY DETECTED EMERGENCIES
+    let monthlyChart = null;
+
+    // Aspect ratio helper based on screen width
+    function getLineChartAspectRatio() {
+        const w = window.innerWidth;
+        if (w >= 1920) return 2;
+        if (w >= 1600) return 1.8;
+        if (w >= 1440) return 1.5;  
+        if (w >= 1358) return 1.3;  
+        if (w >= 1274) return 1.8;  
+        if (w >= 1128) return 1.1;  
+        if (w >= 1024) return .9;  
+        if (w >= 900) return .7;  
+        if (w >= 769)  return 1.8;  
+        if (w >= 735)  return 1.4;   
+        if (w >= 600)  return 1.1;   
+        if (w >= 520)  return 1.1;   
+        if (w >= 441)  return .7;   
+        if (w >= 320)  return 1.5;   
+        return 1.1;                 
+    }
+
+    let monthlyResizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(monthlyResizeTimer);
+        monthlyResizeTimer = setTimeout(() => {
+            if (monthlyChart) {
+                monthlyChart.options.aspectRatio = getLineChartAspectRatio();
+                monthlyChart.resize();
+                monthlyChart.update();
+            }
+        }, 150);
+    });
+
+    async function initializeYearFilter() {
+        try {
+            const response = await fetch('/api/available_years');
+            const years = await response.json();
+            
+            const yearFilter = document.getElementById('year-filter');
+            yearFilter.innerHTML = '';
+            
+            years.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearFilter.appendChild(option);
+            });
+            
+            // Load data for the first year
+            if (years.length > 0) {
+                await updateMonthlyGraph();
+            }
+        } catch (error) {
+            console.error('Error loading years:', error);
+        }
+    }
+
+    async function updateMonthlyGraph() {
+        const yearFilter = document.getElementById('year-filter');
+        const selectedYear = yearFilter.value;
+        
+        try {
+            const response = await fetch(`/api/monthly_emergencies/${selectedYear}`);
+            const data = await response.json();
+            
+            console.log('Raw monthly data received:', data);
+            
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            // The data should already be an array of 12 values [count_jan, count_feb, ..., count_dec]
+            let values;
+            if (Array.isArray(data)) {
+                values = data;
+            } else {
+                // Fallback: convert object to array
+                values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                for (const [month, count] of Object.entries(data)) {
+                    const monthIndex = parseInt(month) - 1; // month is 1-12, array is 0-11
+                    if (monthIndex >= 0 && monthIndex < 12) {
+                        values[monthIndex] = count;
+                    }
+                }
+            }
+            
+            console.log('Processed values for chart:', values);
+            console.log('October (index 9) value:', values[9]);
+            
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (monthlyChart) {
+                monthlyChart.destroy();
+            }
+            
+            monthlyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Monthly Detected Emergencies',
+                        data: values,
+                        borderColor: '#015382', //second-light
+                        backgroundColor: 'rgba(136, 143, 167, 0.20)',
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#002C47', //second
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: getLineChartAspectRatio(),
+                    plugins: {
+                        filler: {
+                            propagate: false
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#002C47', //second
+                            padding: 12,
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#015382', //second-light
+                            borderWidth: 1,
+                            displayColors: false,
+                            intersect: false,
+                            mode: 'index',
+                            callbacks: {
+                                label: function(context) {
+                                    return `Emergencies: ${context.parsed.y}`;
+                                },
+                                title: function(context) {
+                                    return `${context[0].label} ${selectedYear}`;
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#666',
+                                precision: 0
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#666'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            console.log('Chart created successfully');
+        } catch (error) {
+            console.error('Error updating monthly graph:', error);
+        }
+    }
+
+    // TOP EMERGENCY COUNT PIE CHART
+    let topChart = null;
+
+    function handleRangeChange() {
+        const rangeFilter = document.getElementById('top-range-filter');
+        const customInputs = document.getElementById('custom-date-inputs');
+        
+        if (rangeFilter.value === 'custom') {
+            customInputs.classList.add('show');
+            // Set default dates
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            
+            document.getElementById('end-date').valueAsDate = today;
+            document.getElementById('start-date').valueAsDate = thirtyDaysAgo;
+            
+            // Update chart with default custom range
+            applyCustomRange();
+        } else {
+            customInputs.classList.remove('show');
+            updateTopChart();
+        }
+    }
+
+    async function applyCustomRange() {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        
+        if (!startDate || !endDate) {
+            alert('Please select both start and end dates');
+            return;
+        }
+        
+        if (new Date(startDate) > new Date(endDate)) {
+            alert('Start date must be before end date');
+            return;
+        }
+        
+        await updateTopChart();
+    }
+
+    // Add event listeners for Enter key on date inputs
+    document.addEventListener('DOMContentLoaded', function() {
+        const startDate = document.getElementById('start-date');
+        const endDate = document.getElementById('end-date');
+        
+        if (startDate && endDate) {
+            startDate.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') applyCustomRange();
+            });
+            endDate.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') applyCustomRange();
+            });
+            
+            // Auto-apply when both dates are selected
+            endDate.addEventListener('change', function() {
+                if (startDate.value && endDate.value) {
+                    applyCustomRange();
+                }
+            });
+        }
+    });
+
+    async function updateTopChart() {
+        const rangeFilter = document.getElementById('top-range-filter');
+        const selectedRange = rangeFilter.value;
+        
+        let url = '/api/top_emergencies';
+        
+        if (selectedRange === 'custom') {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            if (!startDate || !endDate) {
+                console.warn('Custom range selected but dates not set');
+                return;
+            }
+            
+            url += `?range=custom&start_date=${startDate}&end_date=${endDate}`;
+        } else if (selectedRange !== 'all') {
+            url += `?range=${selectedRange}`;
+        }
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            // Update total
+            document.getElementById('total-emergencies').textContent = 
+                data.total.toString().padStart(3, '0');
+            
+            // Dynamically create room stats for all rooms
+            const roomStatsContainer = document.getElementById('room-stats-container');
+            roomStatsContainer.innerHTML = '';
+            
+            // Get all rooms and sort by emergency count (highest first)
+            const roomIds = Object.keys(roomData);
+            const sortedRoomIds = roomIds.sort((a, b) => {
+                const totalA = data.rooms[a]?.count || 0;
+                const totalB = data.rooms[b]?.count || 0;
+                
+                // Sort by count descending (most emergencies first)
+                if (totalB !== totalA) {
+                    return totalB - totalA;
+                }
+                
+                // If counts are equal, sort by sensor status (with sensor first)
+                const roomA = roomData[a];
+                const roomB = roomData[b];
+                if (roomA.has_sensor !== roomB.has_sensor) {
+                    return roomB.has_sensor ? 1 : -1;
+                }
+                
+                // If still equal, sort alphabetically
+                return roomA.name.toLowerCase().localeCompare(roomB.name.toLowerCase());
+            });
+            
+            // Create stat elements for each room in sorted order
+            sortedRoomIds.forEach(roomId => {
+                const roomInfo = data.rooms[roomId] || {
+                    name: roomData[roomId].name || `Room ${roomId}`,
+                    emergency_count: 0, 
+                    alarming_count: 0,
+                    total_count: 0
+                };
+                const statDiv = document.createElement('div');
+                statDiv.className = 'room-stat';
+                statDiv.id = `room-stat-${roomId}`;
+                statDiv.innerHTML = `
+                    <span class="room-label">${roomInfo.name}</span>
+                    <div class="room-counts">
+                        <span class="count-badge emergency" title="Emergency Alerts">
+                            ${roomInfo.emergency_count.toString().padStart(2, '0')}
+                        </span>
+                        <span class="count-badge alarming" title="Alarming Alerts">
+                            ${roomInfo.alarming_count.toString().padStart(2, '0')}
+                        </span>
+                    </div>
+                `;
+                roomStatsContainer.appendChild(statDiv);
+            });
+            
+            // Create pie chart (only with rooms that have data)
+            const ctx = document.getElementById('topChart').getContext('2d');
+            
+            if (topChart) {
+                topChart.destroy();
+            }
+            
+            const sortedRooms = Object.entries(data.rooms)
+                .filter(([_, roomData]) => roomData.total_count > 0)
+                .sort((a, b) => b[1].total_count - a[1].total_count);
+            
+            const labels = sortedRooms.map(([_, roomData]) => roomData.name);
+            const values = sortedRooms.map(([_, roomData]) => roomData.total_count);
+            
+            // Generate colors dynamically based on number of rooms
+            const colors = ['#015382', '#2d8ec2', '#002C47', '#4a9fd8', '#1a6b99', '#357ab8'];
+            
+            topChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, values.length),
+                        borderWidth: 0,
+                        cutout: '50%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 1,
+                    cutout: '50%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#002C47',
+                            padding: 12,
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#015382',
+                            borderWidth: 1,
+                            displayColors: true,
+                            callbacks: {
+                                label: function(context) {
+                                    const roomName = context.label;
+                                    const value = context.parsed;
+                                    const total = data.total;
+                                    const percentage = total > 0 
+                                        ? ((value / total) * 100).toFixed(1) 
+                                        : 0;
+                                    return `${roomName}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: 0
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error updating top chart:', error);
+        }
+    }
+
+    // Initialize both charts on page load
+    window.addEventListener('load', async function() {
+        await fetchRoomData();
+        await fetchRecentEmergency();
+        await fetchRecentAlarming();
+        await fetchRoomCount();
+        await fetchDeviceCount();
+        await fetchUserCount();
+        await initializeYearFilter();
+        await updateTopChart();
+    });
+
+    function confirmLogout(event) {
+        event.preventDefault();
+        if (confirm('Are you sure you want to logout?')) {
+            window.location.href = '/logout';
+        }
+    }
+</script>
+
+</html>
