@@ -302,10 +302,10 @@ async def get_history(room_id: int, user: dict = Depends(get_current_user)):
             history_id = record[0]
             action = record[1]
             # purda sound_type
-            date_str = record[3]
-            time_str = record[4]
-            room_id_db = record[5]
-            recording_path = record[6] if len(record) > 5 else None
+            date_str = record[2]
+            time_str = record[3]
+            room_id_db = record[4]
+            recording_path = record[5] if len(record) > 5 else None
             
             # Format date as MM/DD/YY
             formatted_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%m/%d/%y")
@@ -462,20 +462,20 @@ async def get_recording_by_id(history_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/history/{history_id}/recording")
-async def get_recording_by_id(history_id: int):
-    try:
-        recording_path = db.fetch_recording(history_id)
-        if recording_path:
-            print(recording_path)
+# @app.get("/api/history/{history_id}/recording")
+# async def get_recording_by_id(history_id: int):
+#     try:
+#         recording_path = db.fetch_recording(history_id)
+#         if recording_path:
+#             print(recording_path)
 
-        if not recording_path or not os.path.exists(recording_path):
-            raise HTTPException(status_code=404, detail="Recording not found")
+#         if not recording_path or not os.path.exists(recording_path):
+#             raise HTTPException(status_code=404, detail="Recording not found")
         
-        filename = os.path.basename(recording_path)
-        return FileResponse(recording_path, media_type="audio/wav", filename=filename)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+#         filename = os.path.basename(recording_path)
+#         return FileResponse(recording_path, media_type="audio/wav", filename=filename)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get("/api/recordings")
 async def list_recordings():
