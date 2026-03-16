@@ -1116,11 +1116,25 @@
                                 delete alarmingReceivedAt[rid];
                                 pendingHighlight[rid] = { history_id: data.history_id, type: 'emergency' };
                             } else if (data.action === 'Alarming Alert Detected') {
+                            if (roomAlertType[rid] === 'emergency') {
+                                // Temporarily switch to alarming visuals, then revert to red after 15s
+                                roomAlertType[rid] = 'alarming';
+                                roomStatus[rid] = 1;
+                                alarmingTimeouts[rid] = setTimeout(() => {
+                                    if (roomData[rid]) {
+                                        roomAlertType[rid] = 'emergency';
+                                        roomStatus[rid] = 1;
+                                        render();
+                                    }
+                                }, 15000);
+                            } else {
+                                // No prior emergency — normal alarming behavior
                                 roomStatus[rid]         = 1;
                                 roomAlertType[rid]      = 'alarming';
                                 alarmingReceivedAt[rid] = Date.now();
                                 startAlarmingTimeout(rid);
-                                pendingHighlight[rid] = { history_id: data.history_id, type: 'alarming' }; 
+                            }
+                            pendingHighlight[rid] = { history_id: data.history_id, type: 'alarming' };
                             } else if (data.action === 'Alert Acknowledged') {
                                 roomStatus[rid]    = 0;
                                 roomAlertType[rid] = null;
