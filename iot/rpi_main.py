@@ -699,7 +699,7 @@ def inference(audio, wav_name, device_add=None, room_id=None):
         nonemergency_count = 0
         # print("ALARMING sound detected. \nAlarming count:", alarming_count, "\nEmergency count:", emergency_count)
 
-        if alarming_count >= 2:
+        if alarming_count >= 1:
             alarming_detected = True
             trigger_alert(audio, device_add, room_id)
 
