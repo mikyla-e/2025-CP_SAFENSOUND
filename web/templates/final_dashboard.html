@@ -471,12 +471,6 @@
             animation: newAlarming 3s ease;
             border-left: 3px solid #F59E0B;
         }
-        .history-row.acknowledged-highlight {
-            animation: none;
-            background-color: #10B9811a;
-            border-left: 3px solid #10B981;
-            transition: background-color 5s ease-out, border-left-color 5s ease-out;
-        }
         .history-row.fade-highlight {
             animation: none;
             background-color: transparent;
@@ -899,6 +893,14 @@
         function applyPendingHighlights() {
             for (const [roomId, highlight] of Object.entries(pendingHighlight)) {
                 const { history_id, type } = highlight;
+
+                document.querySelectorAll(`#carousel-track tr.new-emergency, #carousel-track tr.new-alarming`)
+                    .forEach(el => {
+                        if (el.dataset.historyId !== String(history_id)) {
+                            el.classList.remove('new-emergency', 'new-alarming');
+                        }
+                    });
+
                 const row = document.querySelector(`tr[data-history-id="${history_id}"]`);
                 if (!row) continue;
 
@@ -1140,6 +1142,20 @@
                                 roomAlertType[rid] = null;
                                 clearAlarmingTimeout(rid);
                                 delete alarmingReceivedAt[rid];
+
+                                // Cancel any pending highlight for this room
+                                if (pendingHighlight[rid]) {
+                                    const oldId = pendingHighlight[rid].history_id;
+                                    if (highlightTimeouts[oldId]) {
+                                        clearTimeout(highlightTimeouts[oldId]);
+                                        delete highlightTimeouts[oldId];
+                                    }
+                                    delete pendingHighlight[rid];
+                                }
+
+                                // Strip any currently animating rows in this room immediately
+                                document.querySelectorAll(`#carousel-track tr.new-emergency, #carousel-track tr.new-alarming`)
+                                    .forEach(el => el.classList.remove('new-emergency', 'new-alarming'));
                             }
 
                             // Inject directly from WS payload — no HTTP fetch needed
