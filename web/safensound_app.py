@@ -616,6 +616,9 @@ async def handle_alert(data: AlertData):
         if hasattr(db.conn, 'commit'):
             db.conn.commit()
 
+        cursor = db.conn.execute('SELECT last_insert_rowid()')
+        new_history_id = cursor.fetchone()[0]
+
         await manager.broadcast({
             "type": "alert_update",
             "room_id": data.room_id,
@@ -623,7 +626,9 @@ async def handle_alert(data: AlertData):
             "action": data.action,
             "date": formatted_date,
             "time": strip_leading_zero_hour(current_time),
-            "has_recording": data.recording_path is not None
+            "has_recording": data.recording_path is not None,
+            "history_id": new_history_id,
+            "recording_path": data.recording_path
         })
         
         return {"success": True, "message": "Alert processed successfully."}
